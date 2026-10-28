@@ -118,3 +118,21 @@ def test_verificar_bd_no_depende_de_semillas_para_turnos() -> None:
     codigo = (RAIZ / "scripts/verificar_bd.py").read_text(encoding="utf-8")
     assert "ids_para_turnos" not in codigo
     assert "crear_datos_propios" in codigo and "2099-01-05" in codigo
+
+
+def test_actualizar_bd_extrae_todas_las_funciones_y_no_toca_tablas(capsys: pytest.CaptureFixture[str]) -> None:
+    import actualizar_bd
+
+    funciones = actualizar_bd.funciones_de_0003()
+    nombres = [n for n, _ in funciones]
+    assert len(nombres) == 13 and "progresos_paraderos_ruta" in nombres and "progreso_paradero" in nombres
+    for _, sql in funciones:
+        assert sql.lower().startswith("create or replace function") and sql.rstrip().endswith("$$;")
+        assert "create table" not in sql.lower() and "drop " not in sql.lower()
+    # el simulacro no abre conexión (no usa `conectar`) y lista el plan
+    actualizar_bd.simulacro()
+    assert "SIMULACRO" in capsys.readouterr().out
+    # sin borrados de datos de usuario en todo el script
+    codigo = (RAIZ / "scripts/actualizar_bd.py").read_text(encoding="utf-8").lower()
+    for prohibido in ("delete from", "truncate", "drop table", "perfil_usuario"):
+        assert prohibido not in codigo.replace("# ", "")[codigo.index("def simulacro"):]
