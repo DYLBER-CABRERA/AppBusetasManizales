@@ -1,0 +1,116 @@
+[
+  {
+    "nombre": "Catedral",
+    "tipo": "hito",
+    "alias": [
+      "catedral",
+      "la catedral",
+      "catedral basilica"
+    ],
+    "validado": false,
+    "lat": 5.067386,
+    "lng": -75.517323,
+    "consulta": "Catedral de Manizales",
+    "mostrado": "Catedral basílica de Nuestra Señora del Rosario de Manizales, Carrera 23, Centro Histórico de Manizales, Comuna Cumanday, Perímetro Urbano Manizales, Centrosur, Caldas, RAP del Agua y la Montaña, 170006, Colombia"
+  },
+  {
+    "nombre": "El Cable",
+    "tipo": "hito",
+    "alias": [
+      "cable",
+      "el cable",
+      "estacion cable"
+    ],
+    "validado": false,
+    "lat": 5.05634,
+    "lng": -75.486422,
+    "consulta": "El Cable, Manizales",
+    "mostrado": "El Cable, Comuna Palogrande, Perímetro Urbano Manizales, Centrosur, Caldas, RAP del Agua y la Montaña, 170002, Colombia"
+  },
+  {
+    "nombre": "Carrera 23",
+    "tipo": "hito",
+    "alias": [
+      "carrera 23",
+      "cra 23",
+      "kr 23",
+      "cra. 23"
+    ],
+    "validado": false,
+    "lat": 5.067173,
+    "lng": -75.51535,
+    "consulta": "Carrera 23, Manizales",
+    "mostrado": "Carrera 23, Centro Histórico de Manizales, Comuna Cumanday, Perímetro Urbano Manizales, Centrosur, Caldas, RAP del Agua y la Montaña, 170006, Colombia"
+  },
+  {
+    "nombre": "Fundadores",
+    "tipo": "hito",
+    "alias": [
+      "fundadores",
+      "monumento a los fundadores",
+      "los fundadores"
+    ],
+    "validado": false,
+    "lat": 5.067689,
+    "lng": -75.510539,
+    "consulta": "Monumento a los Fundadores, Manizales",
+    "mostrado": "Monumento a los Fundadores, Avenida Paralela, Fundadores, Comuna Cumanday, Perímetro Urbano Manizales, Centrosur, Caldas, RAP del Agua y la Montaña, 170001, Colombia"
+  },
+  {
+    "nombre": "Terminal",
+    "tipo": "terminal",
+    "alias": [
+      "terminal",
+      "terminal de transportes",
+      "terminal de manizales"
+    ],
+    "validado": false,
+    "lat": 5.049364,
+    "lng": -75.506333,
+    "consulta": "Terminal de Transportes de Manizales",
+    "mostrado": "Terminal de Transportes de Manizales, Carretera Panamericana, Las Colinas, Comuna Universitaria, Perímetro Urbano Manizales, Centrosur, Caldas, RAP del Agua y la Montaña, 170004, Colombia"
+  },
+  {
+    "nombre": "Parque de Caldas",
+    "tipo": "hito",
+    "alias": [
+      "parque de caldas",
+      "parque caldas",
+      "plaza de bolivar",
+      "parque"
+    ],
+    "validado": false,
+    "lat": 5.067559,
+    "lng": -75.512743,
+    "consulta": "Parque Caldas, Manizales",
+    "mostrado": "Parque Caldas, Comuna Cumanday, Perímetro Urbano Manizales, Centrosur, Caldas, RAP del Agua y la Montaña, Colombia"
+  },
+  {
+    "nombre": "La Enea",
+    "tipo": "barrio",
+    "alias": [
+      "la enea",
+      "enea",
+      "barrio la enea"
+    ],
+    "validado": false,
+    "lat": 5.031821,
+    "lng": -75.463061,
+    "consulta": "La Enea, Manizales",
+    "mostrado": "La Enea, Comuna Tesorito, Perímetro Urbano Manizales, Centrosur, Caldas, RAP del Agua y la Montaña, 170003, Colombia"
+  },
+  {
+    "nombre": "Villamaría",
+    "tipo": "sector",
+    "alias": [
+      "villamaria",
+      "villa maria",
+      "villamaría"
+    ],
+    "validado": false,
+    "lat": 5.04497,
+    "lng": -75.515126,
+    "consulta": "Villamaría, Caldas",
+    "mostrado": "Cabecera Municipal Villamaría, Villamaría, Centrosur, Caldas, RAP del Agua y la Montaña, 176001, Colombia"
+  }
+]

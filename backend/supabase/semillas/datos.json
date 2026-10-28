@@ -1,0 +1,606 @@
+{
+ "_nota": "Datos de ejemplo. Horarios/frecuencias de Sideral, Socobuses y Serviturismo salen de docs/referencia/campo-*.md; codigos 18 y 21 y franjas marcadas ficticias son de ejemplo (docs/01 secciones 2.5 y 6).",
+ "empresas": [
+  "Sideral",
+  "Socobuses",
+  "Serviturismo"
+ ],
+ "rutas": [
+  {
+   "slug": "el-cable",
+   "nombre": "El Cable",
+   "descripcion": "Recorrido de ejemplo (no oficial)."
+  },
+  {
+   "slug": "centro",
+   "nombre": "Centro",
+   "descripcion": "Recorrido de ejemplo (no oficial)."
+  },
+  {
+   "slug": "la-enea",
+   "nombre": "La Enea",
+   "descripcion": "Recorrido de ejemplo (no oficial). Ruta compartida."
+  },
+  {
+   "slug": "villamaria",
+   "nombre": "Villamaría",
+   "descripcion": "Recorrido de ejemplo (no oficial). Ruta compartida."
+  }
+ ],
+ "servicios": [
+  {
+   "ruta": "el-cable",
+   "empresa": "Sideral",
+   "codigoPublico": "39",
+   "duracionEstandarMin": 50,
+   "horarios": {
+    "lun_vie": {
+     "primeraSalida": "04:45",
+     "ultimaSalida": "21:30",
+     "cierre": null,
+     "nota": null
+    },
+    "dom_festivo": {
+     "primeraSalida": "06:00",
+     "ultimaSalida": "21:00",
+     "cierre": null,
+     "nota": null
+    }
+   },
+   "frecuencias": {
+    "lun_vie": [
+     {
+      "inicio": 285,
+      "fin": 1290,
+      "min": 8,
+      "max": 10
+     }
+    ],
+    "dom_festivo": [
+     {
+      "inicio": 360,
+      "fin": 1260,
+      "min": 8,
+      "max": 10
+     }
+    ]
+   }
+  },
+  {
+   "ruta": "centro",
+   "empresa": "Sideral",
+   "codigoPublico": "22",
+   "duracionEstandarMin": 50,
+   "horarios": {
+    "lun_vie": {
+     "primeraSalida": "04:45",
+     "ultimaSalida": "21:30",
+     "cierre": null,
+     "nota": null
+    },
+    "dom_festivo": {
+     "primeraSalida": "06:00",
+     "ultimaSalida": "21:00",
+     "cierre": null,
+     "nota": null
+    }
+   },
+   "frecuencias": {
+    "lun_vie": [
+     {
+      "inicio": 285,
+      "fin": 1290,
+      "min": 15,
+      "max": 15
+     }
+    ],
+    "dom_festivo": [
+     {
+      "inicio": 360,
+      "fin": 1260,
+      "min": 15,
+      "max": 15
+     }
+    ]
+   }
+  },
+  {
+   "ruta": "la-enea",
+   "empresa": "Socobuses",
+   "codigoPublico": "18",
+   "duracionEstandarMin": 50,
+   "codigoFicticio": true,
+   "horarios": {
+    "lun_vie": {
+     "primeraSalida": "05:30",
+     "ultimaSalida": "22:00",
+     "cierre": "23:00",
+     "nota": null
+    },
+    "sabado": {
+     "primeraSalida": "05:30",
+     "ultimaSalida": "22:00",
+     "cierre": "23:00",
+     "nota": null
+    },
+    "dom_festivo": {
+     "primeraSalida": "05:30",
+     "ultimaSalida": "22:00",
+     "cierre": "23:00",
+     "nota": null
+    }
+   },
+   "frecuencias": {
+    "lun_vie": [
+     {
+      "inicio": 330,
+      "fin": 1380,
+      "min": 6,
+      "max": 6
+     }
+    ],
+    "sabado": [
+     {
+      "inicio": 330,
+      "fin": 1380,
+      "min": 6,
+      "max": 6
+     }
+    ],
+    "dom_festivo": [
+     {
+      "inicio": 330,
+      "fin": 1380,
+      "min": 15,
+      "max": 15
+     }
+    ]
+   }
+  },
+  {
+   "ruta": "la-enea",
+   "empresa": "Serviturismo",
+   "codigoPublico": null,
+   "duracionEstandarMin": 50,
+   "horarios": {
+    "lun_vie": {
+     "primeraSalida": "04:40",
+     "ultimaSalida": "22:00",
+     "cierre": null,
+     "nota": null
+    },
+    "sabado": {
+     "primeraSalida": "04:40",
+     "ultimaSalida": "22:00",
+     "cierre": null,
+     "nota": null
+    },
+    "dom_festivo": {
+     "primeraSalida": "04:40",
+     "ultimaSalida": "21:00",
+     "cierre": null,
+     "nota": null
+    }
+   },
+   "frecuencias": {
+    "lun_vie": [
+     {
+      "inicio": 280,
+      "fin": 1320,
+      "min": 4,
+      "max": 4
+     }
+    ],
+    "sabado": [
+     {
+      "inicio": 280,
+      "fin": 1320,
+      "min": 4,
+      "max": 4
+     }
+    ],
+    "dom_festivo": [
+     {
+      "inicio": 280,
+      "fin": 1260,
+      "min": 4,
+      "max": 4
+     }
+    ]
+   }
+  },
+  {
+   "ruta": "villamaria",
+   "empresa": "Serviturismo",
+   "codigoPublico": null,
+   "duracionEstandarMin": 50,
+   "horarios": {
+    "lun_vie": {
+     "primeraSalida": "04:40",
+     "ultimaSalida": "22:00",
+     "cierre": null,
+     "nota": null
+    },
+    "sabado": {
+     "primeraSalida": "04:40",
+     "ultimaSalida": "22:00",
+     "cierre": null,
+     "nota": null
+    },
+    "dom_festivo": {
+     "primeraSalida": "04:40",
+     "ultimaSalida": "21:00",
+     "cierre": null,
+     "nota": null
+    }
+   },
+   "frecuencias": {
+    "lun_vie": [
+     {
+      "inicio": 280,
+      "fin": 1320,
+      "min": 4,
+      "max": 4
+     }
+    ],
+    "sabado": [
+     {
+      "inicio": 280,
+      "fin": 1320,
+      "min": 4,
+      "max": 4
+     }
+    ],
+    "dom_festivo": [
+     {
+      "inicio": 280,
+      "fin": 1260,
+      "min": 4,
+      "max": 4
+     }
+    ]
+   }
+  },
+  {
+   "ruta": "villamaria",
+   "empresa": "Socobuses",
+   "codigoPublico": "21",
+   "duracionEstandarMin": 50,
+   "codigoFicticio": true,
+   "horarios": {
+    "lun_vie": {
+     "primeraSalida": "05:30",
+     "ultimaSalida": "22:00",
+     "cierre": "23:00",
+     "nota": null
+    },
+    "sabado": {
+     "primeraSalida": "05:30",
+     "ultimaSalida": "22:00",
+     "cierre": "23:00",
+     "nota": null
+    },
+    "dom_festivo": {
+     "primeraSalida": "05:30",
+     "ultimaSalida": "22:00",
+     "cierre": "23:00",
+     "nota": null
+    }
+   },
+   "frecuencias": {
+    "lun_vie": [
+     {
+      "inicio": 330,
+      "fin": 360,
+      "min": 15,
+      "max": 15
+     },
+     {
+      "inicio": 360,
+      "fin": 600,
+      "min": 10,
+      "max": 10
+     },
+     {
+      "inicio": 600,
+      "fin": 990,
+      "min": 15,
+      "max": 15
+     },
+     {
+      "inicio": 990,
+      "fin": 1200,
+      "min": 10,
+      "max": 10
+     },
+     {
+      "inicio": 1200,
+      "fin": 1380,
+      "min": 15,
+      "max": 15
+     }
+    ],
+    "sabado": [
+     {
+      "inicio": 330,
+      "fin": 360,
+      "min": 15,
+      "max": 15
+     },
+     {
+      "inicio": 360,
+      "fin": 600,
+      "min": 10,
+      "max": 10
+     },
+     {
+      "inicio": 600,
+      "fin": 990,
+      "min": 15,
+      "max": 15
+     },
+     {
+      "inicio": 990,
+      "fin": 1200,
+      "min": 10,
+      "max": 10
+     },
+     {
+      "inicio": 1200,
+      "fin": 1380,
+      "min": 15,
+      "max": 15
+     }
+    ],
+    "dom_festivo": [
+     {
+      "inicio": 330,
+      "fin": 360,
+      "min": 15,
+      "max": 15
+     },
+     {
+      "inicio": 360,
+      "fin": 600,
+      "min": 10,
+      "max": 10
+     },
+     {
+      "inicio": 600,
+      "fin": 990,
+      "min": 15,
+      "max": 15
+     },
+     {
+      "inicio": 990,
+      "fin": 1200,
+      "min": 10,
+      "max": 10
+     },
+     {
+      "inicio": 1200,
+      "fin": 1380,
+      "min": 15,
+      "max": 15
+     }
+    ]
+   }
+  }
+ ],
+ "conductores": {
+  "Sideral": [
+   [
+    "Carlos R.",
+    "S01"
+   ],
+   [
+    "Marta L.",
+    "S02"
+   ],
+   [
+    "Julián P.",
+    "S03"
+   ]
+  ],
+  "Socobuses": [
+   [
+    "Andrés M.",
+    "C01"
+   ],
+   [
+    "Paola G.",
+    "C02"
+   ],
+   [
+    "Luis F.",
+    "C03"
+   ]
+  ],
+  "Serviturismo": [
+   [
+    "Jorge T.",
+    "V01"
+   ],
+   [
+    "Sandra V.",
+    "V02"
+   ],
+   [
+    "Mateo O.",
+    "V03"
+   ]
+  ]
+ },
+ "busetas": [
+  {
+   "empresa": "Sideral",
+   "numeroLateral": "1520",
+   "origen": "ficticio"
+  },
+  {
+   "empresa": "Sideral",
+   "numeroLateral": "1544",
+   "origen": "ficticio"
+  },
+  {
+   "empresa": "Sideral",
+   "numeroLateral": "1388",
+   "origen": "ficticio"
+  },
+  {
+   "empresa": "Socobuses",
+   "numeroLateral": "3101",
+   "origen": "ficticio"
+  },
+  {
+   "empresa": "Socobuses",
+   "numeroLateral": "3102",
+   "origen": "ficticio"
+  },
+  {
+   "empresa": "Serviturismo",
+   "numeroLateral": "2683",
+   "origen": "campo"
+  },
+  {
+   "empresa": "Serviturismo",
+   "numeroLateral": "2676",
+   "origen": "campo"
+  }
+ ],
+ "rodamientoHoy": [
+  {
+   "empresa": "Sideral",
+   "buseta": "1520",
+   "ruta": "el-cable",
+   "conductor": 0,
+   "salida": "05:00",
+   "fin": "13:00"
+  },
+  {
+   "empresa": "Sideral",
+   "buseta": "1520",
+   "ruta": "centro",
+   "conductor": 0,
+   "salida": "13:00",
+   "fin": "22:00"
+  },
+  {
+   "empresa": "Sideral",
+   "buseta": "1544",
+   "ruta": "el-cable",
+   "conductor": 1,
+   "salida": "04:30",
+   "fin": "23:30"
+  },
+  {
+   "empresa": "Sideral",
+   "buseta": "1388",
+   "ruta": "centro",
+   "conductor": 2,
+   "salida": "04:30",
+   "fin": "23:30"
+  },
+  {
+   "empresa": "Socobuses",
+   "buseta": "3101",
+   "ruta": "la-enea",
+   "conductor": 0,
+   "salida": "04:30",
+   "fin": "23:30"
+  },
+  {
+   "empresa": "Socobuses",
+   "buseta": "3102",
+   "ruta": "villamaria",
+   "conductor": 1,
+   "salida": "04:30",
+   "fin": "14:00"
+  },
+  {
+   "empresa": "Socobuses",
+   "buseta": "3102",
+   "ruta": "la-enea",
+   "conductor": 1,
+   "salida": "14:00",
+   "fin": "23:30"
+  },
+  {
+   "empresa": "Serviturismo",
+   "buseta": "2683",
+   "ruta": "la-enea",
+   "conductor": 0,
+   "salida": "04:30",
+   "fin": "23:30"
+  },
+  {
+   "empresa": "Serviturismo",
+   "buseta": "2676",
+   "ruta": "villamaria",
+   "conductor": 1,
+   "salida": "04:30",
+   "fin": "23:30"
+  }
+ ],
+ "rodamientoMananaBorrador": [
+  {
+   "empresa": "Sideral",
+   "buseta": "1520",
+   "ruta": "el-cable",
+   "conductor": 0,
+   "salida": "06:00",
+   "fin": "06:50"
+  },
+  {
+   "empresa": "Sideral",
+   "buseta": "1520",
+   "ruta": "centro",
+   "conductor": 0,
+   "salida": "06:40",
+   "fin": "07:30"
+  }
+ ],
+ "avisos": [
+  {
+   "origen": "empresa",
+   "empresa": "Sideral",
+   "titulo": "Horario de festivo",
+   "cuerpo": "En festivos Sideral opera de 06:00 a 21:00. Aviso de ejemplo.",
+   "rutas": [
+    "el-cable",
+    "centro"
+   ]
+  },
+  {
+   "origen": "movilidad",
+   "titulo": "Cierre por obras en la carrera 23",
+   "cuerpo": "Obras en la carrera 23: posibles demoras en El Cable. Aviso de ejemplo.",
+   "rutas": [
+    "el-cable"
+   ],
+   "tipoCambio": "obra"
+  },
+  {
+   "origen": "aplicativo",
+   "titulo": "Prototipo con datos de ejemplo",
+   "cuerpo": "BusetasApp es un prototipo: las rutas, horarios y posiciones son de ejemplo y no son oficiales.",
+   "rutas": []
+  }
+ ],
+ "usoHistorico": {
+  "dias": 14,
+  "pesosRuta": {
+   "el-cable": 1.0,
+   "centro": 0.7,
+   "la-enea": 0.5,
+   "villamaria": 0.3
+  },
+  "baseDiaPorRuta": 40,
+  "tipos": {
+   "detalle_ruta": 0.35,
+   "horarios": 0.2,
+   "eta": 0.3,
+   "mapa": 0.15
+  }
+ }
+}
