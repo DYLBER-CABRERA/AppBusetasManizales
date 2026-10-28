@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BusetasApp — prototipo de alta fidelidad</title>
+<meta name="description" content="Prototipo navegable de BusetasApp: pasajero, jefe de operaciones, Secretaría de Movilidad y administrador. Datos de ejemplo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --niebla:#EDF1EF; --papel:#FFFFFF; --tinta:#17261F; --tinta-2:#4A5B53; --linea:#CBD5D0; --suave:#F6F8F7;
+  --cafetal:#14735A; --cafetal-osc:#0E5442; --cafetal-claro:#DDEFE8;
+  --buseta:#F2B600; --buseta-osc:#6B4E00;
+  --ladrillo:#B3412C; --ladrillo-claro:#F7E3DD;
+  --aviso:#FFF3CC;
+  --r1:#14735A; --r2:#2F5DA8; --r3:#C2570C;
+  --titulos:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --texto:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-tema="claro"]){
+    --niebla:#0F1A15; --papel:#16241E; --tinta:#E8F0EC; --tinta-2:#A9BAB1; --linea:#2E4137; --suave:#1B2B24;
+    --cafetal:#4CC39F; --cafetal-osc:#7FDABD; --cafetal-claro:#17382D;
+    --ladrillo:#F0907C; --ladrillo-claro:#3A1F19; --aviso:#3A3210; --buseta-osc:#F2D26B;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--niebla);color:var(--tinta);font-family:var(--texto);font-size:16px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button svg{width:20px;height:20px;flex:none}
+:focus-visible{outline:3px solid var(--buseta);outline-offset:2px;border-radius:6px}
+h1,h2,h3{font-family:var(--titulos);margin:0;letter-spacing:-.01em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Disposición: panel de pruebas + teléfono */
+.escena{min-height:100vh;display:grid;grid-template-columns:minmax(0,320px) minmax(0,420px);gap:32px;justify-content:center;align-items:start;padding:24px 16px}
+.panel{position:sticky;top:24px;background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:16px}
+.panel summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center}
+.panel summary::-webkit-details-marker{display:none}
+.panel summary h1{font-size:1.1rem}
+.panel summary::after{content:"▾";margin-left:auto;padding-left:8px}
+.panel[open] summary::after{content:"▴"}
+.panel p{margin:.25rem 0 .75rem;color:var(--tinta-2);font-size:.9rem}
+.panel fieldset{border:0;padding:0;margin:12px 0 0}
+.panel legend{font-weight:700;margin-bottom:6px}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.roles button{padding:9px 8px;border:1px solid var(--linea);background:var(--suave);border-radius:10px;font-weight:700;font-size:.9rem}
+.roles button[aria-pressed="true"]{background:var(--cafetal);border-color:var(--cafetal);color:#fff}
+.sim label{display:flex;gap:8px;align-items:flex-start;padding:6px 0;font-size:.92rem}
+.sim input{width:20px;height:20px;margin-top:1px;accent-color:var(--cafetal)}
+.nota{font-size:.82rem;color:var(--tinta-2);border-top:1px solid var(--linea);margin-top:12px;padding-top:10px}
+
+.movil{width:100%;max-width:420px;height:min(860px,calc(100vh - 48px));min-height:600px;background:var(--papel);border:1px solid var(--linea);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 20px 40px -24px rgba(23,38,31,.45)}
+.ejemplo{background:var(--aviso);color:var(--buseta-osc);font-size:.78rem;padding:4px 12px;text-align:center;border-bottom:1px solid var(--linea)}
+.pantalla{flex:1;overflow-y:auto;position:relative;background:var(--niebla)}
+.barra{display:flex;border-top:1px solid var(--linea);background:var(--papel)}
+.barra button{flex:1;min-height:56px;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.78rem;color:var(--tinta-2);padding:4px 2px}
+.barra button svg{width:22px;height:22px}
+.barra button[aria-current="page"]{color:var(--cafetal);font-weight:700;box-shadow:inset 0 3px 0 var(--cafetal)}
+
+/* Elementos comunes */
+.pad{padding:16px}
+.encabezado{padding:14px 16px 10px;background:var(--papel);border-bottom:1px solid var(--linea);display:flex;gap:10px;align-items:center}
+.encabezado h2{font-size:1.15rem;flex:1}
+.volver{width:44px;height:44px;border:1px solid var(--linea);border-radius:12px;background:var(--papel);display:grid;place-items:center}
+.tarjeta{background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:14px}
+.lista{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.fila{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--papel);border:1px solid var(--linea);border-radius:14px;padding:12px;min-height:56px}
+.fila .col{flex:1;min-width:0}
+.fila strong{display:block}
+.fila small,.peq{color:var(--tinta-2);font-size:.85rem}
+.sello{display:inline-block;min-width:44px;text-align:center;padding:4px 8px;border-radius:8px;color:#fff;font-family:var(--titulos);font-weight:700}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid var(--linea);background:var(--papel);font-size:.9rem}
+.chip[aria-pressed="true"]{background:var(--cafetal-claro);border-color:var(--cafetal);color:var(--cafetal-osc);font-weight:700}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.btn{min-height:48px;padding:10px 16px;border-radius:12px;border:1px solid var(--cafetal);background:var(--cafetal);color:#fff;font-weight:700}
+.btn.sec{background:var(--papel);color:var(--cafetal-osc)}
+.btn.peligro{background:var(--ladrillo);border-color:var(--ladrillo);color:#fff}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.bloque{width:100%}
+.campo{display:grid;gap:4px;margin-bottom:12px}
+.campo label{font-weight:700;font-size:.92rem}
+.campo input,.campo select,.campo textarea{min-height:48px;border:1px solid var(--tinta-2);border-radius:10px;padding:8px 12px;background:var(--papel)}
+.campo textarea{min-height:96px}
+.campo .ayuda{font-size:.82rem;color:var(--tinta-2)}
+.campo .error{font-size:.85rem;color:var(--ladrillo);font-weight:700}
+.campo.mal input{border-color:var(--ladrillo);border-width:2px}
+.pestanas{display:flex;gap:4px;background:var(--papel);border-bottom:1px solid var(--linea);padding:0 8px;overflow-x:auto}
+.pestanas button{border:0;background:none;padding:12px 10px;min-height:48px;color:var(--tinta-2);white-space:nowrap}
+.pestanas button[aria-selected="true"]{color:var(--tinta);font-weight:700;box-shadow:inset 0 -3px 0 var(--cafetal)}
+
+/* Avisos de estado */
+.estado{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;font-size:.92rem;margin:0 0 12px}
+.estado.error{background:var(--ladrillo-claro);border:1px solid var(--ladrillo)}
+.estado.aviso{background:var(--aviso);border:1px solid #E5C65A}
+.estado.info{background:var(--cafetal-claro);border:1px solid var(--cafetal)}
+.estado button{margin-left:auto;border:1px solid currentColor;background:none;border-radius:8px;padding:6px 10px;min-height:36px;font-weight:700}
+.vacio{text-align:center;padding:32px 20px}
+.vacio h3{font-size:1.1rem;margin-bottom:6px}
+.vacio p{color:var(--tinta-2);margin:0 0 14px}
+.esqueleto{height:56px;border-radius:14px;background:linear-gradient(90deg,var(--linea),var(--suave),var(--linea));background-size:200% 100%;animation:brillo 1.4s linear infinite;margin-bottom:8px}
+@keyframes brillo{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.esqueleto{animation:none}}
+
+/* Mapa */
+.mapa{position:relative;background:#E4ECE8;border-bottom:1px solid var(--linea)}
+.mapa svg{display:block;width:100%;height:auto}
+.mapa .buscar{position:absolute;left:12px;right:12px;top:12px}
+.buscar button{width:100%;min-height:52px;border-radius:14px;border:1px solid var(--linea);background:var(--papel);display:flex;gap:10px;align-items:center;padding:0 14px;color:var(--tinta-2);text-align:left;box-shadow:0 6px 14px -10px rgba(23,38,31,.6)}
+.mapa .atrib{position:absolute;right:6px;bottom:4px;font-size:.68rem;background:rgba(255,255,255,.8);color:#333;padding:1px 5px;border-radius:4px}
+.bus text{font-family:var(--titulos);font-weight:700}
+.hoja{background:var(--papel);border-top-left-radius:20px;border-top-right-radius:20px;margin-top:-18px;position:relative;padding:14px 16px 20px;border:1px solid var(--linea);border-bottom:0}
+.hoja::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--linea);margin:0 auto 10px}
+.eta{font-family:var(--titulos);font-size:2.4rem;line-height:1;font-weight:700}
+.tabla{width:100%;border-collapse:collapse;font-size:.95rem}
+.tabla th,.tabla td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--linea);vertical-align:top}
+.tabla tr.hoy{background:var(--cafetal-claro)}
+.tabla tr.mal{background:var(--ladrillo-claro)}
+.tramos{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:8px 0}
+.tramos span{display:block}
+.pasos{list-style:none;margin:0;padding:0 0 0 18px;border-left:3px solid var(--cafetal)}
+.pasos li{position:relative;padding:8px 0 8px 14px}
+.pasos li::before{content:"";position:absolute;left:-26px;top:14px;width:13px;height:13px;border-radius:50%;background:var(--papel);border:3px solid var(--cafetal)}
+.pasos button{background:none;border:0;padding:0;text-align:left;min-height:40px}
+.insignia{font-size:.78rem;padding:2px 8px;border-radius:999px;background:var(--suave);border:1px solid var(--linea)}
+.insignia.mov{background:var(--aviso);border-color:#E5C65A}
+.insignia.app{background:var(--cafetal-claro);border-color:var(--cafetal)}
+.toast{position:absolute;left:16px;right:16px;bottom:72px;background:var(--tinta);color:var(--niebla);padding:12px 14px;border-radius:12px;box-shadow:0 10px 24px -12px #000;z-index:5}
+.modal{position:absolute;inset:0;background:rgba(23,38,31,.55);display:grid;place-items:end center;z-index:6}
+.modal .caja{background:var(--papel);width:100%;border-top-left-radius:20px;border-top-right-radius:20px;padding:20px 16px 24px}
+.barras{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px 0}
+.barras div{flex:1;background:var(--cafetal);border-radius:6px 6px 0 0;min-height:4px;position:relative}
+.barras span{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:.72rem;color:var(--tinta-2)}
+
+@media (max-width:860px){
+  .escena{grid-template-columns:minmax(0,420px);padding:12px}
+  .panel{position:static;order:2}
+  .movil{order:1}
+  .movil{height:calc(100vh - 24px);min-height:560px;border-radius:22px}
+}
+@media (max-width:360px){ .pad{padding:12px} .barra button{font-size:.7rem} }
+</style>
+</head>
+<body>
+<div class="escena">
+  <details class="panel" id="panel" open>
+    <summary><h1>BusetasApp · panel de pruebas</h1></summary>
+    <p>Prototipo de alta fidelidad de la Actividad 4. Todos los datos son de ejemplo; los horarios y frecuencias de Socobuses, Sideral y Serviturismo salen del levantamiento de campo del contexto.</p>
+    <fieldset>
+      <legend>Ver como</legend>
+      <div class="roles" id="roles"></div>
+    </fieldset>
+    <fieldset class="sim">
+      <legend>Simular estados</legend>
+      <label><input type="checkbox" data-flag="cargando"> Cargando datos</label>
+      <label><input type="checkbox" data-flag="offline"> Sin conexión con el servidor</label>
+      <label><input type="checkbox" data-flag="sinGps"> Las busetas dejaron de reportar</label>
+      <label><input type="checkbox" data-flag="vacio"> Sin resultados</label>
+      <label><input type="checkbox" data-flag="viejo"> Datos desactualizados</label>
+    </fieldset>
+    <p class="nota">Pasajero: mapa, ruta, ETA, buscar por hito, viajar, guardados y avisos. Jefe: rodamiento, asignar, Excel, avisos y estadísticas. Secretaría: rutas, paraderos y cambios de movilidad. Administrador: usuarios, parámetros y fuentes GPS.</p>
+  </details>
+
+  <main class="movil" aria-label="Aplicación">
+    <div class="ejemplo">Datos de ejemplo · no son rutas oficiales</div>
+    <div class="pantalla" id="pantalla" tabindex="-1"></div>
+    <nav class="barra" id="barra" aria-label="Navegación principal"></nav>
+    <div id="capas"></div>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* ---------- Datos de ejemplo ---------- */
+const EMPRESAS = {
+  sideral:{n:"Sideral"}, socobuses:{n:"Socobuses"}, serviturismo:{n:"Serviturismo"}
+};
+const RUTAS = {
+  r39:{id:"r39",nombre:"El Cable",color:"var(--r1)",tipo:"lineal",
+    servicios:[{emp:"sideral",cod:"39",
+      hor:{lun_vie:["04:45","21:30",null],sabado:null,dom_festivo:["06:00","21:00",null]},
+      frec:[["Todo el día","8 a 10 min"]],nota:"Sideral tiene exclusividad en esta ruta."}],
+    pts:[[40,380],[90,330],[130,300],[170,250],[210,215],[250,170],[300,120],[330,70]],
+    paradas:[["Terminal",0],["Carrera 23",2],["Fundadores",4],["Catedral",5],["El Cable",7]],
+    buses:[{n:"1520",emp:"sideral",t:.42},{n:"1544",emp:"sideral",t:.78}], min:26},
+  renea:{id:"renea",nombre:"La Enea",color:"var(--r2)",tipo:"lineal",
+    servicios:[
+      {emp:"socobuses",cod:"18",hor:{lun_vie:["05:30","22:00","23:00"],sabado:["05:30","22:00","23:00"],dom_festivo:null},
+       frec:[["Ruta directa","cada 6 min"],["Tramo común con la variante","cada 3 min combinadas"]],nota:"Domingos y festivos opera alrededor del 40 % de la capacidad: esperas más largas."},
+      {emp:"serviturismo",cod:null,hor:{lun_vie:["04:40","22:00",null],sabado:["04:40","22:00",null],dom_festivo:["04:40","21:00",null]},
+       frec:[["Todo el día","cada 4 min"]],nota:"Sin código de ruta: identifique la buseta por su número lateral."}],
+    pts:[[30,150],[80,180],[130,200],[170,250],[215,262],[260,290],[310,300]],
+    paradas:[["Fundadores",3],["Carrera 23",2],["Barrio La Enea",6]],
+    buses:[{n:"2683",emp:"serviturismo",t:.3},{n:"2701",emp:"socobuses",t:.62}], min:22},
+  r22:{id:"r22",nombre:"Centro",color:"var(--r3)",tipo:"lineal",
+    servicios:[{emp:"sideral",cod:"22",
+      hor:{lun_vie:["04:45","21:30",null],sabado:null,dom_festivo:["06:00","21:00",null]},
+      frec:[["Todo el día","cerca de 15 min"]],nota:""}],
+    pts:[[60,60],[110,110],[150,170],[170,250],[190,310],[240,360],[300,400]],
+    paradas:[["Catedral",2],["Fundadores",3],["Terminal",6]],
+    buses:[{n:"1388",emp:"sideral",t:.55}], min:20}
+};
+const HITOS = ["Catedral","El Cable","Carrera 23","Fundadores","Terminal"];
+const HITO_RUTAS = {"Catedral":["r39","r22"],"El Cable":["r39"],"Carrera 23":["r39","renea"],"Fundadores":["r39","renea","r22"],"Terminal":["r39","r22"]};
+const AVISOS = [
+  {o:"mov",t:"Cierre parcial en la avenida Santander",c:"Por obras, el tránsito se desvía por la carrera 23 hasta nuevo aviso.",f:"Hoy 07:10"},
+  {o:"emp",e:"Socobuses",t:"Horario de festivo",c:"El lunes festivo operamos con horario de domingo.",f:"Ayer 17:30"},
+  {o:"app",t:"Mantenimiento programado",c:"El domingo de 2:00 a 3:00 a. m. la consulta de busetas en vivo no estará disponible.",f:"Hace 2 días"}
+];
+const TURNOS0 = [
+  {bus:"1520",rut:"El Cable (Sideral)",cond:"Carlos R.",sal:"06:00",fin:"06:50"},
+  {bus:"1520",rut:"Centro (Sideral)",cond:"Carlos R.",sal:"06:40",fin:"07:20",choque:true},
+  {bus:"1544",rut:"El Cable (Sideral)",cond:"Marta L.",sal:"06:10",fin:"07:00"},
+  {bus:"1388",rut:"Centro (Sideral)",cond:"Julián P.",sal:"06:20",fin:"07:05"}
+];
+
+/* ---------- Estado ---------- */
+const S = {rol:"pasajero",vista:"mapa",ruta:"r39",emp:null,sentido:"ida",tab:"recorrido",logged:false,
+  modal:null,toast:null,flags:{cargando:false,offline:false,sinGps:false,vacio:false,viejo:false},
+  q:"",hito:null,viaje:false,turnos:JSON.parse(JSON.stringify(TURNOS0)),publicado:false,
+  excel:false,sec:{compartida:false,borrar:false,dup:false},param:{distancia_aviso_llegada_m:300},clave:false,
+  alerta:false,avisoLen:0};
+
+const NAV = {
+  pasajero:[["mapa","Mapa","M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"],["buscar","Buscar","M11 4a7 7 0 105 12l5 5"],["viajar","Viajar","M5 19l14-14M9 5h10v10"],["guardados","Guardados","M6 3h12v18l-6-4-6 4z"],["avisos","Avisos","M12 3a6 6 0 00-6 6v4l-2 3h16l-2-3V9a6 6 0 00-6-6zM10 20h4"]],
+  jefe:[["rodamiento","Rodamiento","M4 6h16M4 12h16M4 18h10"],["asignar","Asignar","M12 5v14M5 12h14"],["excel","Excel","M5 3h10l4 4v14H5zM9 12l6 6M15 12l-6 6"],["jefeavisos","Avisos","M12 3a6 6 0 00-6 6v4l-2 3h16l-2-3V9a6 6 0 00-6-6z"],["stats","Uso","M5 20V10M12 20V4M19 20v-8"]],
+  secretaria:[["srutas","Rutas","M4 20c4-12 12 0 16-14"],["sparaderos","Paraderos","M12 21s-7-6-7-11a7 7 0 0114 0c0 5-7 11-7 11z"],["smov","Movilidad","M12 3l10 18H2z"]],
+  admin:[["ausuarios","Usuarios","M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0"],["aparam","Parámetros","M4 7h10M18 7h2M4 17h2M10 17h10"],["agps","Fuentes GPS","M12 2v4M12 18v4M2 12h4M18 12h4M12 12m-3 0a3 3 0 106 0 3 3 0 10-6 0"]]
+};
+const ROLES = [["pasajero","Pasajero","mapa"],["jefe","Jefe de operaciones","rodamiento"],["secretaria","Secretaría de Movilidad","srutas"],["admin","Administrador","ausuarios"]];
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const icon = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const sello = r => `<span class="sello" style="background:${r.color}">${esc(r.servicios[0].cod||r.nombre.slice(0,2))}</span>`;
+const empNombres = r => r.servicios.map(s=>EMPRESAS[s.emp].n).join(" · ");
+function largo(pts){let L=0;for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L}
+function punto(pts,t){const L=largo(pts);let d=t*L;for(let i=1;i<pts.length;i++){const s=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);if(d<=s){const k=d/s;return [pts[i-1][0]+(pts[i][0]-pts[i-1][0])*k,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*k]}d-=s}return pts[pts.length-1]}
+function fraccionParada(r,idx){const pts=r.pts;let d=0;for(let i=1;i<=idx;i++)d+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return d/largo(pts)}
+/* ETA de ejemplo: distancia restante sobre el trazado / velocidad. Longitud ficticia de la ruta: 6 km, 20 km/h. */
+function etaMin(r,bus,idx){const dt=fraccionParada(r,idx)-bus.t;if(dt<0)return null;return Math.max(1,Math.round(dt*6000/(20000/60)))}
+
+/* ---------- Mapa esquemático ---------- */
+function contornos(){
+  let out="";const cs=[[90,330,1],[290,110,1.2]];
+  cs.forEach(([cx,cy,k],ci)=>{for(let i=1;i<=9;i++){let d="";const n=48;
+    for(let a=0;a<=n;a++){const th=a/n*Math.PI*2;const rr=(i*17+10)*k*(1+.14*Math.sin(3*th+ci+i*.3)+.07*Math.sin(5*th+i));
+      d+=(a?"L":"M")+(cx+Math.cos(th)*rr*1.25).toFixed(1)+" "+(cy+Math.sin(th)*rr).toFixed(1)}
+    out+=`<path d="${d}Z" fill="none" stroke="#9DB5AA" stroke-width="${i%3==0?1.1:.6}" opacity=".75"/>`}});
+  return out}
+function mapa({destacar=null,mostrarTodas=true,altura=420,buscar=false}={}){
+  const ids=destacar?[destacar]:Object.keys(RUTAS);
+  const lineas=Object.values(RUTAS).map(r=>{
+    const on=ids.includes(r.id);const pts=r.pts.map(p=>p.join(",")).join(" ");
+    if(!on&&!mostrarTodas)return"";
+    return `<polyline points="${pts}" fill="none" stroke="#fff" stroke-width="${on?9:6}" stroke-linecap="round" stroke-linejoin="round" opacity="${on?1:.8}"/>
+            <polyline points="${pts}" fill="none" stroke="${r.color.replace('var(--r1)','#14735A').replace('var(--r2)','#2F5DA8').replace('var(--r3)','#C2570C')}" stroke-width="${on?5:3}" stroke-linecap="round" stroke-linejoin="round" opacity="${on||!destacar?1:.35}"/>`}).join("");
+  const rr=destacar?[RUTAS[destacar]]:Object.values(RUTAS);
+  const paradas=rr.flatMap(r=>r.paradas.map(([n,i])=>{const [x,y]=r.pts[i];return `<g><circle cx="${x}" cy="${y}" r="5.5" fill="#fff" stroke="#17261F" stroke-width="2"/>${destacar?`<text x="${x+9}" y="${y+4}" font-size="11" fill="#17261F" stroke="#EDF1EF" stroke-width="3" paint-order="stroke">${esc(n)}</text>`:""}</g>`})).join("");
+  const hitos=!destacar?[["Catedral",250,170],["El Cable",330,70],["Carrera 23",130,300],["Fundadores",210,215]].map(([n,x,y])=>`<g><rect x="${x-5}" y="${y-5}" width="10" height="10" transform="rotate(45 ${x} ${y})" fill="#17261F"/><text x="${x+10}" y="${y-8}" font-size="12" font-weight="700" fill="#17261F" stroke="#E4ECE8" stroke-width="3" paint-order="stroke">${n}</text></g>`).join(""):"";
+  const buses=rr.flatMap(r=>r.buses.map(b=>{
+    const [x,y]=punto(r.pts,b.t);const sin=S.flags.sinGps;
+    return `<g class="bus" data-bus="${r.id}:${b.n}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><rect x="-19" y="-11" width="38" height="22" rx="8" fill="${sin?'#8B9A92':'#F2B600'}" stroke="#17261F" stroke-width="2"/><text y="5" text-anchor="middle" font-size="12" fill="${sin?'#fff':'#17261F'}">${b.n}</text></g>`})).join("");
+ let vb=`0 0 360 ${altura}`,estilo="";
+  if(destacar){const xs=RUTAS[destacar].pts.map(p=>p[0]),ys=RUTAS[destacar].pts.map(p=>p[1]);const x0=Math.min(...xs)-40,y0=Math.min(...ys)-40,w=Math.max(...xs)-Math.min(...xs)+80,h=Math.max(...ys)-Math.min(...ys)+80;vb=`${x0} ${y0} ${w} ${h}`;estilo=`style="height:${altura}px"`}
+  return `<div class="mapa"><svg viewBox="${vb}" ${estilo} role="img" aria-label="Mapa esquemático con rutas, paraderos y busetas">
+    <rect x="-100" y="-100" width="600" height="700" fill="#E4ECE8"/>${contornos()}${lineas}${paradas}${hitos}
+    <g transform="translate(150 280)"><circle r="16" fill="#2F5DA8" opacity=".18"/><circle r="7" fill="#2F5DA8" stroke="#fff" stroke-width="3"/></g>${buses}</svg>
+    ${buscar?`<div class="buscar"><button data-go="buscar">${icon("M11 4a7 7 0 105 12l5 5")} ¿A dónde vas? Escribe un hito, barrio o ruta</button></div>`:""}
+    <span class="atrib">Mapa esquemático de ejemplo</span></div>`}
+
+/* ---------- Bloques de estado ---------- */
+function banners(){
+  let h="";
+  if(S.flags.offline)h+=`<div class="estado error" role="alert"><div><strong>No se pudo conectar con el servidor.</strong><br>Mostramos lo último que cargó. Revisa tu conexión.</div><button data-act="reintentar">Reintentar</button></div>`;
+  if(S.flags.viejo)h+=`<div class="estado aviso" role="status"><div><strong>Datos desactualizados.</strong><br>Última actualización hace 2 min. Las busetas pueden estar en otro punto.</div><button data-act="reintentar">Actualizar</button></div>`;
+  return h}
+function esqueletos(n=4){return `<div class="pad">${'<div class="esqueleto"></div>'.repeat(n)}</div>`}
+
+/* ---------- Pantallas: pasajero ---------- */
+const V = {};
+V.mapa = ()=>{
+  const lista=S.flags.vacio?"":Object.values(RUTAS).map(r=>`<li><button class="fila" data-ruta="${r.id}">${sello(r)}<span class="col"><strong>${r.nombre}</strong><small>${empNombres(r)} · a ${r.id==="r39"?"220":r.id==="renea"?"340":"580"} m</small></span><span class="peq">${r.buses.length} en servicio</span></button></li>`).join("");
+  const vacio=`<div class="vacio"><h3>No hay rutas a menos de 800 m</h3><p>El paradero más cercano a la ruta El Cable está en Carrera 23, a 1,2 km.</p><button class="btn sec" data-ruta="r39">Ver ruta El Cable</button></div>`;
+  return `${banners()?`<div class="pad" style="padding-bottom:0">${banners()}</div>`:""}${mapa({buscar:true})}
+    <section class="hoja"><h2 style="font-size:1.1rem;margin-bottom:8px">Rutas cerca de ti</h2>${S.flags.vacio?vacio:`<ul class="lista">${lista}</ul>`}</section>`};
+
+V.ruta = ()=>{
+  const r=RUTAS[S.ruta];const sv=r.servicios.find(s=>s.emp===S.emp)||r.servicios[0];S.emp=sv.emp;
+  const fav=S.favs&&S.favs.includes(r.id);
+  const emps=r.servicios.length>1?`<div class="chips" role="group" aria-label="Empresa">${r.servicios.map(s=>`<button class="chip" aria-pressed="${s.emp===S.emp}" data-emp="${s.emp}">${EMPRESAS[s.emp].n}${s.cod?" · "+s.cod:" · sin código"}</button>`).join("")}</div>`:"";
+  const tabs=[["recorrido","Recorrido"],["horarios","Horarios"],["frecuencia","Frecuencia"],["vivo","En vivo"]];
+  let cuerpo="";
+  if(S.flags.cargando)cuerpo=esqueletos(4);
+  else if(S.tab==="recorrido"){
+    cuerpo=`<div class="pad"><div class="chips" role="group" aria-label="Sentido" style="margin-bottom:12px"><button class="chip" aria-pressed="${S.sentido==='ida'}" data-sentido="ida">Ida</button><button class="chip" aria-pressed="${S.sentido==='vuelta'}" data-sentido="vuelta">Vuelta</button></div>
+    <ol class="pasos">${(S.sentido==="ida"?r.paradas:[...r.paradas].reverse()).map(([n,i])=>`<li><button data-parada="${i}"><strong>${esc(n)}</strong><br><small>Toca para ver cuánto falta</small></button></li>`).join("")}</ol></div>`}
+  else if(S.tab==="horarios"){
+    const dias=[["lun_vie","Lunes a viernes"],["sabado","Sábados"],["dom_festivo","Domingos y festivos"]];
+    cuerpo=`<div class="pad"><table class="tabla"><thead><tr><th>Día</th><th>Primera salida</th><th>Última salida</th><th>Cierre</th></tr></thead><tbody>${dias.map(([k,n])=>{const h=sv.hor[k];return h?`<tr class="${k==='lun_vie'?'hoy':''}"><td>${n}${k==='lun_vie'?'<br><small>Hoy</small>':''}</td><td>${h[0]}</td><td>${h[1]}</td><td>${h[2]||"—"}</td></tr>`:`<tr><td>${n}</td><td colspan="3"><small>Información pendiente de actualización</small></td></tr>`}).join("")}</tbody></table>${sv.nota?`<p class="peq">${esc(sv.nota)}</p>`:""}</div>`}
+  else if(S.tab==="frecuencia"){
+    cuerpo=`<div class="pad"><ul class="lista">${sv.frec.map(([a,b])=>`<li class="tarjeta"><strong>${a}</strong><br>${b}</li>`).join("")}</ul><p class="peq">La frecuencia cambia con el tráfico y la hora. Es un valor de referencia, no un horario exacto.</p></div>`}
+  else{
+    const bs=r.buses.filter(b=>b.emp===S.emp);
+    cuerpo=`<div class="pad">${banners()}${bs.length?`<ul class="lista">${bs.map(b=>`<li class="fila"><span class="sello" style="background:${S.flags.sinGps?'#8B9A92':'var(--buseta)'};color:${S.flags.sinGps?'#fff':'#17261F'}">${b.n}</span><span class="col"><strong>${S.flags.sinGps?"Ubicación no disponible":"En ruta"}</strong><small>${S.flags.sinGps?"Última señal hace más de 60 s":"Reportó hace 3 s"}</small></span></li>`).join("")}</ul>`:`<div class="vacio"><h3>No hay unidades en servicio</h3><p>Revisa el horario de la ruta.</p></div>`}</div>`}
+  return `<div class="encabezado"><button class="volver" data-go="mapa" aria-label="Volver al mapa">${icon("M15 5l-7 7 7 7")}</button><h2>${r.nombre}</h2><button class="volver" data-act="fav" aria-label="${fav?'Quitar de guardados':'Guardar ruta'}" aria-pressed="${!!fav}">${icon("M6 3h12v18l-6-4-6 4z")}</button></div>
+  <div class="pad" style="padding-bottom:8px;background:var(--papel)"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">${sello(r)}<span class="peq">${empNombres(r)}</span></div>${emps}</div>
+  ${mapa({destacar:r.id,altura:230})}
+  <div class="pestanas" role="tablist">${tabs.map(([k,n])=>`<button role="tab" aria-selected="${S.tab===k}" data-tab="${k}">${n}</button>`).join("")}</div>${cuerpo}`};
+
+V.eta = ()=>{
+  const r=RUTAS[S.ruta];const [nom,idx]=r.paradas[S.parada??0];
+  const bus=r.buses.filter(b=>b.emp===S.emp||true).map(b=>({b,m:etaMin(r,b,idx)})).filter(x=>x.m!==null).sort((a,b)=>a.m-b.m)[0];
+  let bloque;
+  if(S.flags.cargando)bloque=esqueletos(2);
+  else if(S.flags.sinGps||!bus){
+    const f=r.servicios[0].frec[0][1];
+    bloque=`<div class="estado aviso" role="status"><div><strong>Sin ubicación de busetas.</strong><br>Estimación por horario: ${f}. Esté pendiente de la siguiente buseta.</div></div><div class="eta">Hasta 15 min</div><p class="peq">Fuente: horario y frecuencia, no GPS</p>`}
+  else bloque=`<div class="eta">${bus.m} min</div><p style="margin:6px 0 0">Buseta <strong>${bus.b.n}</strong> viene hacia aquí</p><p class="peq">Fuente: GPS · actualizado hace 3 s</p>`;
+  return `<div class="encabezado"><button class="volver" data-go="ruta" aria-label="Volver a la ruta">${icon("M15 5l-7 7 7 7")}</button><h2>Parada ${esc(nom)}</h2></div>
+  <div class="pad">${banners()}<div class="tarjeta" style="margin-bottom:12px"><div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">${sello(r)}<span><strong>${r.nombre}</strong><br><small class="peq">Sentido ${S.sentido}</small></span></div>${bloque}</div>
+  <button class="btn bloque" data-act="alerta">${S.alerta?"Alerta activa · desactivar":`Avisarme cuando esté a ${S.param.distancia_aviso_llegada_m} m`}</button>
+  <p class="peq" style="margin-top:8px">Las alertas necesitan una cuenta. Te avisamos dentro de la app y, si lo permites, con una notificación del navegador.</p></div>`};
+
+V.buscar = ()=>{
+  let res="";
+  if(S.flags.vacio||(S.q&&!HITOS.concat(["39","22","enea","cable","centro"]).some(h=>h.toLowerCase().includes(S.q.toLowerCase())))&&S.q){
+    res=`<div class="vacio"><h3>Sin resultados para “${esc(S.q||"xyz")}”</h3><p>Prueba con un hito como Catedral o con el número de la ruta.</p></div>`}
+  else if(S.hito){
+    const ids=HITO_RUTAS[S.hito]||[];
+    res=`<h3 style="margin:8px 0">Rutas que pasan por ${esc(S.hito)}</h3><ul class="lista">${ids.map(id=>{const r=RUTAS[id];return `<li><button class="fila" data-ruta="${id}">${sello(r)}<span class="col"><strong>${r.nombre}</strong><small>${empNombres(r)}</small></span></button></li>`}).join("")}</ul>`}
+  else if(S.q){
+    const ids=Object.values(RUTAS).filter(r=>(r.nombre+r.servicios.map(s=>s.cod||"").join(" ")).toLowerCase().includes(S.q.toLowerCase())).map(r=>r.id);
+    res=ids.length?`<ul class="lista">${ids.map(id=>{const r=RUTAS[id];return `<li><button class="fila" data-ruta="${id}">${sello(r)}<span class="col"><strong>${r.nombre}</strong><small>${empNombres(r)}</small></span></button></li>`}).join("")}</ul>`:`<div class="vacio"><h3>Sin resultados para “${esc(S.q)}”</h3><p>Prueba con un hito como Catedral o con el número de la ruta.</p></div>`}
+  else res=`<p class="peq" style="margin:0 0 8px">Muchas personas se orientan por estos lugares:</p><div class="chips">${HITOS.map(h=>`<button class="chip" data-hito="${h}">${h}</button>`).join("")}</div>`;
+  return `<div class="pad">${banners()}<h2 style="margin-bottom:10px">Buscar</h2><div class="campo"><label for="q">Ruta, barrio o lugar</label><input id="q" type="search" value="${esc(S.q)}" placeholder="39, La Enea, Catedral…" autocomplete="off"></div>${S.flags.cargando?esqueletos(3):res}</div>`};
+
+V.viajar = ()=>{
+  let r="";
+  if(S.flags.cargando)r=esqueletos(2);
+  else if(S.flags.vacio)r=`<div class="vacio"><h3>No hay rutas cerca del destino</h3><p>El paradero más cercano está a 900 m. Prueba con otro hito.</p></div>`;
+  else if(S.viaje)r=`<h3 style="margin:14px 0 8px">Opciones</h3>
+   <article class="tarjeta" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between"><strong>Directa · El Cable (Sideral)</strong><strong>22 min</strong></div>
+   <div class="tramos" role="img" aria-label="4 minutos caminando, 6 de espera, 12 en buseta"><span style="width:18%;background:#8B9A92"></span><span style="width:28%;background:var(--buseta)"></span><span style="width:54%;background:var(--r1)"></span></div>
+   <small class="peq">4 min a pie · 6 min de espera (cada 8 a 10 min) · 12 min en buseta</small><br><button class="btn sec" style="margin-top:10px" data-ruta="r39">Ver ruta</button></article>
+   <article class="tarjeta"><div style="display:flex;justify-content:space-between"><strong>Con transbordo · La Enea + Centro</strong><strong>31 min</strong></div>
+   <div class="tramos" role="img" aria-label="6 caminando, 5 espera, 10 buseta, 2 transbordo a pie, 8 buseta"><span style="width:19%;background:#8B9A92"></span><span style="width:16%;background:var(--buseta)"></span><span style="width:32%;background:var(--r2)"></span><span style="width:7%;background:#8B9A92"></span><span style="width:26%;background:var(--r3)"></span></div>
+   <small class="peq">Transbordo en Fundadores, a 120 m entre paraderos</small></article>
+   <p class="peq">Tiempos de ejemplo.</p>`;
+  return `<div class="pad">${banners()}<h2 style="margin-bottom:10px">Planifica tu viaje</h2>
+  <div class="campo"><label for="o">Origen</label><input id="o" value="Mi ubicación"></div>
+  <div class="campo"><label for="d">Destino</label><input id="d" value="Catedral"><span class="ayuda">Escribe un hito, un barrio o una dirección.</span></div>
+  <button class="btn bloque" data-act="viaje">Buscar rutas</button>${r}</div>`};
+
+V.guardados = ()=>{
+  if(!S.logged)return `<div class="vacio" style="padding-top:60px"><h3>Guarda tus rutas y paradas</h3><p>Inicia sesión para ver tus favoritas y recibir avisos cuando llegue la buseta. Consultar rutas no necesita cuenta.</p><button class="btn" data-act="login">Iniciar sesión</button></div>`;
+  const favs=(S.favs||["r39"]);
+  return `<div class="pad">${banners()}<h2 style="margin-bottom:10px">Guardados</h2>
+  <h3 style="font-size:1rem;margin:8px 0">Rutas favoritas</h3><ul class="lista">${favs.map(id=>{const r=RUTAS[id];return `<li><button class="fila" data-ruta="${id}">${sello(r)}<span class="col"><strong>${r.nombre}</strong><small>${empNombres(r)}</small></span></button></li>`}).join("")}</ul>
+  <h3 style="font-size:1rem;margin:16px 0 8px">Alertas de llegada</h3>${S.alerta?`<div class="tarjeta"><strong>Parada Fundadores · El Cable</strong><br><small class="peq">Aviso a ${S.param.distancia_aviso_llegada_m} m</small></div>`:`<p class="peq">Aún no tienes alertas. Créalas desde la pantalla de una parada.</p>`}
+  <h3 style="font-size:1rem;margin:16px 0 8px">Notificaciones</h3><div class="tarjeta"><strong>La buseta 1520 está a 300 m de Fundadores</strong><br><small class="peq">Hace 12 min · en la app</small></div>
+  <button class="btn sec bloque" style="margin-top:16px" data-act="logout">Cerrar sesión</button></div>`};
+
+V.avisos = ()=>{
+  const nombre={mov:"Movilidad",emp:"Empresa",app:"Aplicación"};
+  return `<div class="pad">${banners()}<h2 style="margin-bottom:10px">Avisos</h2>${S.flags.cargando?esqueletos(3):S.flags.vacio?`<div class="vacio"><h3>No hay avisos vigentes</h3><p>Cuando haya cierres, desvíos o cambios de horario, aparecerán aquí.</p></div>`:`<ul class="lista">${AVISOS.map(a=>`<li class="tarjeta"><span class="insignia ${a.o}">${nombre[a.o]}${a.e?" · "+a.e:""}</span><h3 style="font-size:1.05rem;margin:8px 0 4px">${esc(a.t)}</h3><p style="margin:0 0 4px">${esc(a.c)}</p><small class="peq">${a.f}</small></li>`).join("")}</ul>`}</div>`};
+
+/* ---------- Pantallas: jefe de operaciones (Sideral) ---------- */
+V.rodamiento = ()=>{
+  const choques=S.turnos.filter(t=>t.choque).length;
+  return `<div class="pad">${banners()}<h2>Rodamiento de mañana</h2><p class="peq" style="margin:4px 0 12px">Sideral · miércoles ${S.publicado?"· publicado":"· borrador"}</p>
+  ${choques?`<div class="estado aviso" role="alert"><div><strong>Hay ${choques} solapamiento.</strong><br>La buseta 1520 sale a las 06:40 y todavía está en el turno de las 06:00 a las 06:50.</div><button data-act="resolver">Corregir</button></div>`:`<div class="estado info" role="status"><div>Sin solapamientos.</div></div>`}
+  ${S.flags.cargando?esqueletos(4):`<table class="tabla"><thead><tr><th>Buseta</th><th>Ruta</th><th>Conductor</th><th>Salida</th></tr></thead><tbody>${S.turnos.map(t=>`<tr class="${t.choque?'mal':''}"><td><strong>${t.bus}</strong></td><td>${t.rut}</td><td>${t.cond}</td><td>${t.sal}</td></tr>`).join("")}</tbody></table>`}
+  <div style="display:grid;gap:8px;margin-top:16px"><button class="btn bloque" data-act="publicar" ${choques||S.publicado?"disabled":""}>${S.publicado?"Publicado":"Publicar rodamiento"}</button>${choques?`<p class="peq" style="margin:0">Corrige el solapamiento para poder publicar.</p>`:""}</div></div>`};
+
+V.asignar = ()=>`<div class="pad">${banners()}<h2 style="margin-bottom:12px">Asignar buseta y conductor</h2>
+  <div class="campo"><label for="as1">Ruta</label><select id="as1"><option>El Cable (39)</option><option>Centro (22)</option></select><span class="ayuda">Solo aparecen las rutas que la Secretaría asignó a tu empresa.</span></div>
+  <div class="campo"><label for="as2">Buseta (número lateral)</label><select id="as2"><option>1520</option><option>1544</option><option>1388</option></select></div>
+  <div class="campo"><label for="as3">Conductor</label><select id="as3"><option>Carlos R.</option><option>Marta L.</option><option>Julián P.</option></select></div>
+  <button class="btn bloque" data-act="asignar">Guardar asignación</button><p class="peq">Una buseta puede tener varias rutas en el día.</p></div>`;
+
+V.excel = ()=>`<div class="pad">${banners()}<h2 style="margin-bottom:12px">Importar desde Excel</h2>
+  <div class="campo"><label for="ex1">Qué vas a cargar</label><select id="ex1"><option>Rodamiento del día</option><option>Conductores</option><option>Busetas</option><option>Horarios y frecuencias</option></select><span class="ayuda">Descarga la plantilla para no equivocarte de columnas.</span></div>
+  <div class="chips" style="margin-bottom:12px"><button class="chip">Descargar plantilla</button></div>
+  <div class="campo"><label for="ex2">Archivo .xlsx</label><input id="ex2" type="file" accept=".xlsx"></div>
+  <button class="btn bloque" data-act="excel">Importar</button>
+  ${S.excel?`<div class="estado aviso" role="status" style="margin-top:16px"><div><strong>Importación parcial: 45 de 48 filas.</strong><br>Las filas correctas ya se guardaron. Corrige las otras 3 y vuelve a cargar el archivo.</div></div>
+  <table class="tabla"><thead><tr><th>Fila</th><th>Columna</th><th>Motivo</th></tr></thead><tbody><tr><td>7</td><td>numero_lateral</td><td>La buseta 9999 no está registrada</td></tr><tr><td>19</td><td>hora_salida</td><td>Escribe la hora como HH:MM</td></tr><tr><td>33</td><td>conductor</td><td>Falta el nombre</td></tr></tbody></table>`:""}</div>`;
+
+V.jefeavisos = ()=>{
+  const max=500,n=S.avisoLen;
+  return `<div class="pad">${banners()}<h2 style="margin-bottom:12px">Publicar aviso de la empresa</h2>
+  <div class="campo"><label for="at">Título</label><input id="at" value="Horario de festivo"></div>
+  <div class="campo ${n>max?'mal':''}"><label for="ac">Mensaje</label><textarea id="ac" aria-describedby="ct">Este lunes festivo operamos con horario de domingo.</textarea><span class="ayuda" id="ct">${n} de ${max} caracteres</span>${n>max?`<span class="error">El mensaje supera el máximo de ${max} caracteres.</span>`:""}</div>
+  <button class="btn bloque" data-act="avisar" ${n>max?"disabled":""}>Publicar aviso</button></div>`};
+
+V.stats = ()=>{
+  const d=[["L",42],["M",58],["X",51],["J",70],["V",88],["S",40],["D",22]];
+  return `<div class="pad">${banners()}<h2>Uso de la app en tus rutas</h2><p class="peq" style="margin:4px 0 12px">Últimos 7 días · sin datos personales</p>
+  ${S.flags.vacio?`<div class="vacio"><h3>Aún no hay datos</h3><p>Aparecerán cuando los pasajeros consulten tus rutas.</p></div>`:`<div class="tarjeta"><strong>371 consultas</strong><div class="barras" role="img" aria-label="Consultas por día">${d.map(([l,v])=>`<div style="height:${v}%"><span>${l}</span></div>`).join("")}</div><div style="height:20px"></div></div>
+  <ul class="lista" style="margin-top:12px"><li class="fila"><span class="col"><strong>El Cable</strong></span><strong>224</strong></li><li class="fila"><span class="col"><strong>Centro</strong></span><strong>147</strong></li></ul>`}</div>`};
+
+/* ---------- Pantallas: Secretaría ---------- */
+V.srutas = ()=>`<div class="pad">${banners()}<h2 style="margin-bottom:12px">Rutas de la ciudad</h2>
+  <ul class="lista">${Object.values(RUTAS).map(r=>`<li class="fila">${sello(r)}<span class="col"><strong>${r.nombre}</strong><small>${empNombres(r)}${r.servicios.length>1?" · compartida":""}</small></span><button class="chip" data-act="borrar:${r.id}">Eliminar</button></li>`).join("")}</ul>
+  <h3 style="margin:20px 0 8px">Registrar ruta</h3>
+  <div class="campo"><label for="sr1">Nombre</label><input id="sr1" value="Bosques de La Enea"></div>
+  <div class="campo"><label for="sr2">Tipo de recorrido</label><select id="sr2"><option>Lineal (ida y vuelta)</option><option>Circular</option></select></div>
+  <div class="campo"><label for="sr3">Variante de</label><select id="sr3"><option>La Enea</option><option>Ninguna</option></select></div>
+  <div class="campo"><label for="sr4">Empresa que la opera</label><select id="sr4"><option>Socobuses</option><option>Serviturismo</option></select></div>
+  <button class="btn bloque" data-act="registrar">Registrar ruta</button>
+  <p class="peq">Trazado y paraderos se cargan en el editor del mapa o por Excel.</p></div>`;
+V.sparaderos = ()=>`<div class="pad">${banners()}<h2 style="margin-bottom:12px">Paraderos</h2>
+  <div class="campo ${S.sec.dup?'mal':''}"><label for="sp1">Nombre</label><input id="sp1" value="Fundadores"><span class="ayuda">Toca el mapa para fijar la ubicación.</span>${S.sec.dup?`<span class="error">Ya existe un paradero llamado Fundadores a 12 m. Edítalo o cambia el nombre.</span>`:""}</div>
+  <button class="btn bloque" data-act="paradero">Guardar paradero</button></div>`;
+V.smov = ()=>`<div class="pad">${banners()}<h2 style="margin-bottom:12px">Cambio de movilidad</h2>
+  <div class="campo"><label for="sm1">Qué pasa</label><select id="sm1"><option>Cierre</option><option>Desvío</option><option>Obra</option><option>Condición de la vía</option></select></div>
+  <div class="campo"><label for="sm2">Mensaje</label><textarea id="sm2">Por obras, el tránsito se desvía por la carrera 23.</textarea></div>
+  <div class="campo"><label for="sm3">Rutas afectadas</label><select id="sm3" multiple><option selected>El Cable</option><option>La Enea</option><option>Centro</option></select></div>
+  <button class="btn bloque" data-act="movilidad">Publicar cambio</button></div>`;
+
+/* ---------- Pantallas: administrador ---------- */
+V.ausuarios = ()=>`<div class="pad">${banners()}<h2 style="margin-bottom:12px">Usuarios</h2>
+  <div class="campo"><label for="au0">Buscar por correo</label><input id="au0" type="search"></div>
+  <ul class="lista"><li class="fila"><span class="col"><strong>jefe@sideral.example</strong><small>Jefe de operaciones · Sideral</small></span><button class="chip">Editar</button></li>
+  <li class="fila"><span class="col"><strong>movilidad@alcaldia.example</strong><small>Secretaría de Movilidad</small></span><button class="chip">Editar</button></li>
+  <li class="fila"><span class="col"><strong>pasajera@correo.example</strong><small>Pasajero · activo</small></span><button class="chip">Editar</button></li></ul>
+  <h3 style="margin:20px 0 8px">Crear cuenta</h3>
+  <div class="campo"><label for="au1">Correo</label><input id="au1" type="email"></div>
+  <div class="campo"><label for="au2">Rol</label><select id="au2"><option>Jefe de operaciones</option><option>Secretaría de Movilidad</option><option>Administrador</option></select></div>
+  <div class="campo"><label for="au3">Empresa</label><select id="au3"><option>Sideral</option><option>Socobuses</option><option>Serviturismo</option></select><span class="ayuda">Obligatoria solo para el jefe de operaciones.</span></div>
+  <button class="btn bloque" data-act="crearUsuario">Crear cuenta</button></div>`;
+V.aparam = ()=>{
+  const v=S.param.distancia_aviso_llegada_m;const mal=v<50||v>2000||isNaN(v);
+  return `<div class="pad">${banners()}<h2 style="margin-bottom:12px">Parámetros</h2>
+  <div class="campo ${mal?'mal':''}"><label for="pa1">Distancia de aviso de llegada (m)</label><input id="pa1" type="number" value="${isNaN(v)?"":v}"><span class="ayuda">Entre 50 y 2000. Se aplica a las alertas nuevas.</span>${mal?`<span class="error">Escribe un valor entre 50 y 2000.</span>`:""}</div>
+  <div class="campo"><label for="pa2">Segundos para marcar una buseta sin señal</label><input id="pa2" type="number" value="60"></div>
+  <div class="campo"><label for="pa3">Máximo de caracteres de un aviso</label><input id="pa3" type="number" value="500"></div>
+  <button class="btn bloque" data-act="param" ${mal?"disabled":""}>Guardar parámetros</button></div>`};
+V.agps = ()=>`<div class="pad">${banners()}<h2 style="margin-bottom:12px">Fuentes de GPS</h2>
+  <p class="peq" style="margin:0 0 12px">Cada empresa necesita una clave para enviar posiciones. La clave se muestra una sola vez.</p>
+  <ul class="lista"><li class="fila"><span class="col"><strong>Sideral · sistema de rastreo</strong><small>Último envío hace 4 s</small></span><button class="chip">Revocar</button></li>
+  <li class="fila"><span class="col"><strong>Serviturismo</strong><small>Sin envíos</small></span><button class="chip">Revocar</button></li></ul>
+  <button class="btn bloque" style="margin-top:16px" data-act="clave">Generar clave nueva</button>
+  ${S.clave?`<div class="estado info" role="status" style="margin-top:12px"><div><strong>Copia la clave ahora.</strong><br><code>bf_2f9c…e41a</code><br>No podrás verla otra vez.</div></div>`:""}</div>`;
+
+/* ---------- Render ---------- */
+const MODALES = {
+  login:()=>`<div class="caja" role="dialog" aria-modal="true" aria-labelledby="mt"><h3 id="mt">Inicia sesión para guardar</h3><p>Con una cuenta guardas rutas y recibes avisos de llegada.</p><div style="display:grid;gap:8px"><button class="btn" data-act="entrar">Iniciar sesión</button><button class="btn sec" data-act="cerrarModal">Ahora no</button></div></div>`,
+  asignar:()=>`<div class="caja" role="dialog" aria-modal="true" aria-labelledby="mt"><h3 id="mt">La buseta 1520 ya está en esta ruta</h3><p>Hoy la maneja Carlos R. ¿Quieres cambiar el conductor a Marta L.?</p><div style="display:grid;gap:8px"><button class="btn" data-act="confirmarAsignar">Cambiar conductor</button><button class="btn sec" data-act="cerrarModal">Cancelar</button></div></div>`,
+  compartida:()=>`<div class="caja" role="dialog" aria-modal="true" aria-labelledby="mt"><h3 id="mt">Esta ruta ya la opera otra empresa</h3><p>La Enea está asignada a Socobuses. Si Serviturismo también la opera, cada empresa tendrá su propio horario y frecuencia.</p><div style="display:grid;gap:8px"><button class="btn" data-act="confirmarCompartida">Sí, es una ruta compartida</button><button class="btn sec" data-act="cerrarModal">Revisar</button></div></div>`,
+  borrar:()=>`<div class="caja" role="dialog" aria-modal="true" aria-labelledby="mt"><h3 id="mt">Eliminar ${esc(RUTAS[S.borrarId]?.nombre||"")}</h3><p>Tiene asignaciones activas (2 busetas) y rodamientos publicados. Al eliminarla se cierran las asignaciones y se cancelan los turnos futuros. Los favoritos de los pasajeros se marcarán como “ya no disponible”.</p><div style="display:grid;gap:8px"><button class="btn peligro" data-act="confirmarBorrar">Eliminar ruta</button><button class="btn sec" data-act="cerrarModal">Cancelar</button></div></div>`
+};
+function render(){
+  const cont=$("#pantalla");
+  const v=S.vista==="ruta"?"ruta":S.vista;
+  cont.innerHTML=(V[v]||V.mapa)();
+  if(S.flags.offline&&["mapa","ruta","eta"].includes(S.vista)&&false)cont.innerHTML+="";
+  $("#barra").innerHTML=NAV[S.rol].map(([k,n,d])=>`<button data-go="${k}" ${(S.vista===k||(k==="mapa"&&["ruta","eta"].includes(S.vista)))?'aria-current="page"':""}>${icon(d)}<span>${n}</span></button>`).join("");
+  $("#roles").innerHTML=ROLES.map(([k,n])=>`<button aria-pressed="${S.rol===k}" data-rol="${k}">${n}</button>`).join("");
+  $("#capas").innerHTML=(S.modal?`<div class="modal" data-act="cerrarModal">${MODALES[S.modal]()}</div>`:"")+(S.toast?`<div class="toast" role="status">${esc(S.toast)}</div>`:"");
+}
+function toast(m){S.toast=m;render();clearTimeout(toast.t);toast.t=setTimeout(()=>{S.toast=null;render()},2600)}
+function ir(v){S.vista=v;S.modal=null;render();$("#pantalla").scrollTop=0}
+
+/* ---------- Eventos ---------- */
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-go],[data-ruta],[data-emp],[data-sentido],[data-tab],[data-parada],[data-hito],[data-rol],[data-act]");
+  if(!t)return;
+  if(t.dataset.act==="cerrarModal"&&e.target.closest(".caja")&&e.target!==t)return;
+  if(t.dataset.rol){const r=ROLES.find(x=>x[0]===t.dataset.rol);S.rol=r[0];S.vista=r[2];S.modal=null;return render()}
+  if(t.dataset.go)return ir(t.dataset.go==="ruta"?"ruta":t.dataset.go);
+  if(t.dataset.ruta){S.ruta=t.dataset.ruta;S.emp=null;S.tab="recorrido";S.sentido="ida";return ir("ruta")}
+  if(t.dataset.emp){S.emp=t.dataset.emp;return render()}
+  if(t.dataset.sentido){S.sentido=t.dataset.sentido;return render()}
+  if(t.dataset.tab){S.tab=t.dataset.tab;return render()}
+  if(t.dataset.parada!==undefined){S.parada=+t.dataset.parada;return ir("eta")}
+  if(t.dataset.hito){S.hito=t.dataset.hito;S.q=t.dataset.hito;return render()}
+  const a=t.dataset.act;
+  if(a==="reintentar"){S.flags.offline=false;S.flags.viejo=false;document.querySelectorAll("[data-flag]").forEach(i=>{if(!S.flags[i.dataset.flag])i.checked=false});return toast("Datos actualizados")}
+  if(a==="fav"){if(!S.logged){S.modal="login";return render()}S.favs=S.favs||["r39"];const i=S.favs.indexOf(S.ruta);i<0?S.favs.push(S.ruta):S.favs.splice(i,1);return toast(i<0?"Ruta guardada":"Ruta quitada")}
+  if(a==="alerta"){if(!S.logged){S.modal="login";return render()}S.alerta=!S.alerta;return toast(S.alerta?"Alerta activada":"Alerta desactivada")}
+  if(a==="login"){S.modal="login";return render()}
+  if(a==="entrar"){S.logged=true;S.modal=null;return toast("Sesión iniciada")}
+  if(a==="logout"){S.logged=false;return render()}
+  if(a==="viaje"){S.viaje=true;return render()}
+  if(a==="resolver"){S.turnos.forEach(x=>{x.choque=false;if(x.sal==="06:40")x.sal="07:00"});return toast("Turno movido a las 07:00")}
+  if(a==="publicar"){S.publicado=true;return toast("Rodamiento publicado")}
+  if(a==="asignar"){S.modal="asignar";return render()}
+  if(a==="confirmarAsignar"){S.modal=null;return toast("Asignación guardada")}
+  if(a==="excel"){S.excel=true;return render()}
+  if(a==="avisar")return toast("Aviso publicado");
+  if(a==="registrar"){S.modal="compartida";return render()}
+  if(a==="confirmarCompartida"){S.modal=null;return toast("Ruta registrada")}
+  if(a&&a.startsWith("borrar:")){S.borrarId=a.split(":")[1];S.modal="borrar";return render()}
+  if(a==="confirmarBorrar"){S.modal=null;return toast("Ruta eliminada")}
+  if(a==="paradero"){S.sec.dup=!S.sec.dup;if(!S.sec.dup)toast("Paradero guardado");else render();return}
+  if(a==="movilidad")return toast("Cambio de movilidad publicado");
+  if(a==="crearUsuario")return toast("Cuenta creada");
+  if(a==="param")return toast("Parámetros guardados");
+  if(a==="clave"){S.clave=true;return render()}
+  if(a==="cerrarModal"){S.modal=null;return render()}
+});
+document.addEventListener("input",e=>{
+  if(e.target.id==="q"){S.q=e.target.value;S.hito=null;const p=e.target.selectionStart;render();const n=$("#q");n.focus();n.setSelectionRange(p,p)}
+  if(e.target.id==="ac"){S.avisoLen=e.target.value.length;const v=e.target.value;render();const n=$("#ac");n.value=v;n.focus()}
+  if(e.target.id==="pa1"){S.param.distancia_aviso_llegada_m=parseInt(e.target.value,10);render();const n=$("#pa1");n.focus()}
+  if(e.target.dataset.flag){S.flags[e.target.dataset.flag]=e.target.checked;render()}
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&S.modal){S.modal=null;render()}});
+document.querySelectorAll("[data-flag]").forEach(i=>i.addEventListener("change",()=>{S.flags[i.dataset.flag]=i.checked;render()}));
+
+/* Busetas en movimiento (se detiene con "reducir movimiento" o cuando se simula pérdida de señal) */
+const quieto=matchMedia("(prefers-reduced-motion: reduce)").matches;
+if(!quieto)setInterval(()=>{
+  if(S.flags.sinGps||S.flags.cargando)return;
+  Object.values(RUTAS).forEach(r=>r.buses.forEach(b=>{b.t+=.006;if(b.t>1)b.t=0}));
+  document.querySelectorAll(".bus").forEach(g=>{const [rid,n]=g.dataset.bus.split(":");const r=RUTAS[rid];const b=r.buses.find(x=>x.n===n);const [x,y]=punto(r.pts,b.t);g.setAttribute("transform",`translate(${x.toFixed(1)} ${y.toFixed(1)})`)});
+},1000);
+if(innerWidth<=860)$("#panel").removeAttribute("open");
+render();
+</script>
+</body>
+</html>

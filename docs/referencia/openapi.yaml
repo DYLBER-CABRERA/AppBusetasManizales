@@ -1,0 +1,2690 @@
+openapi: 3.0.3
+info:
+  title: BusetasApp API (prototipo)
+  version: 0.1.0-propuesto
+  description: |
+    Contrato REST propuesto para el backend de BusetasApp (Actividad 6).
+    **Estado: PROPUESTO.** Confirmado por el equipo solo que la base de datos es Supabase.
+
+    Convenciones
+    - Prefijo `/api/v1`. JSON UTF-8. Fechas ISO 8601 con zona. Horas locales `HH:MM` (zona `America/Bogota`).
+    - Coordenadas `lat` y `lng` (WGS84, grados decimales). Geometrías GeoJSON con orden `[lng, lat]`.
+    - Los endpoints sin candado no exigen cuenta (BR-01).
+    - Toda escritura sobre un recurso existente exige `version`; si no coincide, `409 CONFLICTO_VERSION` (RNF-02).
+    - Cada respuesta incluye la cabecera `X-Id-Peticion`.
+    - Rutas compartidas: una ruta tiene uno o más *servicios* (uno por empresa) con horario y frecuencia propios.
+  contact:
+    name: Equipo BusetasApp
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Desarrollo local
+  - url: https://{host}/api/v1
+    description: Hosting del prototipo (por decidir)
+    variables:
+      host:
+        default: por-definir.example
+tags:
+  - name: Red
+    description: Rutas, paraderos, hitos (M-01, M-05)
+  - name: Horarios
+    description: Horarios, frecuencias y festivos (M-02)
+  - name: Seguimiento
+    description: Busetas en vivo, ETA e ingesta de posiciones (M-03)
+  - name: Planificación
+    description: Planificación de viaje (M-04)
+  - name: Pasajero
+    description: Favoritos, alertas, notificaciones (M-06)
+  - name: Operación
+    description: Jefe de operaciones (M-07)
+  - name: Secretaría
+    description: Secretaría de Movilidad (M-01)
+  - name: Avisos
+    description: Avisos (M-08)
+  - name: Estadísticas
+    description: Estadísticas de uso (M-09)
+  - name: Administración
+    description: Administrador (M-10)
+  - name: Sistema
+    description: Salud
+paths:
+  /salud:
+    get:
+      tags: [Sistema]
+      operationId: consultarSalud
+      summary: Estado del servicio (también sirve para evitar el arranque en frío)
+      responses:
+        '200':
+          description: Servicio activo
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [estado]
+                properties:
+                  estado: { type: string, enum: [ok] }
+
+  # ------------------------------------------------------------------ Red (público)
+  /rutas/cercanas:
+    get:
+      tags: [Red]
+      operationId: consultarRutasCercanas
+      summary: Rutas y paraderos cercanos a un punto (HU-P01, RF-001-01)
+      description: |
+        Sin rutas dentro del radio devuelve `rutas: []` y `paraderoMasCercano` (flujo alternativo de HU-P01).
+        Si se envía `rutaId`, `paraderoMasCercano` es el más cercano **a esa ruta**.
+      parameters:
+        - $ref: '#/components/parameters/lat'
+        - $ref: '#/components/parameters/lng'
+        - name: radioM
+          in: query
+          schema: { type: integer, minimum: 50, maximum: 5000 }
+          description: Por defecto el parámetro `radio_busqueda_m`
+        - name: rutaId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Rutas y paraderos cercanos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rutas, paraderos]
+                properties:
+                  rutas:
+                    type: array
+                    items: { $ref: '#/components/schemas/RutaResumen' }
+                  paraderos:
+                    type: array
+                    items: { $ref: '#/components/schemas/ParaderoCercano' }
+                  paraderoMasCercano:
+                    allOf:
+                      - $ref: '#/components/schemas/ParaderoCercano'
+                    nullable: true
+        '400': { $ref: '#/components/responses/Validacion' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /rutas/{rutaId}:
+    parameters:
+      - $ref: '#/components/parameters/rutaId'
+    get:
+      tags: [Red]
+      operationId: obtenerDetalleRuta
+      summary: Recorrido, paraderos y servicios de una ruta (HU-P02, RF-001-02)
+      description: |
+        Si la ruta no existe devuelve 404; el cliente llama entonces a `consultarRutasCercanas` con el destino (flujo alternativo).
+      responses:
+        '200':
+          description: Detalle de la ruta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RutaDetalle' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+    put:
+      tags: [Secretaría]
+      operationId: editarRuta
+      summary: Editar una ruta (HU-SM02, RF-007-02)
+      security: [{ bearerAuth: [] }]
+      description: Rol `secretaria_movilidad` o `administrador`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RutaEditar' }
+      responses:
+        '200':
+          description: Ruta actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RutaDetalle' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+    delete:
+      tags: [Secretaría]
+      operationId: eliminarRuta
+      summary: Dar de baja una ruta (HU-SM03, RF-007-03)
+      security: [{ bearerAuth: [] }]
+      description: |
+        Baja lógica. Con asignaciones vigentes y sin `confirmar=true` responde `409 CONFLICTO_NEGOCIO` con la lista (flujo alternativo).
+        Al confirmar: se cierran las asignaciones y se cancelan los turnos futuros.
+      parameters:
+        - name: confirmar
+          in: query
+          schema: { type: boolean, default: false }
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: Ruta dada de baja }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409':
+          description: Asignaciones vigentes (CONFLICTO_NEGOCIO) o versión distinta (CONFLICTO_VERSION)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /rutas:
+    post:
+      tags: [Secretaría]
+      operationId: registrarRuta
+      summary: Registrar una ruta y asignarla a una o más empresas (HU-SM01, RF-007-01)
+      security: [{ bearerAuth: [] }]
+      description: |
+        Si alguna empresa ya opera una ruta equivalente y no viene `confirmarCompartida=true`, responde
+        `409 CONFLICTO_NEGOCIO` ("pide verificar"). Con la confirmación se crea el servicio adicional (ruta compartida).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RutaCrear' }
+      responses:
+        '201':
+          description: Ruta creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RutaDetalle' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /rutas/{rutaId}/servicios:
+    parameters:
+      - $ref: '#/components/parameters/rutaId'
+    post:
+      tags: [Secretaría]
+      operationId: asignarRutaAEmpresa
+      summary: Asignar una ruta existente a otra empresa (BR-04)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServicioCrear' }
+      responses:
+        '201':
+          description: Servicio creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServicioRuta' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /servicios/{servicioId}:
+    parameters:
+      - $ref: '#/components/parameters/servicioId'
+    put:
+      tags: [Secretaría]
+      operationId: editarServicioRuta
+      summary: Editar código público, estado o duración de un servicio (Secretaría)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ServicioEditar' }
+      responses:
+        '200':
+          description: Servicio actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServicioRuta' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+    delete:
+      tags: [Secretaría]
+      operationId: retirarRutaDeEmpresa
+      summary: Retirar la ruta a una empresa (baja del servicio)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: confirmar
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '204': { description: Servicio dado de baja }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /servicios/{servicioId}/datos-operativos:
+    parameters:
+      - $ref: '#/components/parameters/servicioId'
+    put:
+      tags: [Operación]
+      operationId: actualizarDatosOperativosServicio
+      summary: El jefe edita el código interno y la duración estándar de su servicio (HU-J02)
+      security: [{ bearerAuth: [] }]
+      description: |
+        BR-03: el jefe no edita rutas ni paraderos. Solo estos datos operativos de **su** servicio.
+        Un servicio de otra empresa responde 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                codigoInterno: { type: string, maxLength: 20, nullable: true }
+                duracionEstandarMin: { type: integer, minimum: 5, maximum: 300, nullable: true }
+                version: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Servicio actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServicioRuta' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /paraderos/cercanos:
+    get:
+      tags: [Red]
+      operationId: consultarParaderosCercanos
+      summary: Paraderos cercanos a un punto (HU-P01 alternativo)
+      parameters:
+        - $ref: '#/components/parameters/lat'
+        - $ref: '#/components/parameters/lng'
+        - name: radioM
+          in: query
+          schema: { type: integer, minimum: 50, maximum: 5000 }
+        - name: rutaId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: limite
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Paraderos ordenados por distancia
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ParaderoCercano' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /paraderos:
+    post:
+      tags: [Secretaría]
+      operationId: crearParadero
+      summary: Crear un paradero (HU-SM04, RF-007-04)
+      security: [{ bearerAuth: [] }]
+      description: Un paradero con el mismo nombre a menos de 20 m responde `409 CONFLICTO_NEGOCIO` (duplicado).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParaderoCrear' }
+      responses:
+        '201':
+          description: Paradero creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Paradero' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /paraderos/{paraderoId}:
+    parameters:
+      - $ref: '#/components/parameters/paraderoId'
+    put:
+      tags: [Secretaría]
+      operationId: editarParadero
+      summary: Editar un paradero (HU-SM04)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParaderoEditar' }
+      responses:
+        '200':
+          description: Paradero actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Paradero' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+    delete:
+      tags: [Secretaría]
+      operationId: eliminarParadero
+      summary: Dar de baja un paradero (HU-SM04)
+      security: [{ bearerAuth: [] }]
+      description: Si lo usan rutas activas y no viene `confirmar=true`, responde 409 con las rutas afectadas.
+      parameters:
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: confirmar
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '204': { description: Paradero dado de baja }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /hitos:
+    post:
+      tags: [Secretaría]
+      operationId: crearHito
+      summary: Crear un hito o barrio de búsqueda [PROPUESTO, no está en las HU]
+      security: [{ bearerAuth: [] }]
+      description: Rol `secretaria_movilidad` o `administrador`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HitoCrear' }
+      responses:
+        '201':
+          description: Hito creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Hito' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+  /empresas:
+    get:
+      tags: [Red]
+      operationId: listarEmpresas
+      summary: Empresas activas (para filtros y para que la Secretaría asigne rutas)
+      responses:
+        '200':
+          description: Empresas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Empresa' }
+
+  # ------------------------------------------------------------------ Búsqueda (público)
+  /busqueda/rutas:
+    get:
+      tags: [Red]
+      operationId: buscarRutasPorTexto
+      summary: Buscar rutas por número o nombre (HU-P08, RF-005-01)
+      description: Busca por nombre, código público y código interno, sin distinguir tildes ni mayúsculas. Sin coincidencias devuelve `[]`.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 60 }
+      responses:
+        '200':
+          description: Coincidencias
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RutaResumen' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /busqueda/hitos:
+    get:
+      tags: [Red]
+      operationId: buscarHitos
+      summary: Buscar hitos, barrios o sectores (HU-P09, RF-005-02)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 60 }
+        - name: tipo
+          in: query
+          schema: { $ref: '#/components/schemas/TipoHito' }
+      responses:
+        '200':
+          description: Hitos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Hito' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /hitos/{hitoId}/rutas:
+    get:
+      tags: [Red]
+      operationId: consultarRutasPorHito
+      summary: Rutas que pasan por un hito (HU-P09)
+      description: 'Sin rutas devuelve la lista vacía, cobertura en falso y el paradero más cercano (`paraderoMasCercano`).'
+      parameters:
+        - name: hitoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Rutas del hito
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rutas, cobertura]
+                properties:
+                  cobertura: { type: boolean }
+                  rutas:
+                    type: array
+                    items: { $ref: '#/components/schemas/RutaResumen' }
+                  paraderoMasCercano:
+                    allOf:
+                      - $ref: '#/components/schemas/ParaderoCercano'
+                    nullable: true
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+
+  # ------------------------------------------------------------------ Horarios
+  /rutas/{rutaId}/horarios:
+    parameters:
+      - $ref: '#/components/parameters/rutaId'
+    get:
+      tags: [Horarios]
+      operationId: consultarHorarios
+      summary: Horarios por empresa y tipo de día (HU-P03, RF-002-01)
+      description: |
+        Devuelve un elemento por servicio. Un servicio sin horarios llega con `estado: pendiente_actualizacion`.
+        Cada tipo de día faltante se omite de `horarios` y se lista en `tiposDiaPendientes`.
+      parameters:
+        - $ref: '#/components/parameters/empresaIdOpcional'
+      responses:
+        '200':
+          description: Horarios
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [servicios, tipoDiaHoy]
+                properties:
+                  tipoDiaHoy: { $ref: '#/components/schemas/TipoDia' }
+                  servicios:
+                    type: array
+                    items: { $ref: '#/components/schemas/HorariosDeServicio' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /rutas/{rutaId}/frecuencias:
+    parameters:
+      - $ref: '#/components/parameters/rutaId'
+    get:
+      tags: [Horarios]
+      operationId: consultarFrecuencias
+      summary: Frecuencia por franja horaria (HU-P04, RF-002-02)
+      description: Si `minutosMin` es distinto de `minutosMax`, la interfaz muestra un rango.
+      parameters:
+        - $ref: '#/components/parameters/empresaIdOpcional'
+      responses:
+        '200':
+          description: Frecuencias
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [servicios]
+                properties:
+                  servicios:
+                    type: array
+                    items: { $ref: '#/components/schemas/FrecuenciasDeServicio' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /servicios/{servicioId}/horarios:
+    parameters:
+      - $ref: '#/components/parameters/servicioId'
+    put:
+      tags: [Operación]
+      operationId: actualizarHorariosServicio
+      summary: El jefe reemplaza los horarios de su servicio (HU-J02, RF-006-02)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HorariosActualizar' }
+      responses:
+        '200':
+          description: Horarios guardados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HorariosDeServicio' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /servicios/{servicioId}/frecuencias:
+    parameters:
+      - $ref: '#/components/parameters/servicioId'
+    put:
+      tags: [Operación]
+      operationId: actualizarFrecuenciasServicio
+      summary: El jefe reemplaza las frecuencias de su servicio (HU-J02)
+      security: [{ bearerAuth: [] }]
+      description: Franjas solapadas o con `minutosMin > minutosMax` responden 400.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FrecuenciasActualizar' }
+      responses:
+        '200':
+          description: Frecuencias guardadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FrecuenciasDeServicio' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /festivos:
+    get:
+      tags: [Horarios]
+      operationId: listarFestivos
+      summary: Calendario de festivos [SUPUESTO S-14]
+      parameters:
+        - name: anio
+          in: query
+          schema: { type: integer, minimum: 2024, maximum: 2100 }
+      responses:
+        '200':
+          description: Festivos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Festivo' }
+    post:
+      tags: [Administración]
+      operationId: crearFestivo
+      summary: Registrar un festivo (administrador)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Festivo' }
+      responses:
+        '201':
+          description: Festivo registrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Festivo' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+  # ------------------------------------------------------------------ Seguimiento
+  /rutas/{rutaId}/busetas:
+    parameters:
+      - $ref: '#/components/parameters/rutaId'
+    get:
+      tags: [Seguimiento]
+      operationId: consultarBusetasEnVivo
+      summary: Busetas en servicio de una ruta (HU-P05, RF-003-01)
+      description: |
+        Solo busetas con turno vigente en la ruta. Una posición más vieja que `umbral_posicion_obsoleta_s` llega con
+        `estado: sin_senal`. Sin unidades, `busetas: []` y `unidadesEnServicio: 0`.
+        Si no hay fuente de posiciones, `seguimientoDisponible: false`.
+      parameters:
+        - $ref: '#/components/parameters/empresaIdOpcional'
+        - name: sentido
+          in: query
+          schema: { $ref: '#/components/schemas/Sentido' }
+      responses:
+        '200':
+          description: Busetas
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [busetas, unidadesEnServicio, seguimientoDisponible, calculadoEn]
+                properties:
+                  seguimientoDisponible: { type: boolean }
+                  unidadesEnServicio: { type: integer, minimum: 0 }
+                  calculadoEn: { type: string, format: date-time }
+                  busetas:
+                    type: array
+                    items: { $ref: '#/components/schemas/BusetaEnVivo' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /paraderos/{paraderoId}/eta:
+    parameters:
+      - $ref: '#/components/parameters/paraderoId'
+    get:
+      tags: [Seguimiento]
+      operationId: calcularEtaParadero
+      summary: Tiempo estimado de llegada a un paradero (HU-P06, RF-003-02)
+      description: |
+        `fuente`: `gps` (hay buseta con posición fresca), `horario` (respaldo por frecuencia; devuelve rango) o
+        `no_disponible` (fuera de horario o sin frecuencia). Un fallo interno responde 503 con `reintentable: true`.
+      parameters:
+        - name: rutaId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: sentido
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Sentido' }
+        - $ref: '#/components/parameters/empresaIdOpcional'
+      responses:
+        '200':
+          description: ETA por servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [etas, calculadoEn]
+                properties:
+                  calculadoEn: { type: string, format: date-time }
+                  etas:
+                    type: array
+                    items: { $ref: '#/components/schemas/Eta' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /ingesta/posiciones:
+    post:
+      tags: [Seguimiento]
+      operationId: registrarPosiciones
+      summary: Recibir posiciones desde el sistema GPS de una empresa o el simulador [SUPUESTO S-01]
+      security: [{ claveFuente: [] }]
+      description: |
+        Lote de hasta 100 posiciones. La empresa sale de la clave; la ruta se deduce del rodamiento publicado.
+        Una posición con `reportadaEn` anterior a la guardada se descarta. Límite: un lote cada 2 s por clave.
+        Una buseta sin turno vigente se guarda sin ruta (no aparece en mapas de ruta).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LotePosiciones' }
+      responses:
+        '202':
+          description: Lote procesado (puede incluir rechazos parciales)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoIngesta' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+
+  # ------------------------------------------------------------------ Planificación
+  /viajes/planificar:
+    post:
+      tags: [Planificación]
+      operationId: planificarViaje
+      summary: Planificar un viaje con origen y destino (HU-P07, RF-004-01)
+      description: |
+        Hasta `max_opciones_viaje` opciones. Si no hay directas, ofrece opciones con un transbordo.
+        Sin ninguna opción: `opciones: []`, `motivo` y `paraderoMasCercano`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [origen, destino]
+              properties:
+                origen: { $ref: '#/components/schemas/Lugar' }
+                destino: { $ref: '#/components/schemas/Lugar' }
+      responses:
+        '200':
+          description: Opciones
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [opciones]
+                properties:
+                  opciones:
+                    type: array
+                    items: { $ref: '#/components/schemas/OpcionViaje' }
+                  motivo:
+                    type: string
+                    enum: [sin_rutas_cerca_del_origen, sin_rutas_cerca_del_destino, sin_conexion]
+                  paraderoMasCercano:
+                    allOf:
+                      - $ref: '#/components/schemas/ParaderoCercano'
+                    nullable: true
+        '400': { $ref: '#/components/responses/Validacion' }
+        '404':
+          description: Hito o texto no encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+
+  # ------------------------------------------------------------------ Avisos
+  /avisos:
+    get:
+      tags: [Avisos]
+      operationId: consultarAvisosVigentes
+      summary: Avisos vigentes de empresa, de movilidad y del aplicativo
+      parameters:
+        - $ref: '#/components/parameters/empresaIdOpcional'
+        - name: rutaId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Avisos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Aviso' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+    post:
+      tags: [Avisos]
+      operationId: publicarAviso
+      summary: Publicar un aviso (HU-J05, HU-SM05, HU-A05)
+      security: [{ bearerAuth: [] }]
+      description: |
+        El `origen` se deduce del rol: jefe → `empresa`, Secretaría → `movilidad`, administrador → `aplicativo`.
+        Cuerpo vacío o más largo que `longitud_max_aviso` → 400 con el límite. El jefe solo afecta rutas de su empresa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AvisoCrear' }
+      responses:
+        '201':
+          description: Aviso publicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Aviso' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /avisos/{avisoId}:
+    delete:
+      tags: [Avisos]
+      operationId: retirarAviso
+      summary: Retirar un aviso
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: avisoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Aviso retirado }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  # ------------------------------------------------------------------ Pasajero
+  /favoritos:
+    get:
+      tags: [Pasajero]
+      operationId: listarFavoritos
+      summary: Mis favoritos (HU-P10)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Favoritos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Favorito' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+    post:
+      tags: [Pasajero]
+      operationId: agregarFavorito
+      summary: Guardar una ruta o un paradero como favorito (HU-P10, RF-008-01)
+      security: [{ bearerAuth: [] }]
+      description: Sin sesión responde 401 con el mensaje "Inicia sesión para guardar". Un favorito repetido devuelve el existente con 200.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FavoritoCrear' }
+      responses:
+        '200':
+          description: Ya existía
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Favorito' }
+        '201':
+          description: Favorito creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Favorito' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+  /favoritos/{favoritoId}:
+    delete:
+      tags: [Pasajero]
+      operationId: quitarFavorito
+      summary: Quitar un favorito
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: favoritoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Favorito quitado }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /alertas-llegada:
+    get:
+      tags: [Pasajero]
+      operationId: listarAlertasLlegada
+      summary: Mis alertas de llegada
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Alertas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AlertaLlegada' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+    post:
+      tags: [Pasajero]
+      operationId: crearAlertaLlegada
+      summary: Activar una alerta de llegada (HU-P11, RF-009-01)
+      security: [{ bearerAuth: [] }]
+      description: Si no se envía `distanciaAvisoM` se usa `distancia_aviso_llegada_m`. Una alerta repetida responde 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlertaCrear' }
+      responses:
+        '201':
+          description: Alerta creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AlertaLlegada' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /alertas-llegada/{alertaId}:
+    delete:
+      tags: [Pasajero]
+      operationId: eliminarAlertaLlegada
+      summary: Desactivar una alerta
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: alertaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Alerta desactivada }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /suscripciones-push:
+    post:
+      tags: [Pasajero]
+      operationId: registrarSuscripcionPush
+      summary: Registrar el navegador para Web Push [SUPUESTO S-09]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint, claves]
+              properties:
+                endpoint: { type: string, format: uri }
+                claves:
+                  type: object
+                  required: [p256dh, auth]
+                  properties:
+                    p256dh: { type: string }
+                    auth: { type: string }
+      responses:
+        '201': { description: Suscripción registrada }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+  /notificaciones:
+    get:
+      tags: [Pasajero]
+      operationId: listarNotificaciones
+      summary: Bandeja de notificaciones dentro de la app
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/limite'
+        - $ref: '#/components/parameters/desplazamiento'
+      responses:
+        '200':
+          description: Notificaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notificacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+  /notificaciones/{notificacionId}/leida:
+    post:
+      tags: [Pasajero]
+      operationId: marcarNotificacionLeida
+      summary: Marcar una notificación como leída
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: notificacionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Marcada }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  # ------------------------------------------------------------------ Operación (jefe)
+  /conductores:
+    get:
+      tags: [Operación]
+      operationId: listarConductores
+      summary: Conductores de mi empresa (datos, no usuarios; BR-06)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/limite'
+        - $ref: '#/components/parameters/desplazamiento'
+      responses:
+        '200':
+          description: Conductores
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Conductor' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Operación]
+      operationId: crearConductor
+      summary: Registrar un conductor (HU-J02)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConductorCrear' }
+      responses:
+        '201':
+          description: Conductor creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conductor' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /conductores/{conductorId}:
+    put:
+      tags: [Operación]
+      operationId: editarConductor
+      summary: Editar o dar de baja un conductor
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: conductorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConductorEditar' }
+      responses:
+        '200':
+          description: Conductor actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conductor' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /busetas:
+    get:
+      tags: [Operación]
+      operationId: listarBusetas
+      summary: Busetas de mi empresa
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/limite'
+        - $ref: '#/components/parameters/desplazamiento'
+      responses:
+        '200':
+          description: Busetas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Buseta' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Operación]
+      operationId: crearBuseta
+      summary: Registrar una buseta (número lateral único en la empresa)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BusetaCrear' }
+      responses:
+        '201':
+          description: Buseta creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buseta' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /busetas/{busetaId}:
+    put:
+      tags: [Operación]
+      operationId: editarBuseta
+      summary: Editar o dar de baja una buseta
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: busetaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BusetaEditar' }
+      responses:
+        '200':
+          description: Buseta actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Buseta' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /mis-servicios:
+    get:
+      tags: [Operación]
+      operationId: listarServiciosDeMiEmpresa
+      summary: Servicios de ruta que la Secretaría asignó a mi empresa (BR-03)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Servicios
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ServicioRuta' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+  /asignaciones:
+    get:
+      tags: [Operación]
+      operationId: listarAsignaciones
+      summary: Asignaciones vigentes de mi empresa
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Asignaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Asignacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Operación]
+      operationId: asignarRecursos
+      summary: Asignar buseta y conductor a una ruta ya registrada (HU-J01, RF-006-01)
+      security: [{ bearerAuth: [] }]
+      description: |
+        Una buseta puede tener varias asignaciones (rutas distintas). Si ya existe la asignación de esa buseta a ese servicio con
+        otro conductor y no viene `confirmarCambio=true`, responde `409 CONFLICTO_NEGOCIO` con la asignación actual (flujo alternativo).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AsignacionCrear' }
+      responses:
+        '201':
+          description: Asignación registrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Asignacion' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /asignaciones/{asignacionId}:
+    delete:
+      tags: [Operación]
+      operationId: cerrarAsignacion
+      summary: Cerrar una asignación
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: asignacionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '204': { description: Asignación cerrada }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /rodamientos:
+    get:
+      tags: [Operación]
+      operationId: listarRodamientos
+      summary: Rodamientos de mi empresa por fecha
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: desde
+          in: query
+          schema: { type: string, format: date }
+        - name: hasta
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Rodamientos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Rodamiento' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Operación]
+      operationId: crearRodamiento
+      summary: Definir el rodamiento del día (HU-J04, RF-006-04)
+      security: [{ bearerAuth: [] }]
+      description: |
+        Se guarda como borrador y devuelve `advertencias` por solapamientos de buseta o conductor (flujo alternativo).
+        La fecha va desde hoy hasta `dias_max_rodamiento_adelante`. Ya existe uno para esa fecha → 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RodamientoCrear' }
+      responses:
+        '201':
+          description: Rodamiento creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RodamientoConAdvertencias' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /rodamientos/{rodamientoId}:
+    parameters:
+      - $ref: '#/components/parameters/rodamientoId'
+    get:
+      tags: [Operación]
+      operationId: obtenerRodamiento
+      summary: Detalle de un rodamiento
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Rodamiento
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rodamiento' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    put:
+      tags: [Operación]
+      operationId: actualizarRodamiento
+      summary: Reemplazar los turnos de un rodamiento
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RodamientoActualizar' }
+      responses:
+        '200':
+          description: Rodamiento actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RodamientoConAdvertencias' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /rodamientos/{rodamientoId}/publicar:
+    parameters:
+      - $ref: '#/components/parameters/rodamientoId'
+    post:
+      tags: [Operación]
+      operationId: publicarRodamiento
+      summary: Publicar el rodamiento (queda activo para la fecha; CA de HU-J04)
+      security: [{ bearerAuth: [] }]
+      description: Con solapamientos responde `409 CONFLICTO_NEGOCIO` con la lista (D-14).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Rodamiento publicado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rodamiento' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /rodamientos/{rodamientoId}/anular:
+    parameters:
+      - $ref: '#/components/parameters/rodamientoId'
+    post:
+      tags: [Operación]
+      operationId: anularRodamiento
+      summary: Anular un rodamiento
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Rodamiento anulado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rodamiento' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /importaciones:
+    post:
+      tags: [Operación]
+      operationId: importarDesdeExcel
+      summary: Importar un archivo Excel (HU-J03, RF-006-03; HU-SM01 y HU-SM04 para `rutas_paraderos`)
+      security: [{ bearerAuth: [] }]
+      description: |
+        Jefe: `conductores`, `busetas`, `asignaciones`, `horarios_frecuencias`, `rodamiento`. Secretaría: `rutas_paraderos`.
+        Formato inválido, columnas faltantes o demasiadas filas → 400 y no se procesa nada.
+        Filas con error → 200 con `estado: parcial` y el detalle (fila, columna, motivo); las filas correctas se conservan.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [tipo, archivo]
+              properties:
+                tipo: { $ref: '#/components/schemas/TipoImportacion' }
+                archivo:
+                  type: string
+                  format: binary
+                  description: Archivo .xlsx
+      responses:
+        '200':
+          description: Importación procesada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoImportacion' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '413':
+          description: Archivo mayor que `tamano_max_excel_mb`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /importaciones/plantillas/{tipo}:
+    get:
+      tags: [Operación]
+      operationId: descargarPlantillaExcel
+      summary: Descargar la plantilla .xlsx de un tipo de importación
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: tipo
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/TipoImportacion' }
+      responses:
+        '200':
+          description: Plantilla
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+
+  # ------------------------------------------------------------------ Estadísticas
+  /estadisticas/uso:
+    get:
+      tags: [Estadísticas]
+      operationId: consultarEstadisticasUso
+      summary: Estadísticas básicas de uso (HU-J06, RF-012-01)
+      security: [{ bearerAuth: [] }]
+      description: |
+        El jefe ve las rutas de su empresa. El administrador puede indicar `empresaId` o ver todas (S-11).
+        Sin datos: `sinDatos: true`.
+      parameters:
+        - name: desde
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: hasta
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/empresaIdOpcional'
+      responses:
+        '200':
+          description: Estadísticas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstadisticasUso' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '503': { $ref: '#/components/responses/ServicioNoDisponible' }
+
+  # ------------------------------------------------------------------ Administración
+  /admin/usuarios:
+    get:
+      tags: [Administración]
+      operationId: listarUsuarios
+      summary: Buscar usuarios (HU-A01, RF-013-01)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 80 }
+        - name: rol
+          in: query
+          schema: { $ref: '#/components/schemas/Rol' }
+        - $ref: '#/components/parameters/limite'
+        - $ref: '#/components/parameters/desplazamiento'
+      responses:
+        '200':
+          description: Usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Usuario' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Administración]
+      operationId: crearUsuario
+      summary: Crear una cuenta de jefe, Secretaría o administrador [SUPUESTO S-13]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UsuarioCrear' }
+      responses:
+        '201':
+          description: Usuario creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /admin/usuarios/{usuarioId}:
+    put:
+      tags: [Administración]
+      operationId: editarUsuario
+      summary: Cambiar rol, empresa o estado de un usuario (HU-A01, HU-A02)
+      security: [{ bearerAuth: [] }]
+      description: Rol fuera de los cuatro definidos → 400. No se puede quitar el rol al último administrador → 409.
+      parameters:
+        - name: usuarioId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UsuarioEditar' }
+      responses:
+        '200':
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /admin/roles:
+    get:
+      tags: [Administración]
+      operationId: listarRolesPermisos
+      summary: Roles y permisos (HU-A02, RF-013-02)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [rol, permisos]
+                  properties:
+                    rol: { $ref: '#/components/schemas/Rol' }
+                    permisos:
+                      type: array
+                      items: { type: string }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+  /admin/roles/{rol}/permisos:
+    put:
+      tags: [Administración]
+      operationId: reemplazarPermisosDeRol
+      summary: Reemplazar los permisos de un rol
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: rol
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Rol' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permisos]
+              properties:
+                permisos:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200': { description: Permisos actualizados }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+  /admin/empresas:
+    get:
+      tags: [Administración]
+      operationId: listarEmpresasAdmin
+      summary: Empresas, incluidas las dadas de baja (HU-A03, RF-013-03)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Empresas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Empresa' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Administración]
+      operationId: crearEmpresa
+      summary: Registrar una empresa
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre: { type: string, minLength: 2, maxLength: 120 }
+      responses:
+        '201':
+          description: Empresa creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Empresa' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /admin/empresas/{empresaId}:
+    put:
+      tags: [Administración]
+      operationId: editarEmpresa
+      summary: Editar o dar de baja una empresa
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: empresaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                nombre: { type: string, minLength: 2, maxLength: 120 }
+                estado: { $ref: '#/components/schemas/EstadoRegistro' }
+                version: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Empresa actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Empresa' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /admin/empresas/{empresaId}/credenciales-gps:
+    parameters:
+      - name: empresaId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Administración]
+      operationId: listarCredencialesGps
+      summary: Credenciales de la fuente de posiciones de una empresa
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Credenciales (sin la clave)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CredencialGps' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Administración]
+      operationId: crearCredencialGps
+      summary: Generar una clave para la fuente de posiciones
+      security: [{ bearerAuth: [] }]
+      description: La clave se muestra **una sola vez**; en la base solo queda su hash.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre: { type: string, maxLength: 80 }
+      responses:
+        '201':
+          description: Credencial creada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [credencial, clave]
+                properties:
+                  credencial: { $ref: '#/components/schemas/CredencialGps' }
+                  clave:
+                    type: string
+                    description: Valor para la cabecera X-Clave-Fuente; no se vuelve a mostrar
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /admin/credenciales-gps/{credencialId}:
+    delete:
+      tags: [Administración]
+      operationId: revocarCredencialGps
+      summary: Revocar una clave de fuente de posiciones
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: credencialId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Credencial revocada }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /admin/parametros:
+    get:
+      tags: [Administración]
+      operationId: listarParametros
+      summary: Parámetros globales (HU-A04, RF-013-04)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Parámetros
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Parametro' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+  /admin/parametros/{clave}:
+    put:
+      tags: [Administración]
+      operationId: configurarParametro
+      summary: Cambiar el valor de un parámetro
+      security: [{ bearerAuth: [] }]
+      description: Clave desconocida → 404. Valor fuera de `minimo` y `maximo` o de otro tipo → 400.
+      parameters:
+        - name: clave
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [valor, version]
+              properties:
+                valor:
+                  description: Número, texto o booleano según el parámetro
+                  oneOf:
+                    - { type: number }
+                    - { type: string }
+                    - { type: boolean }
+                    - { type: object }
+                version: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Parámetro actualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Parametro' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT emitido por Supabase Auth. El rol y la empresa salen del perfil, nunca del cuerpo de la petición.
+    claveFuente:
+      type: apiKey
+      in: header
+      name: X-Clave-Fuente
+      description: Clave de la fuente de posiciones de una empresa (solo para la ingesta).
+  parameters:
+    lat:
+      name: lat
+      in: query
+      required: true
+      schema: { type: number, minimum: -90, maximum: 90 }
+    lng:
+      name: lng
+      in: query
+      required: true
+      schema: { type: number, minimum: -180, maximum: 180 }
+    rutaId:
+      name: rutaId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    servicioId:
+      name: servicioId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    paraderoId:
+      name: paraderoId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    rodamientoId:
+      name: rodamientoId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    empresaIdOpcional:
+      name: empresaId
+      in: query
+      required: false
+      schema: { type: string, format: uuid }
+      description: Filtra por empresa cuando la ruta la operan varias
+    limite:
+      name: limite
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    desplazamiento:
+      name: desplazamiento
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+  responses:
+    Validacion:
+      description: Datos inválidos o incompletos (VALIDACION)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoAutenticado:
+      description: Sin sesión o token inválido (NO_AUTENTICADO)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoAutorizado:
+      description: Rol o empresa no permitidos (NO_AUTORIZADO)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoEncontrado:
+      description: El recurso no existe, está dado de baja o es de otra empresa (NO_ENCONTRADO)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflicto:
+      description: Conflicto de versión o de regla de negocio (CONFLICTO_VERSION, CONFLICTO_NEGOCIO)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DemasiadasPeticiones:
+      description: Se superó el límite de peticiones (LIMITE_EXCEDIDO)
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServicioNoDisponible:
+      description: La base de datos o un servicio externo no responde (SERVICIO_EXTERNO_NO_DISPONIBLE)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [codigo, mensaje]
+          properties:
+            codigo:
+              type: string
+              enum:
+                - VALIDACION
+                - NO_AUTENTICADO
+                - NO_AUTORIZADO
+                - NO_ENCONTRADO
+                - CONFLICTO_VERSION
+                - CONFLICTO_NEGOCIO
+                - LIMITE_EXCEDIDO
+                - SERVICIO_EXTERNO_NO_DISPONIBLE
+                - ERROR_INTERNO
+            mensaje: { type: string }
+            reintentable: { type: boolean, description: true en 503 }
+            detalles:
+              description: Lista de campos con error, versión actual, asignaciones o solapamientos según el caso
+              nullable: true
+    Sentido:
+      type: string
+      enum: [ida, vuelta, circular]
+    TipoDia:
+      type: string
+      enum: [lun_vie, sabado, dom_festivo]
+    TipoHito:
+      type: string
+      enum: [hito, barrio, sector, universidad, hospital, terminal, otro]
+    Rol:
+      type: string
+      enum: [pasajero, jefe_operaciones, secretaria_movilidad, administrador]
+    EstadoRegistro:
+      type: string
+      enum: [activo, baja]
+    TipoImportacion:
+      type: string
+      enum: [conductores, busetas, asignaciones, horarios_frecuencias, rodamiento, rutas_paraderos]
+    Hora:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+      example: '05:30'
+    Punto:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+    GeoJsonLineString:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type: { type: string, enum: [LineString] }
+        coordinates:
+          type: array
+          minItems: 2
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: { type: number }
+    Empresa:
+      type: object
+      required: [id, nombre, estado, version]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        estado: { $ref: '#/components/schemas/EstadoRegistro' }
+        version: { type: integer }
+    ServicioRuta:
+      type: object
+      required: [id, rutaId, empresaId, estado, version]
+      properties:
+        id: { type: string, format: uuid }
+        rutaId: { type: string, format: uuid }
+        rutaNombre: { type: string }
+        empresaId: { type: string, format: uuid }
+        empresaNombre: { type: string }
+        codigoPublico:
+          type: string
+          nullable: true
+          description: Solo dígitos. Puede faltar (Serviturismo)
+        codigoInterno: { type: string, nullable: true }
+        duracionEstandarMin: { type: integer, nullable: true }
+        estado:
+          type: string
+          enum: [activo, suspendido, baja]
+        version: { type: integer }
+    ServicioCrear:
+      type: object
+      required: [empresaId]
+      properties:
+        empresaId: { type: string, format: uuid }
+        codigoPublico: { type: string, pattern: '^[0-9]+$', maxLength: 6, nullable: true }
+        codigoInterno: { type: string, maxLength: 20, nullable: true }
+        duracionEstandarMin: { type: integer, minimum: 5, maximum: 300, nullable: true }
+        confirmarCompartida: { type: boolean, default: false }
+    ServicioEditar:
+      type: object
+      required: [version]
+      properties:
+        codigoPublico: { type: string, pattern: '^[0-9]+$', maxLength: 6, nullable: true }
+        estado:
+          type: string
+          enum: [activo, suspendido]
+        duracionEstandarMin: { type: integer, minimum: 5, maximum: 300, nullable: true }
+        version: { type: integer, minimum: 1 }
+    RutaResumen:
+      type: object
+      required: [id, nombre, tipoRecorrido, servicios]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        tipoRecorrido:
+          type: string
+          enum: [lineal, circular]
+        esVariante: { type: boolean }
+        distanciaM:
+          type: number
+          nullable: true
+        servicios:
+          type: array
+          items:
+            type: object
+            required: [servicioId, empresaId, empresaNombre]
+            properties:
+              servicioId: { type: string, format: uuid }
+              empresaId: { type: string, format: uuid }
+              empresaNombre: { type: string }
+              codigoPublico: { type: string, nullable: true }
+    ParadaEnRuta:
+      type: object
+      required: [orden, paraderoId, nombre, lat, lng]
+      properties:
+        orden: { type: integer, minimum: 1 }
+        paraderoId: { type: string, format: uuid }
+        nombre: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+    TrazadoSentido:
+      type: object
+      required: [sentido, trazado, paraderos]
+      properties:
+        sentido: { $ref: '#/components/schemas/Sentido' }
+        longitudM: { type: number }
+        trazado: { $ref: '#/components/schemas/GeoJsonLineString' }
+        paraderos:
+          type: array
+          items: { $ref: '#/components/schemas/ParadaEnRuta' }
+    RutaDetalle:
+      allOf:
+        - $ref: '#/components/schemas/RutaResumen'
+        - type: object
+          required: [sentidos, version]
+          properties:
+            descripcion: { type: string, nullable: true }
+            rutaPrincipalId: { type: string, format: uuid, nullable: true }
+            variantes:
+              type: array
+              items: { $ref: '#/components/schemas/RutaResumen' }
+            sentidos:
+              type: array
+              items: { $ref: '#/components/schemas/TrazadoSentido' }
+            version: { type: integer }
+    SentidoEntrada:
+      type: object
+      required: [sentido, trazado, paraderos]
+      properties:
+        sentido: { $ref: '#/components/schemas/Sentido' }
+        trazado: { $ref: '#/components/schemas/GeoJsonLineString' }
+        paraderos:
+          type: array
+          minItems: 1
+          description: Ids de paraderos en orden de recorrido
+          items: { type: string, format: uuid }
+    RutaCrear:
+      type: object
+      required: [nombre, tipoRecorrido, sentidos, servicios]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        tipoRecorrido:
+          type: string
+          enum: [lineal, circular]
+        rutaPrincipalId: { type: string, format: uuid, nullable: true }
+        descripcion: { type: string, nullable: true }
+        sentidos:
+          type: array
+          minItems: 1
+          maxItems: 2
+          description: Lineal admite `ida` y `vuelta`; circular exige un único `circular`
+          items: { $ref: '#/components/schemas/SentidoEntrada' }
+        servicios:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/ServicioCrear' }
+        confirmarCompartida: { type: boolean, default: false }
+    RutaEditar:
+      type: object
+      required: [version]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        descripcion: { type: string, nullable: true }
+        rutaPrincipalId: { type: string, format: uuid, nullable: true }
+        sentidos:
+          type: array
+          items: { $ref: '#/components/schemas/SentidoEntrada' }
+        version: { type: integer, minimum: 1 }
+    Paradero:
+      type: object
+      required: [id, nombre, lat, lng, estado, version]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        direccion: { type: string, nullable: true }
+        lat: { type: number }
+        lng: { type: number }
+        estado: { $ref: '#/components/schemas/EstadoRegistro' }
+        version: { type: integer }
+    ParaderoCercano:
+      type: object
+      required: [paraderoId, nombre, lat, lng, distanciaM]
+      properties:
+        paraderoId: { type: string, format: uuid }
+        nombre: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        distanciaM: { type: number }
+    ParaderoCrear:
+      type: object
+      required: [nombre, lat, lng]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        direccion: { type: string, nullable: true }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+    ParaderoEditar:
+      type: object
+      required: [version]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        direccion: { type: string, nullable: true }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        version: { type: integer, minimum: 1 }
+    Hito:
+      type: object
+      required: [id, nombre, tipo, lat, lng]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        tipo: { $ref: '#/components/schemas/TipoHito' }
+        alias:
+          type: array
+          items: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+    HitoCrear:
+      type: object
+      required: [nombre, tipo, lat, lng]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        tipo: { $ref: '#/components/schemas/TipoHito' }
+        alias:
+          type: array
+          items: { type: string }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+    Horario:
+      type: object
+      required: [tipoDia, primeraSalida, ultimaSalida]
+      properties:
+        tipoDia: { $ref: '#/components/schemas/TipoDia' }
+        primeraSalida: { $ref: '#/components/schemas/Hora' }
+        ultimaSalida: { $ref: '#/components/schemas/Hora' }
+        cierre:
+          allOf:
+            - $ref: '#/components/schemas/Hora'
+          nullable: true
+        nota: { type: string, nullable: true }
+    HorariosDeServicio:
+      type: object
+      required: [servicioId, empresaId, empresaNombre, estado, horarios, tiposDiaPendientes, version]
+      properties:
+        servicioId: { type: string, format: uuid }
+        empresaId: { type: string, format: uuid }
+        empresaNombre: { type: string }
+        codigoPublico: { type: string, nullable: true }
+        estado:
+          type: string
+          enum: [completo, parcial, pendiente_actualizacion]
+        horarios:
+          type: array
+          items: { $ref: '#/components/schemas/Horario' }
+        tiposDiaPendientes:
+          type: array
+          items: { $ref: '#/components/schemas/TipoDia' }
+        version: { type: integer }
+    HorariosActualizar:
+      type: object
+      required: [horarios, version]
+      properties:
+        horarios:
+          type: array
+          maxItems: 3
+          items: { $ref: '#/components/schemas/Horario' }
+        version: { type: integer, minimum: 1 }
+    Frecuencia:
+      type: object
+      required: [tipoDia, franjaInicio, franjaFin, minutosMin, minutosMax]
+      properties:
+        tipoDia: { $ref: '#/components/schemas/TipoDia' }
+        franjaInicio: { $ref: '#/components/schemas/Hora' }
+        franjaFin:
+          type: string
+          pattern: '^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$'
+          example: '09:00'
+        minutosMin: { type: integer, minimum: 1 }
+        minutosMax: { type: integer, minimum: 1 }
+        nota: { type: string, nullable: true }
+    FrecuenciasDeServicio:
+      type: object
+      required: [servicioId, empresaId, empresaNombre, frecuencias, version]
+      properties:
+        servicioId: { type: string, format: uuid }
+        empresaId: { type: string, format: uuid }
+        empresaNombre: { type: string }
+        frecuencias:
+          type: array
+          items: { $ref: '#/components/schemas/Frecuencia' }
+        version: { type: integer }
+    FrecuenciasActualizar:
+      type: object
+      required: [frecuencias, version]
+      properties:
+        frecuencias:
+          type: array
+          items: { $ref: '#/components/schemas/Frecuencia' }
+        version: { type: integer, minimum: 1 }
+    Festivo:
+      type: object
+      required: [fecha, descripcion]
+      properties:
+        fecha: { type: string, format: date }
+        descripcion: { type: string, maxLength: 80 }
+    BusetaEnVivo:
+      type: object
+      required: [busetaId, numeroLateral, servicioId, empresaId, lat, lng, reportadaEn, estado]
+      properties:
+        busetaId: { type: string, format: uuid }
+        numeroLateral: { type: string }
+        servicioId: { type: string, format: uuid }
+        empresaId: { type: string, format: uuid }
+        lat: { type: number }
+        lng: { type: number }
+        velocidadKmh: { type: number, nullable: true }
+        rumbo: { type: number, nullable: true }
+        reportadaEn: { type: string, format: date-time }
+        estado:
+          type: string
+          enum: [activa, sin_senal]
+        mensaje:
+          type: string
+          nullable: true
+          description: Ej. "ubicación no disponible" cuando está sin señal
+    Eta:
+      type: object
+      required: [servicioId, empresaId, fuente]
+      properties:
+        servicioId: { type: string, format: uuid }
+        empresaId: { type: string, format: uuid }
+        fuente:
+          type: string
+          enum: [gps, horario, no_disponible]
+        etaSegundos:
+          type: integer
+          nullable: true
+          description: Solo con fuente `gps`
+        rango:
+          type: object
+          nullable: true
+          description: Solo con fuente `horario`
+          properties:
+            minSegundos: { type: integer }
+            maxSegundos: { type: integer }
+        busetaId: { type: string, format: uuid, nullable: true }
+        mensaje:
+          type: string
+          nullable: true
+          description: Ej. "Esté pendiente de la siguiente buseta", "El servicio ya cerró"
+    LotePosiciones:
+      type: object
+      required: [posiciones]
+      properties:
+        posiciones:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            required: [numeroLateral, lat, lng, reportadaEn]
+            properties:
+              numeroLateral: { type: string, maxLength: 20 }
+              lat: { type: number, minimum: -90, maximum: 90 }
+              lng: { type: number, minimum: -180, maximum: 180 }
+              velocidadKmh: { type: number, minimum: 0, maximum: 150 }
+              rumbo: { type: number, minimum: 0, exclusiveMaximum: true, maximum: 360 }
+              reportadaEn:
+                type: string
+                format: date-time
+                description: No más de 60 s en el futuro
+    ResultadoIngesta:
+      type: object
+      required: [aceptadas, descartadas, rechazadas]
+      properties:
+        aceptadas: { type: integer, minimum: 0 }
+        descartadas:
+          type: integer
+          minimum: 0
+          description: Posiciones más antiguas que la ya guardada
+        rechazadas:
+          type: array
+          items:
+            type: object
+            required: [indice, motivo]
+            properties:
+              indice: { type: integer }
+              motivo:
+                type: string
+                enum: [buseta_desconocida, coordenadas_invalidas, fuera_de_zona, fecha_futura, fecha_invalida]
+    Lugar:
+      type: object
+      description: Exactamente una de las tres formas (coordenadas, hito o texto)
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        hitoId: { type: string, format: uuid }
+        texto: { type: string, minLength: 2, maxLength: 120 }
+    TramoViaje:
+      type: object
+      required: [tipo, minutos]
+      properties:
+        tipo:
+          type: string
+          enum: [caminata, espera, buseta]
+        minutos: { type: number }
+        servicioId: { type: string, format: uuid, nullable: true }
+        rutaNombre: { type: string, nullable: true }
+        empresaNombre: { type: string, nullable: true }
+        desde: { type: string, nullable: true, description: Nombre del paradero o punto }
+        hasta: { type: string, nullable: true }
+        distanciaM: { type: number, nullable: true }
+    OpcionViaje:
+      type: object
+      required: [tipo, tramos, tiempoTotalMin]
+      properties:
+        tipo:
+          type: string
+          enum: [directa, con_transbordo]
+        tiempoTotalMin: { type: number }
+        tramos:
+          type: array
+          items: { $ref: '#/components/schemas/TramoViaje' }
+    Aviso:
+      type: object
+      required: [id, origen, titulo, cuerpo, desde]
+      properties:
+        id: { type: string, format: uuid }
+        origen:
+          type: string
+          enum: [empresa, movilidad, aplicativo]
+        empresaId: { type: string, format: uuid, nullable: true }
+        empresaNombre: { type: string, nullable: true }
+        titulo: { type: string }
+        cuerpo: { type: string }
+        desde: { type: string, format: date-time }
+        hasta: { type: string, format: date-time, nullable: true }
+        afecta:
+          type: array
+          items:
+            type: object
+            properties:
+              rutaId: { type: string, format: uuid, nullable: true }
+              paraderoId: { type: string, format: uuid, nullable: true }
+    AvisoCrear:
+      type: object
+      required: [titulo, cuerpo]
+      properties:
+        titulo: { type: string, minLength: 1, maxLength: 120 }
+        cuerpo: { type: string, minLength: 1, maxLength: 2000, description: El máximo operativo lo da longitud_max_aviso }
+        desde: { type: string, format: date-time }
+        hasta: { type: string, format: date-time, nullable: true }
+        afecta:
+          type: array
+          items:
+            type: object
+            properties:
+              rutaId: { type: string, format: uuid }
+              paraderoId: { type: string, format: uuid }
+    Favorito:
+      type: object
+      required: [id, tipo, disponible]
+      properties:
+        id: { type: string, format: uuid }
+        tipo:
+          type: string
+          enum: [ruta, paradero]
+        rutaId: { type: string, format: uuid, nullable: true }
+        paraderoId: { type: string, format: uuid, nullable: true }
+        nombre: { type: string }
+        disponible:
+          type: boolean
+          description: false si la ruta o el paradero fue dado de baja
+    FavoritoCrear:
+      type: object
+      required: [tipo]
+      properties:
+        tipo:
+          type: string
+          enum: [ruta, paradero]
+        rutaId: { type: string, format: uuid }
+        paraderoId: { type: string, format: uuid }
+    AlertaLlegada:
+      type: object
+      required: [id, rutaId, paraderoId, sentido, distanciaAvisoM, estado, version]
+      properties:
+        id: { type: string, format: uuid }
+        rutaId: { type: string, format: uuid }
+        paraderoId: { type: string, format: uuid }
+        sentido: { $ref: '#/components/schemas/Sentido' }
+        distanciaAvisoM: { type: integer }
+        estado:
+          type: string
+          enum: [activa, notificada, desactivada]
+        ultimaNotificacionEn: { type: string, format: date-time, nullable: true }
+        version: { type: integer }
+    AlertaCrear:
+      type: object
+      required: [rutaId, paraderoId, sentido]
+      properties:
+        rutaId: { type: string, format: uuid }
+        paraderoId: { type: string, format: uuid }
+        sentido: { $ref: '#/components/schemas/Sentido' }
+        distanciaAvisoM: { type: integer, minimum: 50, maximum: 2000 }
+    Notificacion:
+      type: object
+      required: [id, titulo, cuerpo, canal, estado, creadaEn]
+      properties:
+        id: { type: string, format: uuid }
+        titulo: { type: string }
+        cuerpo: { type: string }
+        canal:
+          type: string
+          enum: [push, bandeja]
+        estado:
+          type: string
+          enum: [pendiente, enviada, fallida, leida]
+        creadaEn: { type: string, format: date-time }
+    Conductor:
+      type: object
+      required: [id, nombre, estado, version]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        codigo: { type: string, nullable: true }
+        estado: { $ref: '#/components/schemas/EstadoRegistro' }
+        version: { type: integer }
+    ConductorCrear:
+      type: object
+      required: [nombre]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        codigo: { type: string, maxLength: 20, nullable: true }
+    ConductorEditar:
+      type: object
+      required: [version]
+      properties:
+        nombre: { type: string, minLength: 2, maxLength: 120 }
+        codigo: { type: string, maxLength: 20, nullable: true }
+        estado: { $ref: '#/components/schemas/EstadoRegistro' }
+        version: { type: integer, minimum: 1 }
+    Buseta:
+      type: object
+      required: [id, numeroLateral, estado, version]
+      properties:
+        id: { type: string, format: uuid }
+        numeroLateral: { type: string }
+        placa: { type: string, nullable: true }
+        estado:
+          type: string
+          enum: [activa, fuera_servicio, baja]
+        version: { type: integer }
+    BusetaCrear:
+      type: object
+      required: [numeroLateral]
+      properties:
+        numeroLateral: { type: string, minLength: 1, maxLength: 20 }
+        placa: { type: string, maxLength: 10, nullable: true }
+    BusetaEditar:
+      type: object
+      required: [version]
+      properties:
+        numeroLateral: { type: string, minLength: 1, maxLength: 20 }
+        placa: { type: string, maxLength: 10, nullable: true }
+        estado:
+          type: string
+          enum: [activa, fuera_servicio, baja]
+        version: { type: integer, minimum: 1 }
+    Asignacion:
+      type: object
+      required: [id, servicioId, busetaId, numeroLateral, vigenteDesde, version]
+      properties:
+        id: { type: string, format: uuid }
+        servicioId: { type: string, format: uuid }
+        rutaNombre: { type: string }
+        busetaId: { type: string, format: uuid }
+        numeroLateral: { type: string }
+        conductorId: { type: string, format: uuid, nullable: true }
+        conductorNombre: { type: string, nullable: true }
+        vigenteDesde: { type: string, format: date }
+        version: { type: integer }
+    AsignacionCrear:
+      type: object
+      required: [servicioId, busetaId]
+      properties:
+        servicioId: { type: string, format: uuid }
+        busetaId: { type: string, format: uuid }
+        conductorId: { type: string, format: uuid, nullable: true }
+        confirmarCambio: { type: boolean, default: false }
+    Turno:
+      type: object
+      required: [servicioId, busetaId, horaSalida]
+      properties:
+        id: { type: string, format: uuid }
+        servicioId: { type: string, format: uuid }
+        busetaId: { type: string, format: uuid }
+        numeroLateral: { type: string }
+        conductorId: { type: string, format: uuid, nullable: true }
+        horaSalida: { $ref: '#/components/schemas/Hora' }
+        horaFinEstimada:
+          allOf:
+            - $ref: '#/components/schemas/Hora'
+          nullable: true
+        estado:
+          type: string
+          enum: [programado, cancelado]
+        nota: { type: string, nullable: true }
+    TurnoEntrada:
+      type: object
+      required: [servicioId, busetaId, horaSalida]
+      properties:
+        servicioId: { type: string, format: uuid }
+        busetaId: { type: string, format: uuid }
+        conductorId: { type: string, format: uuid, nullable: true }
+        horaSalida: { $ref: '#/components/schemas/Hora' }
+        horaFinEstimada:
+          allOf:
+            - $ref: '#/components/schemas/Hora'
+          nullable: true
+        nota: { type: string, nullable: true }
+    Rodamiento:
+      type: object
+      required: [id, fecha, estado, turnos, version]
+      properties:
+        id: { type: string, format: uuid }
+        fecha: { type: string, format: date }
+        estado:
+          type: string
+          enum: [borrador, publicado, anulado]
+        publicadoEn: { type: string, format: date-time, nullable: true }
+        turnos:
+          type: array
+          items: { $ref: '#/components/schemas/Turno' }
+        version: { type: integer }
+    Advertencia:
+      type: object
+      required: [tipo, mensaje]
+      properties:
+        tipo:
+          type: string
+          enum: [solapamiento_buseta, solapamiento_conductor, buseta_sin_asignacion]
+        mensaje: { type: string }
+        turnos:
+          type: array
+          items: { type: integer }
+          description: Posiciones (desde 0) de los turnos involucrados
+    RodamientoConAdvertencias:
+      allOf:
+        - $ref: '#/components/schemas/Rodamiento'
+        - type: object
+          required: [advertencias]
+          properties:
+            advertencias:
+              type: array
+              items: { $ref: '#/components/schemas/Advertencia' }
+    RodamientoCrear:
+      type: object
+      required: [fecha, turnos]
+      properties:
+        fecha: { type: string, format: date }
+        turnos:
+          type: array
+          minItems: 1
+          maxItems: 2000
+          items: { $ref: '#/components/schemas/TurnoEntrada' }
+    RodamientoActualizar:
+      type: object
+      required: [turnos, version]
+      properties:
+        turnos:
+          type: array
+          minItems: 1
+          maxItems: 2000
+          items: { $ref: '#/components/schemas/TurnoEntrada' }
+        version: { type: integer, minimum: 1 }
+    ResultadoImportacion:
+      type: object
+      required: [id, tipo, estado, filasTotal, filasOk, filasError, errores]
+      properties:
+        id: { type: string, format: uuid }
+        tipo: { $ref: '#/components/schemas/TipoImportacion' }
+        estado:
+          type: string
+          enum: [completada, parcial]
+        filasTotal: { type: integer }
+        filasOk: { type: integer }
+        filasError: { type: integer }
+        errores:
+          type: array
+          items:
+            type: object
+            required: [fila, columna, motivo]
+            properties:
+              fila: { type: integer, minimum: 2 }
+              columna: { type: string }
+              motivo: { type: string }
+    EstadisticasUso:
+      type: object
+      required: [sinDatos]
+      properties:
+        sinDatos: { type: boolean }
+        totalesPorTipo:
+          type: array
+          items:
+            type: object
+            required: [tipo, total]
+            properties:
+              tipo: { type: string }
+              total: { type: integer }
+        porRuta:
+          type: array
+          items:
+            type: object
+            required: [rutaId, rutaNombre, total]
+            properties:
+              rutaId: { type: string, format: uuid }
+              rutaNombre: { type: string }
+              total: { type: integer }
+        porDia:
+          type: array
+          items:
+            type: object
+            required: [dia, total]
+            properties:
+              dia: { type: string, format: date }
+              total: { type: integer }
+    Usuario:
+      type: object
+      required: [id, correo, rol, activo, version]
+      properties:
+        id: { type: string, format: uuid }
+        correo: { type: string, format: email }
+        nombre: { type: string, nullable: true }
+        rol: { $ref: '#/components/schemas/Rol' }
+        empresaId: { type: string, format: uuid, nullable: true }
+        activo: { type: boolean }
+        version: { type: integer }
+    UsuarioCrear:
+      type: object
+      required: [correo, rol]
+      properties:
+        correo: { type: string, format: email }
+        nombre: { type: string, maxLength: 120 }
+        rol: { $ref: '#/components/schemas/Rol' }
+        empresaId:
+          type: string
+          format: uuid
+          description: Obligatoria si el rol es jefe_operaciones; prohibida en los demás
+    UsuarioEditar:
+      type: object
+      required: [version]
+      properties:
+        nombre: { type: string, maxLength: 120 }
+        rol: { $ref: '#/components/schemas/Rol' }
+        empresaId: { type: string, format: uuid, nullable: true }
+        activo: { type: boolean }
+        version: { type: integer, minimum: 1 }
+    CredencialGps:
+      type: object
+      required: [id, nombre, activa, creadaEn]
+      properties:
+        id: { type: string, format: uuid }
+        nombre: { type: string }
+        activa: { type: boolean }
+        creadaEn: { type: string, format: date-time }
+        ultimoUso: { type: string, format: date-time, nullable: true }
+    Parametro:
+      type: object
+      required: [clave, valor, descripcion, version]
+      properties:
+        clave: { type: string }
+        valor:
+          oneOf:
+            - { type: number }
+            - { type: string }
+            - { type: boolean }
+            - { type: object }
+        descripcion: { type: string }
+        minimo: { type: number, nullable: true }
+        maximo: { type: number, nullable: true }
+        version: { type: integer }
