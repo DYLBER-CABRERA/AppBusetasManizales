@@ -177,3 +177,25 @@ El cliente reconecta con espera creciente (1, 2, 4, 8 s, máx. 15 s) y, mientras
 ## 6. Parámetros globales usados (tabla `parametro_global`)
 
 `radio_busqueda_m` (800), `radio_caminata_m` (500), `radio_hito_m` (300), `velocidad_default_kmh` (20), `umbral_posicion_obsoleta_s` (60), `intervalo_refresco_cliente_s` (5), `distancia_aviso_llegada_m` (300), `enfriamiento_alerta_min` (10), `umbral_desvio_m` (100), `longitud_max_aviso` (500), `max_opciones_viaje` (3), `dias_max_rodamiento_adelante` (15), `rango_max_estadisticas_dias` (365), `caja_ciudad` (provisional, validar con el mapa). Se eliminan `max_filas_excel`, `tamano_max_excel_mb`, `radio_transbordo_m` y `retencion_eventos_dias` (se descartan con el recorte de BD).
+
+## 7. Precisiones del esqueleto (B0)
+
+`contrato/openapi.json` se genera con `python backend/scripts/exportar_openapi.py` y una prueba (`test_openapi_json_publicado_esta_al_dia`) falla si se desactualiza. Todos los endpoints de este documento están declarados; **hasta que su bloque se implemente responden `501`** con `{ "error": { "codigo": "PENDIENTE", "mensaje": "...", "reintentable": false, "detalles": null } }`. Los endpoints protegidos ya responden `401 NO_AUTENTICADO` sin `Authorization`; con token responden 501 hasta que B4 verifique el JWT. Los WebSockets (`/ws/rutas/{rutaId}`, `/ws/notificaciones`) aceptan la conexión y solo contestan `"pong"` a `"ping"` (OpenAPI no describe WebSockets: el contrato es la §4).
+
+Formas fijadas al declarar los esquemas (cuando este documento no las daba; las que vienen de `referencia/openapi.yaml` se marcan):
+- `GET /salud` vive bajo el prefijo: `/api/v1/salud`. Los parámetros de ruta se llaman en el OpenAPI `ruta_id`, `paradero_id`, etc. (la URL no cambia).
+- `GET /rutas/{id}` devuelve una forma plana (rutas circulares, D-P02): `id, nombre, tipoRecorrido, esVariante, servicios[], descripcion, rutaPrincipalId, longitudM, trazado` (GeoJSON `LineString`, `[lng, lat]`), `paraderos[{orden, paraderoId, nombre, lat, lng}]`, `avisos[]`, `version`. No usa `sentidos[]` del yaml de referencia.
+- `POST /rutas` y `PUT /rutas/{id}` usan `paraderoIds` (no `sentidos[]`). `PUT` acepta `{nombre?, descripcion?, paraderoIds?, version}`.
+- `DELETE /rutas/{id}`, `DELETE /servicios/{id}` y `DELETE /paraderos/{id}` reciben `version` (obligatoria) y `confirmar` como parámetros de consulta. *Supuesto:* el contrato solo nombraba `version` para rutas; se aplica la regla general de versión optimista.
+- `GET /paraderos` (S/A) devuelve la lista de `Paradero`. `GET /empresas` (público) devuelve `[{id, nombre}]`.
+- `GET /rutas/{id}/horarios` → `{tipoDiaHoy, servicios[{servicioId, empresaId, empresaNombre, codigoPublico, estado, horarios[], tiposDiaPendientes[], version}]}`; `GET …/frecuencias` → `{servicios[{…, frecuencias[{tipoDia, franjaInicio, franjaFin, minutosMin, minutosMax, nota}], version}]}` *(yaml de referencia)*.
+- `GET /rutas/{id}/busetas` → `{seguimientoDisponible, unidadesEnServicio, calculadoEn, busetas[]}` con la forma de buseta en vivo de §3.
+- `POST /viajes/planificar`: `Lugar` = `{lat, lng}` o `{hitoId}` (el texto libre queda fuera, D-P06). Opción: `{tipo:"directa", rutaId, servicioId, paraderoOrigen, paraderoDestino, caminataMin, esperaMin, busMin, totalMin}`.
+- `POST /alertas-llegada` recibe `{rutaId, paraderoId, distanciaAvisoM?}`: no hay `sentido` porque todas las rutas son circulares (la BD guarda `circular`).
+- `POST /avisos`: `{tipoCambio?, titulo, cuerpo, rutaIds[], paraderoIds[], desde?, hasta?}`; respuesta con `id, origen, empresaId, empresaNombre, titulo, cuerpo, desde, hasta, rutaIds, paraderoIds`.
+- `GET /estadisticas/uso` → `{sinDatos, totalesPorTipo[], porRuta[], porDia[]}` *(yaml de referencia)*.
+- Rodamiento: `{rodamientoId, fecha, estado, version, turnos[], advertencias[{codigo, mensaje, turnoIds}]}`; `PUT` acepta `confirmarReemplazo`; `publicar` y `anular` reciben `{version}`.
+- `POST /admin/empresas/{id}/credenciales-gps` recibe `{nombre}` y devuelve la credencial más `clave` (única vez). `PUT /admin/parametros/{clave}` recibe `{valor, version}`.
+- `POST /demo/escenarios` recibe `{tipo, numeroLateral?, empresaId?, duracionS?, hora?, factor?, activo?}` y devuelve el mismo `EstadoDemo` de `GET /demo/estado` (`{relojSimulado, factor, busetas[{numeroLateral, empresa, emitiendo, ultimaPosicion}]}`).
+
+`tipoCambio` de los avisos (`cierre|desvio|obra|condicion`, opcional) se persiste en la columna `aviso.tipo_cambio` (text, nullable, con restricción a esos valores) y se devuelve en la respuesta del aviso. El caso de uso que lo escribe llega en B4/B5; en B0 el endpoint solo declara el campo.

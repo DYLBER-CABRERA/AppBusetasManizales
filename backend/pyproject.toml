@@ -1,0 +1,44 @@
+[project]
+name = "busetasapp-backend"
+version = "0.1.0"
+description = "BusetasApp Manizales - API, tiempo real, simulador de GPS y bot de Telegram (prototipo de clase, datos de ejemplo)"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.162.0",
+  "uvicorn[standard]==0.54.0",
+  "pydantic==2.14.1",
+  "pydantic-settings==2.16.1",
+  "psycopg[binary,pool]==3.3.6",
+  "httpx==0.28.1",
+  "PyJWT[crypto]==2.15.1",
+  "python-telegram-bot==22.8",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.2.0",
+  "pytest-asyncio==1.4.1",
+  "ruff==0.17.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "scripts"]
+testpaths = ["pruebas"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+  "integracion: requiere la base de datos de desarrollo (no corre por defecto)",
+]
+addopts = "-m 'not integracion'"
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+src = ["src", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B008"]  # Depends/Query/Security como valor por defecto es el patrón de FastAPI
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["E501"]  # scripts con SQL en línea

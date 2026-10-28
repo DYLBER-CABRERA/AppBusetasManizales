@@ -60,7 +60,8 @@ Datos de campo (`campo-*.md`), por servicio:
 | 1520 | Sideral | El Cable por la mañana, Centro por la tarde | Ficticio (mockups) |
 | 1544 | Sideral | El Cable | Ficticio |
 | 1388 | Sideral | Centro | Ficticio |
-| 3101, 3102 | Socobuses | La Enea | Ficticios |
+| 3101 | Socobuses | La Enea | Ficticio |
+| 3102 | Socobuses | Villamaría por la mañana (04:30–14:00), La Enea por la tarde (14:00–23:30) | Ficticio. Decisión del equipo: da una buseta con GPS a Socobuses · Villamaría |
 | **2683** | Serviturismo | La Enea | **Real** (campo) |
 | **2676** | Serviturismo | Villamaría | **Real** (campo) |
 
