@@ -1330,7 +1330,8 @@
     "orden": 1,
     "nombre": "Terminal",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 0.0
    },
    "geometry": {
     "type": "Point",
@@ -1347,7 +1348,8 @@
     "orden": 2,
     "nombre": "Paradero Villamaría 1",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 782.9
    },
    "geometry": {
     "type": "Point",
@@ -1364,7 +1366,8 @@
     "orden": 3,
     "nombre": "Paradero Villamaría 2",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 1554.7
    },
    "geometry": {
     "type": "Point",
@@ -1381,7 +1384,8 @@
     "orden": 4,
     "nombre": "Paradero Villamaría 3",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 2353.3
    },
    "geometry": {
     "type": "Point",
@@ -1398,7 +1402,8 @@
     "orden": 5,
     "nombre": "Villamaría",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 3047.5
    },
    "geometry": {
     "type": "Point",
@@ -1415,7 +1420,8 @@
     "orden": 6,
     "nombre": "Paradero Villamaría 4",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 3894.7
    },
    "geometry": {
     "type": "Point",
@@ -1432,7 +1438,8 @@
     "orden": 7,
     "nombre": "Paradero Villamaría 5",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 4694.5
    },
    "geometry": {
     "type": "Point",
@@ -1449,7 +1456,8 @@
     "orden": 8,
     "nombre": "Paradero Villamaría 6",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 5471.8
    },
    "geometry": {
     "type": "Point",
@@ -1466,7 +1474,8 @@
     "orden": 9,
     "nombre": "Paradero Villamaría 7",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 6244.4
    },
    "geometry": {
     "type": "Point",
@@ -1483,7 +1492,8 @@
     "orden": 10,
     "nombre": "Paradero Villamaría 8",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 7028.7
    },
    "geometry": {
     "type": "Point",

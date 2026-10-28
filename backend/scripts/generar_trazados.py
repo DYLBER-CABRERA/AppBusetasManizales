@@ -61,12 +61,14 @@ def elegir_paraderos(linea: list[list[float]], hitos: list[dict]) -> list[dict]:
     acc = acumuladas(linea)
     largo = acc[-1]
 
-    def avance(lng: float, lat: float) -> float:
-        i = min(range(len(linea)), key=lambda k: haversine_m((lng, lat), tuple(linea[k])))
-        return acc[i]
-
-    fijos = [{"nombre": h["nombre"], "lat": h["lat"], "lng": h["lng"], "avance": avance(h["lng"], h["lat"]), "hito": True}
-             for h in hitos]
+    # Los hitos van en orden de recorrido: cada uno se ubica en el primer vértice cercano a partir del anterior,
+    # así un hito no cae en el tramo equivocado cuando la ruta repite calles (ida y vuelta por la misma vía).
+    fijos = []
+    previo = 0
+    for h in hitos:
+        i = min(range(previo, len(linea)), key=lambda k: haversine_m((h["lng"], h["lat"]), tuple(linea[k])))
+        previo = i
+        fijos.append({"nombre": h["nombre"], "lat": h["lat"], "lng": h["lng"], "avance": acc[i], "hito": True})
     espaciado = float(ESPACIADO_M)
     for _ in range(30):
         extra = []
@@ -113,7 +115,8 @@ def main() -> int:
                     p["nombre"] = f"Paradero {nombre} {contador}"
                 features.append({"type": "Feature",
                                  "properties": {"tipo": "paradero", "orden": orden, "nombre": p["nombre"],
-                                                "ficticio": True, "hito": p["hito"]},
+                                                "ficticio": True, "hito": p["hito"],
+                                                "avance_m": round(p["avance"], 1)},
                                  "geometry": {"type": "Point", "coordinates": [p["lng"], p["lat"]]}})
             salida = SEMILLAS / "trazados" / f"{slug}.geojson"
             salida.write_text(json.dumps({"type": "FeatureCollection", "features": features},

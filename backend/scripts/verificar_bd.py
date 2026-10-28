@@ -30,7 +30,7 @@ TABLAS_CONSERVADAS = (
 )
 FUNCIONES = (
     "normalizar_texto", "rutas_cercanas", "paraderos_cercanos", "paradero_mas_cercano_a_ruta", "rutas_por_hito",
-    "progreso_en_ruta", "progreso_paradero", "turno_vigente", "guardar_posicion", "reemplazar_paraderos_de_ruta",
+    "progreso_en_ruta", "progresos_paraderos_ruta", "progreso_paradero", "turno_vigente", "guardar_posicion", "reemplazar_paraderos_de_ruta",
     "dar_de_baja_ruta", "estadisticas_uso",
 )
 
@@ -58,8 +58,13 @@ class Verificador:
 
     def comprobar(self, nombre: str, fn: Callable[[], str]) -> None:
         try:
-            with self.conn.transaction():
-                detalle = fn()
+            detalle = ""
+            try:
+                with self.conn.transaction():  # savepoint: cada verificacion se revierte siempre
+                    detalle = fn()
+                    raise Revertir
+            except Revertir:
+                pass
             self.resultados.append(("OK", nombre, detalle))
         except Saltada as e:
             self.resultados.append(("SALTADA", nombre, str(e)))
@@ -146,64 +151,80 @@ def ejecutar(v: Verificador) -> None:
             p0, d0, _ = c.execute("select progreso_m, desvio_m, longitud_m from progreso_en_ruta(%s,'circular',%s,%s)",
                                   (ruta_id, *primero)).fetchone()
             assert min(p0, longitud - p0) < 5 and d0 < 5, f"{nombre}: el punto de inicio no proyecta en 0/L (progreso {p0:.0f} de {longitud:.0f})"
-            progresos = []
-            for lat, lng in c.execute("select st_y(p.ubicacion::geometry), st_x(p.ubicacion::geometry) from ruta_paradero rp "
-                                      "join paradero p on p.id=rp.paradero_id where rp.ruta_id=%s order by rp.orden", (ruta_id,)):
-                prog, desv, _ = c.execute("select progreso_m, desvio_m, longitud_m from progreso_en_ruta(%s,'circular',%s,%s)",
-                                          (ruta_id, lat, lng)).fetchone()
-                assert -1 <= prog <= longitud + 1, f"{nombre}: progreso fuera de [0, L]"
-                progresos.append((prog, desv))
-            if any(b[0] + 50 < a[0] for a, b in zip(progresos, progresos[1:], strict=False)):
-                avisos.append(f"{nombre}: el progreso de los paraderos no crece en orden (trazado que repite calles; revisar el GeoJSON)")
-            if max(d for _, d in progresos) > 100:
-                avisos.append(f"{nombre}: algún paradero queda a más de 100 m del trazado")
-            detalle.append(f"{nombre} L={longitud / 1000:.1f} km")
+            # Progreso de los paraderos EN SECUENCIA por orden (progresos_paraderos_ruta): nunca retrocede.
+            filas = c.execute("select orden, paradero_id, progreso_m from progresos_paraderos_ruta(%s,'circular') order by orden", (ruta_id,)).fetchall()
+            n_paradas = v.uno("select count(*) from ruta_paradero where ruta_id=%s and sentido='circular'", (ruta_id,))
+            assert len(filas) == n_paradas and n_paradas >= 6, f"{nombre}: {len(filas)} de {n_paradas} paraderos con progreso"
+            progresos = [f[2] for f in filas]
+            assert all(0 <= p <= longitud + 1 for p in progresos), f"{nombre}: progreso fuera de [0, L]"
+            assert all(b >= a for a, b in zip(progresos, progresos[1:], strict=False)), f"{nombre}: el progreso secuencial retrocede"
+            for _, pid, prog in filas:
+                via_paradero = v.uno("select progreso_m from progreso_paradero(%s,'circular',%s)", (ruta_id, pid))
+                assert abs(via_paradero - prog) < 1e-6, f"{nombre}: progreso_paradero no coincide con el secuencial"
+            # Desvio de cada paradero respecto del trazado y cuantos caen en tramos repetidos
+            ubicaciones = c.execute("select st_y(p.ubicacion::geometry), st_x(p.ubicacion::geometry) from ruta_paradero rp "
+                                    "join paradero p on p.id=rp.paradero_id where rp.ruta_id=%s order by rp.orden", (ruta_id,)).fetchall()
+            en_tramo_repetido, desvios = 0, []
+            for (_, _pid, prog), (lat, lng) in zip(filas, ubicaciones, strict=True):
+                cercano, desv, _ = c.execute("select progreso_m, desvio_m, longitud_m from progreso_en_ruta(%s,'circular',%s,%s)",
+                                             (ruta_id, lat, lng)).fetchone()
+                desvios.append(desv)
+                if abs(cercano - prog) > 100:
+                    en_tramo_repetido += 1
+            if max(desvios) > 100:
+                avisos.append(f"{nombre}: algun paradero queda a mas de 100 m del trazado ({max(desvios):.0f} m)")
+            detalle.append(f"{nombre} L={longitud / 1000:.1f} km, {n_paradas} paraderos en orden"
+                           + (f", {en_tramo_repetido} en tramo repetido resuelto por orden" if en_tramo_repetido else ""))
         if avisos:
             raise Aviso("; ".join(avisos))
-        return "progreso_en_ruta coherente en circular: " + ", ".join(detalle)
+        return "progreso en circular coherente: " + "; ".join(detalle)
 
-    v.comprobar("progreso_en_ruta en rutas circulares", progreso_circular)
+    v.comprobar("progreso_en_ruta / progresos_paraderos_ruta en circulares", progreso_circular)
 
-    def ids_para_turnos() -> tuple[Any, ...]:
-        hay_semillas()
-        fila = c.execute(
-            "select e.id, b.id, b.numero_lateral, s1.id, s2.id from empresa e "
-            "join buseta b on b.empresa_id=e.id and b.numero_lateral='1520' "
-            "join servicio_ruta s1 on s1.empresa_id=e.id and s1.ruta_id=(select id from ruta where nombre='El Cable') "
-            "join servicio_ruta s2 on s2.empresa_id=e.id and s2.ruta_id=(select id from ruta where nombre='Centro') "
-            "where e.nombre='Sideral'").fetchone()
-        if not fila:
-            raise Saltada("faltan Sideral/1520/El Cable/Centro en la semilla")
-        return fila
+    def crear_datos_propios() -> dict[str, Any]:
+        """Datos de prueba propios (no dependen de las semillas ni de la fecha de hoy); el savepoint los revierte."""
+        ea = v.uno("insert into empresa (nombre) values ('zz verificar A') returning id")
+        eb = v.uno("insert into empresa (nombre) values ('zz verificar B') returning id")
+        r1 = v.uno("insert into ruta (nombre, tipo_recorrido) values ('zz Ruta 1', 'circular') returning id")
+        r2 = v.uno("insert into ruta (nombre, tipo_recorrido) values ('zz Ruta 2', 'circular') returning id")
+        return {
+            "empresa_a": ea, "empresa_b": eb, "ruta_1": r1,
+            "servicio_1": v.uno("insert into servicio_ruta (ruta_id, empresa_id) values (%s,%s) returning id", (r1, ea)),
+            "servicio_2": v.uno("insert into servicio_ruta (ruta_id, empresa_id) values (%s,%s) returning id", (r2, ea)),
+            "buseta_a": v.uno("insert into buseta (empresa_id, numero_lateral) values (%s,'9001') returning id", (ea,)),
+            "buseta_b": v.uno("insert into buseta (empresa_id, numero_lateral) values (%s,'9002') returning id", (eb,)),
+            "paradero": v.uno("insert into paradero (nombre, ubicacion) values ('zz Paradero', "
+                              "st_setsrid(st_makepoint(-75.51, 5.07), 4326)::geography) returning id"),
+        }
 
     def turno_vigente() -> str:
-        empresa, buseta, lateral, cable, centro = ids_para_turnos()
-        rid = v.uno("insert into rodamiento (empresa_id, fecha, estado) values (%s, %s, 'publicado') returning id", (empresa, FECHA_PRUEBA))
-        for servicio, a, b in ((cable, "05:00", "13:00"), (centro, "13:00", "22:00")):
+        d = crear_datos_propios()
+        rid = v.uno("insert into rodamiento (empresa_id, fecha, estado) values (%s, %s, 'publicado') returning id", (d["empresa_a"], FECHA_PRUEBA))
+        for servicio, a, b in ((d["servicio_1"], "05:00", "13:00"), (d["servicio_2"], "13:00", "22:00")):
             c.execute("insert into turno (rodamiento_id, servicio_ruta_id, buseta_id, hora_salida, hora_fin_estimada) values (%s,%s,%s,%s,%s)",
-                      (rid, servicio, buseta, a, b))
+                      (rid, servicio, d["buseta_a"], a, b))
 
         def en(hora: str) -> Any:
             instante = datetime.fromisoformat(f"{FECHA_PRUEBA}T{hora}").replace(tzinfo=ZONA_BOGOTA)
-            return v.uno("select turno_vigente(%s, %s, %s)", (empresa, lateral, instante))
+            return v.uno("select turno_vigente(%s, %s, %s)", (d["empresa_a"], "9001", instante))
 
-        assert en("06:00:00") == cable, "a las 06:00 debía ser El Cable"
-        assert en("14:00:00") == centro, "a las 14:00 debía ser Centro (la buseta cambia de ruta)"
-        assert en("03:00:00") is None and en("22:30:00") is None, "fuera de turno debía devolver null"
-        return "1520: 06:00 -> El Cable, 14:00 -> Centro, 03:00 y 22:30 -> sin turno"
+        assert en("06:00:00") == d["servicio_1"], "a las 06:00 debia ser el servicio 1"
+        assert en("14:00:00") == d["servicio_2"], "a las 14:00 debia ser el servicio 2 (la buseta cambia de ruta)"
+        assert en("03:00:00") is None and en("22:30:00") is None, "fuera de turno debia devolver null"
+        return "buseta con dos turnos: 06:00 -> ruta 1, 14:00 -> ruta 2, 03:00 y 22:30 -> sin turno"
 
     v.comprobar("turno_vigente (buseta con dos turnos)", turno_vigente)
 
     def guardar_posicion() -> str:
-        _, buseta, _, cable, _ = ids_para_turnos()
-        t = datetime.fromisoformat("2099-01-05T10:00:00").replace(tzinfo=ZONA_BOGOTA)
+        d = crear_datos_propios()
+        t = datetime.fromisoformat(f"{FECHA_PRUEBA}T10:00:00").replace(tzinfo=ZONA_BOGOTA)
 
         def guardar(momento: datetime) -> Any:
-            return v.uno("select guardar_posicion(%s,%s,5.0675,-75.5100,30,90,%s)", (buseta, cable, momento))
+            return v.uno("select guardar_posicion(%s,%s,5.0675,-75.5100,30,90,%s)", (d["buseta_a"], d["servicio_1"], momento))
 
-        assert guardar(t) is True, "la primera posición debía aceptarse"
-        assert guardar(t - timedelta(seconds=10)) is False, "una posición más vieja debía descartarse"
-        assert guardar(t + timedelta(seconds=3)) is True, "una posición más nueva debía aceptarse"
+        assert guardar(t) is True, "la primera posicion debia aceptarse"
+        assert guardar(t - timedelta(seconds=10)) is False, "una posicion mas vieja debia descartarse"
+        assert guardar(t + timedelta(seconds=3)) is True, "una posicion mas nueva debia aceptarse"
         return "acepta, descarta la antigua y acepta la nueva"
 
     v.comprobar("guardar_posicion", guardar_posicion)
@@ -213,33 +234,30 @@ def ejecutar(v: Verificador) -> None:
         b = v.uno("insert into ruta (nombre, ruta_principal_id) values ('Prueba B', %s) returning id", (a,))
         c.execute("insert into ruta (nombre, ruta_principal_id) values ('Prueba C', %s)", (b,))
 
-    v.debe_fallar("Violación: variante de una variante", ("23514",), variante_de_variante)
+    v.debe_fallar("Violacion: variante de una variante", ("23514",), variante_de_variante)
 
     def franjas_solapadas() -> None:
-        s = v.uno("select id from servicio_ruta where estado<>'baja' limit 1")
-        if not s:
-            raise Saltada("sin servicios en la semilla")
-        c.execute("insert into frecuencia (servicio_ruta_id, tipo_dia, inicio_minuto, fin_minuto, minutos_min, minutos_max) "
-                  "values (%s,'sabado',480,600,5,5)", (s,))
-        c.execute("insert into frecuencia (servicio_ruta_id, tipo_dia, inicio_minuto, fin_minuto, minutos_min, minutos_max) "
-                  "values (%s,'sabado',540,660,5,5)", (s,))
+        d = crear_datos_propios()
+        for inicio, fin in ((480, 600), (540, 660)):
+            c.execute("insert into frecuencia (servicio_ruta_id, tipo_dia, inicio_minuto, fin_minuto, minutos_min, minutos_max) "
+                      "values (%s,'sabado',%s,%s,5,5)", (d["servicio_1"], inicio, fin))
 
-    # Si la semilla está vacía, `Saltada` se propaga como SALTADA (no como violación).
-    v.debe_fallar("Violación: franjas de frecuencia solapadas", ("23P01",), franjas_solapadas)
+    v.debe_fallar("Violacion: franjas de frecuencia solapadas", ("23P01",), franjas_solapadas)
 
     def turno_otra_empresa() -> None:
-        empresa, _, _, cable, _ = ids_para_turnos()
-        ajena = v.uno("select id from buseta where empresa_id<>%s limit 1", (empresa,))
-        rid = v.uno("insert into rodamiento (empresa_id, fecha) values (%s, %s) returning id", (empresa, FECHA_PRUEBA_2))
-        c.execute("insert into turno (rodamiento_id, servicio_ruta_id, buseta_id, hora_salida) values (%s,%s,%s,'06:00')", (rid, cable, ajena))
+        d = crear_datos_propios()
+        rid = v.uno("insert into rodamiento (empresa_id, fecha) values (%s, %s) returning id", (d["empresa_a"], FECHA_PRUEBA_2))
+        c.execute("insert into turno (rodamiento_id, servicio_ruta_id, buseta_id, hora_salida) values (%s,%s,%s,'06:00')",
+                  (rid, d["servicio_1"], d["buseta_b"]))
 
-    v.debe_fallar("Violación: turno con buseta de otra empresa", ("23514",), turno_otra_empresa)
+    v.debe_fallar("Violacion: turno con buseta de otra empresa", ("23514",), turno_otra_empresa)
 
     def alerta_sin_dueno() -> None:
-        ruta, paradero = c.execute("select ruta_id, paradero_id from ruta_paradero limit 1").fetchone()
-        c.execute("insert into alerta_llegada (ruta_id, paradero_id, sentido, distancia_aviso_m) values (%s,%s,'circular',300)", (ruta, paradero))
+        d = crear_datos_propios()
+        c.execute("insert into alerta_llegada (ruta_id, paradero_id, sentido, distancia_aviso_m) values (%s,%s,'circular',300)",
+                  (d["ruta_1"], d["paradero"]))
 
-    v.debe_fallar("Violación: alerta sin usuario ni chat de Telegram", ("23514",), alerta_sin_dueno)
+    v.debe_fallar("Violacion: alerta sin usuario ni chat de Telegram", ("23514",), alerta_sin_dueno)
 
     def sabado_sideral() -> str:
         hay_semillas()

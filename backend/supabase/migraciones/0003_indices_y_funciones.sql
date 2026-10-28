@@ -96,12 +96,49 @@ language sql stable as $$
   where t.ruta_id = p_ruta_id and t.sentido = p_sentido;
 $$;
 
+-- Progreso de cada paradero de una ruta, calculado EN SECUENCIA por `orden` (decisión del equipo, opción B).
+-- Un trazado circular puede repetir calles (ida y vuelta por la misma vía): la proyección al punto más cercano es
+-- ambigua en esos tramos. Aquí cada paradero se busca solo desde el progreso del anterior hasta el final del
+-- circuito, así el progreso nunca retrocede y respeta el orden de recorrido.
+create or replace function progresos_paraderos_ruta(p_ruta_id uuid, p_sentido sentido_ruta)
+returns table (orden integer, paradero_id uuid, progreso_m double precision, longitud_m double precision)
+language sql stable as $$
+  with recursive t as (
+    select rt.trazado::geometry as g, rt.longitud_m as l
+    from ruta_trazado rt where rt.ruta_id = p_ruta_id and rt.sentido = p_sentido
+  ), paradas as (
+    select rp.orden as ord, rp.paradero_id as pid, p.ubicacion::geometry as pt,
+           row_number() over (order by rp.orden) as n
+    from ruta_paradero rp join paradero p on p.id = rp.paradero_id
+    where rp.ruta_id = p_ruta_id and rp.sentido = p_sentido
+  ), seq as (
+    select pa.n, pa.ord, pa.pid, st_linelocatepoint(t.g, pa.pt) as frac
+    from paradas pa cross join t
+    where pa.n = 1
+    union all
+    select pa.n, pa.ord, pa.pid,
+           s.frac + (1 - s.frac) * st_linelocatepoint(st_linesubstring(t.g, least(s.frac, 0.9999999), 1), pa.pt)
+    from seq s
+    join paradas pa on pa.n = s.n + 1
+    cross join t
+  )
+  select seq.ord, seq.pid, seq.frac * t.l, t.l from seq cross join t order by seq.ord;
+$$;
+
+-- Progreso de un paradero en la ruta: el calculado en secuencia; si el paradero no está en la ruta, el más cercano.
 create or replace function progreso_paradero(p_ruta_id uuid, p_sentido sentido_ruta, p_paradero_id uuid)
 returns table (progreso_m double precision, longitud_m double precision)
 language sql stable as $$
-  select st_linelocatepoint(t.trazado::geometry, p.ubicacion::geometry) * t.longitud_m, t.longitud_m
-  from ruta_trazado t join paradero p on p.id = p_paradero_id
-  where t.ruta_id = p_ruta_id and t.sentido = p_sentido;
+  select x.prog, x.lon from (
+    select s.progreso_m as prog, s.longitud_m as lon, 0 as pref, s.orden as ord
+    from progresos_paraderos_ruta(p_ruta_id, p_sentido) s where s.paradero_id = p_paradero_id
+    union all
+    select st_linelocatepoint(t.trazado::geometry, p.ubicacion::geometry) * t.longitud_m, t.longitud_m, 1, 0
+    from ruta_trazado t join paradero p on p.id = p_paradero_id
+    where t.ruta_id = p_ruta_id and t.sentido = p_sentido
+  ) x
+  order by x.pref, x.ord
+  limit 1;
 $$;
 
 -- Servicio de ruta que cumple una buseta en un instante, según el rodamiento publicado

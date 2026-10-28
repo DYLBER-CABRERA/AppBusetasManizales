@@ -4110,7 +4110,8 @@
     "orden": 1,
     "nombre": "Fundadores",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 0.0
    },
    "geometry": {
     "type": "Point",
@@ -4127,7 +4128,8 @@
     "orden": 2,
     "nombre": "Carrera 23",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 1764.5
    },
    "geometry": {
     "type": "Point",
@@ -4144,7 +4146,8 @@
     "orden": 3,
     "nombre": "Paradero La Enea 1",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 3836.4
    },
    "geometry": {
     "type": "Point",
@@ -4161,7 +4164,8 @@
     "orden": 4,
     "nombre": "Paradero La Enea 2",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 5710.8
    },
    "geometry": {
     "type": "Point",
@@ -4178,7 +4182,8 @@
     "orden": 5,
     "nombre": "Paradero La Enea 3",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 7618.0
    },
    "geometry": {
     "type": "Point",
@@ -4195,7 +4200,8 @@
     "orden": 6,
     "nombre": "Paradero La Enea 4",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 9533.7
    },
    "geometry": {
     "type": "Point",
@@ -4212,7 +4218,8 @@
     "orden": 7,
     "nombre": "La Enea",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 12247.0
    },
    "geometry": {
     "type": "Point",
@@ -4229,7 +4236,8 @@
     "orden": 8,
     "nombre": "Paradero La Enea 5",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 13358.7
    },
    "geometry": {
     "type": "Point",
@@ -4246,7 +4254,8 @@
     "orden": 9,
     "nombre": "Paradero La Enea 6",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 15177.3
    },
    "geometry": {
     "type": "Point",
@@ -4263,7 +4272,8 @@
     "orden": 10,
     "nombre": "Paradero La Enea 7",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 17164.0
    },
    "geometry": {
     "type": "Point",
@@ -4280,7 +4290,8 @@
     "orden": 11,
     "nombre": "Paradero La Enea 8",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 19078.3
    },
    "geometry": {
     "type": "Point",
@@ -4297,7 +4308,8 @@
     "orden": 12,
     "nombre": "Paradero La Enea 9",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 20985.7
    },
    "geometry": {
     "type": "Point",

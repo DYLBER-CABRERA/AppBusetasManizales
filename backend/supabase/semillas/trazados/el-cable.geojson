@@ -2966,7 +2966,8 @@
     "orden": 1,
     "nombre": "Terminal",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 0.0
    },
    "geometry": {
     "type": "Point",
@@ -2983,7 +2984,8 @@
     "orden": 2,
     "nombre": "Paradero El Cable 1",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 1529.8
    },
    "geometry": {
     "type": "Point",
@@ -3000,7 +3002,8 @@
     "orden": 3,
     "nombre": "Carrera 23",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 3619.2
    },
    "geometry": {
     "type": "Point",
@@ -3017,7 +3020,8 @@
     "orden": 4,
     "nombre": "Fundadores",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 4160.8
    },
    "geometry": {
     "type": "Point",
@@ -3034,7 +3038,8 @@
     "orden": 5,
     "nombre": "Paradero El Cable 2",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 6093.1
    },
    "geometry": {
     "type": "Point",
@@ -3051,7 +3056,8 @@
     "orden": 6,
     "nombre": "El Cable",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 8062.7
    },
    "geometry": {
     "type": "Point",
@@ -3068,7 +3074,8 @@
     "orden": 7,
     "nombre": "Paradero El Cable 3",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 9162.2
    },
    "geometry": {
     "type": "Point",
@@ -3085,7 +3092,8 @@
     "orden": 8,
     "nombre": "Paradero El Cable 4",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 10679.6
    },
    "geometry": {
     "type": "Point",
@@ -3102,7 +3110,8 @@
     "orden": 9,
     "nombre": "Paradero El Cable 5",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 12202.5
    },
    "geometry": {
     "type": "Point",

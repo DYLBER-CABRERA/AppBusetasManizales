@@ -2038,7 +2038,8 @@
     "orden": 1,
     "nombre": "Terminal",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 0.0
    },
    "geometry": {
     "type": "Point",
@@ -2055,7 +2056,8 @@
     "orden": 2,
     "nombre": "Paradero Centro 1",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 983.2
    },
    "geometry": {
     "type": "Point",
@@ -2072,7 +2074,8 @@
     "orden": 3,
     "nombre": "Paradero Centro 2",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 1931.0
    },
    "geometry": {
     "type": "Point",
@@ -2089,7 +2092,8 @@
     "orden": 4,
     "nombre": "Paradero Centro 3",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 2926.8
    },
    "geometry": {
     "type": "Point",
@@ -2106,7 +2110,8 @@
     "orden": 5,
     "nombre": "Catedral",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 3984.0
    },
    "geometry": {
     "type": "Point",
@@ -2123,7 +2128,8 @@
     "orden": 6,
     "nombre": "Parque de Caldas",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 4491.7
    },
    "geometry": {
     "type": "Point",
@@ -2140,7 +2146,8 @@
     "orden": 7,
     "nombre": "Fundadores",
     "ficticio": true,
-    "hito": true
+    "hito": true,
+    "avance_m": 4742.8
    },
    "geometry": {
     "type": "Point",
@@ -2157,7 +2164,8 @@
     "orden": 8,
     "nombre": "Paradero Centro 4",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 5855.6
    },
    "geometry": {
     "type": "Point",
@@ -2174,7 +2182,8 @@
     "orden": 9,
     "nombre": "Paradero Centro 5",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 6835.6
    },
    "geometry": {
     "type": "Point",
@@ -2191,7 +2200,8 @@
     "orden": 10,
     "nombre": "Paradero Centro 6",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 7817.4
    },
    "geometry": {
     "type": "Point",
@@ -2208,7 +2218,8 @@
     "orden": 11,
     "nombre": "Paradero Centro 7",
     "ficticio": true,
-    "hito": false
+    "hito": false,
+    "avance_m": 8790.6
    },
    "geometry": {
     "type": "Point",
