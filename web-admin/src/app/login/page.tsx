@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { BannerEjemplo } from "@/componentes/BannerEjemplo";
+import { registrarPerfil } from "@/lib/contexto-empresa";
 import { api, consultar } from "@/lib/api";
 import { cerrarSesion, correoSesionEjemplo, hayCredencialesSupabase, iniciarSesion, rutaInicial } from "@/lib/auth";
 import { PERFILES_EJEMPLO } from "@/lib/mocks";
@@ -42,6 +43,7 @@ export default function Login() {
         setError("Esta aplicación es para el personal de gestión. Los pasajeros usan la app móvil o Telegram.");
         return;
       }
+      registrarPerfil(perfil);
       cliente.setQueryData(["yo"], perfil);
       router.replace(rutaInicial(perfil.rol));
     } catch (e) {

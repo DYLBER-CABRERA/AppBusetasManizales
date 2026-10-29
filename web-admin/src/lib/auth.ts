@@ -1,3 +1,4 @@
+import { olvidarEmpresa } from "./contexto-empresa";
 import { entorno } from "./entorno";
 import { supabaseNavegador } from "./supabase";
 import type { components } from "./tipos-api";
@@ -59,6 +60,7 @@ export async function iniciarSesion(correo: string, contrasena: string): Promise
 }
 
 export async function cerrarSesion(): Promise<void> {
+  olvidarEmpresa();
   await supabaseNavegador()?.auth.signOut();
   document.cookie = `${COOKIE_MOCK}=; path=/; max-age=0`;
 }

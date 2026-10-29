@@ -37,3 +37,10 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **`src/proxy.ts` en vez de `src/middleware.ts`:** Next 16 renombró el archivo. Solo exige que exista sesión (cookie de Supabase); el rol lo decide el backend vía `GET /yo` y lo aplica el layout `(panel)`.
 - **Modo de ejemplo (PENDIENTE, quitar al integrar):** con `NEXT_PUBLIC_USAR_MOCKS=true` el cliente de API devuelve datos de `src/lib/mocks.ts` (doc 01 §2 y §5) cuando el backend responde 501 o no hay red; sin variables de Supabase el login acepta las cuentas del doc 01 §5 sin verificar contraseña (cookie `busetas_sesion_ejemplo`, solo en el navegador; el backend nunca la reconoce).
 - **Tipos:** `src/lib/tipos-api.d.ts` se genera con `npm run tipos` desde `contrato/openapi.json`; no se edita a mano.
+
+## 2026-10-28 · web-admin-dev · W1
+
+- **Selector de empresa del administrador** en `/jefe/*` (`src/app/(panel)/jefe/layout.tsx`): solo visible para el rol `administrador` (el rol sale de `GET /yo`). Agrega `empresaId` como parámetro de consulta a `/mis-servicios`, `/busetas`, `/conductores` y `/rodamientos`. Vive en memoria y se borra al cerrar sesión; el jefe nunca lo envía. `PENDIENTE`: aún no está en `contrato/openapi.json`.
+- **Servidor de ejemplo del jefe** (`src/lib/mocks-jefe.ts`, `PENDIENTE`, quitar al integrar): replica versión, reemplazo, solapamientos y publicar mientras el backend responda 501; usa localStorage para probar el 409 con dos pestañas.
+- **Asignar:** Fin estimado es obligatorio en el formulario (la API lo admite vacío) para que se puedan detectar solapamientos. Un turno con la misma ruta y hora de salida se reemplaza, no se duplica.
+- **Rodamiento publicado:** se muestra de solo lectura. Anular y editar uno publicado quedan `PENDIENTE(decisión)`.

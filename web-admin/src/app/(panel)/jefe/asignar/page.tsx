@@ -1,5 +1,11 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { Suspense } from "react";
+import { Esqueleto } from "@/componentes/Esqueleto";
+import { PantallaAsignar } from "@/componentes/jefe/PantallaAsignar";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Asignar buseta y conductor" bloque="W1" />;
+  return (
+    <Suspense fallback={<Esqueleto filas={5} />}>
+      <PantallaAsignar />
+    </Suspense>
+  );
 }

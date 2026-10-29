@@ -1,5 +1,11 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { Suspense } from "react";
+import { Esqueleto } from "@/componentes/Esqueleto";
+import { PantallaRodamiento } from "@/componentes/jefe/PantallaRodamiento";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Rodamiento" bloque="W1" />;
+  return (
+    <Suspense fallback={<Esqueleto filas={5} />}>
+      <PantallaRodamiento />
+    </Suspense>
+  );
 }

@@ -1,5 +1,6 @@
 import createClient, { type Middleware } from "openapi-fetch";
 import { correoSesionEjemplo, obtenerToken } from "./auth";
+import { empresaParaApi } from "./contexto-empresa";
 import { entorno } from "./entorno";
 import { ErrorApi, errorDeRed, errorDesdeRespuesta } from "./errores";
 import type { paths } from "./tipos-api";
@@ -15,9 +16,25 @@ const adjuntarJwt: Middleware = {
   },
 };
 
+// PENDIENTE(decisión): el contrato publicado aún no declara `empresaId` en los endpoints del jefe.
+// Acordado: parámetro opcional, válido solo para el administrador (BR-07). Mientras no esté en
+// contrato/openapi.json se agrega aquí como parámetro de consulta; el jefe nunca lo envía.
+const ENDPOINTS_DEL_JEFE = ["/api/v1/mis-servicios", "/api/v1/busetas", "/api/v1/conductores", "/api/v1/rodamientos"];
+
+const adjuntarEmpresa: Middleware = {
+  onRequest({ request, schemaPath }) {
+    const empresaId = empresaParaApi();
+    if (!empresaId || !ENDPOINTS_DEL_JEFE.some((p) => schemaPath.startsWith(p))) return request;
+    const url = new URL(request.url);
+    url.searchParams.set("empresaId", empresaId);
+    return new Request(url, request);
+  },
+};
+
 /** Cliente tipado desde contrato/openapi.json. Nunca registra tokens ni cabeceras. */
 export const api = createClient<paths>({ baseUrl: origen });
 api.use(adjuntarJwt);
+api.use(adjuntarEmpresa);
 
 type Resultado<T> = { data?: T; error?: unknown; response: Response };
 
@@ -26,7 +43,7 @@ type Resultado<T> = { data?: T; error?: unknown; response: Response };
  * PENDIENTE(decisión): con NEXT_PUBLIC_USAR_MOCKS=true, si el backend responde 501/red caída
  * (o 401 con sesión de ejemplo) se devuelve `ejemplo()`. Quitar al integrar con el backend real.
  */
-export async function consultar<T>(llamada: () => Promise<Resultado<T>>, ejemplo?: () => T): Promise<T> {
+export async function consultar<T>(llamada: () => Promise<Resultado<T>>, ejemplo?: () => T | Promise<T>): Promise<T> {
   let r: Resultado<T>;
   try {
     r = await llamada();
