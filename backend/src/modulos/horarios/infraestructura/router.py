@@ -1,4 +1,4 @@
-"""Router del módulo horarios. Consulta pública (B2) implementada; edición del jefe: 501 (B4)."""
+"""Router del módulo horarios. Consulta pública (B2) y edición del jefe (B4)."""
 
 from __future__ import annotations
 

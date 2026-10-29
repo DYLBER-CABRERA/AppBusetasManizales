@@ -1,4 +1,4 @@
-"""B0: el contrato queda completo (todos los endpoints de docs/03 declarados) y responde 501 sin lógica."""
+"""El contrato está completo: todos los endpoints de docs/03 están declarados y ninguno responde 501."""
 
 from __future__ import annotations
 
@@ -110,3 +110,9 @@ def test_openapi_json_publicado_esta_al_dia(esquema: dict) -> None:
     publicado = json.loads((RAIZ / "contrato" / "openapi.json").read_text(encoding="utf-8"))
     generado = json.loads(json.dumps(esquema, sort_keys=True))
     assert publicado == generado, "Ejecuta: python scripts/exportar_openapi.py"
+
+
+def test_ningun_endpoint_declara_501(esquema: dict) -> None:
+    for ruta, operaciones in esquema["paths"].items():
+        for metodo, operacion in operaciones.items():
+            assert "501" not in operacion["responses"], f"{metodo} {ruta}"

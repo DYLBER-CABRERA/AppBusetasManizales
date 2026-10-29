@@ -162,7 +162,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
         router_planificacion, router_avisos, router_pasajero, router_operacion,
         router_estadisticas, router_administracion,
     ):
-        app.include_router(router, prefix=PREFIJO_API, responses=errores(500, 501))
+        app.include_router(router, prefix=PREFIJO_API, responses=errores(500))
     app.include_router(router_ws)
     return app
 

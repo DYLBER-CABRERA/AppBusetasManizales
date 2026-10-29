@@ -57,13 +57,3 @@ class ErrorServicioExterno(ErrorAplicacion):
     codigo = "SERVICIO_EXTERNO_NO_DISPONIBLE"
     estado_http = 503
     reintentable = True
-
-
-class ErrorPendiente(ErrorAplicacion):
-    """Endpoint declarado en el contrato pero sin lógica todavía (respuesta 501)."""
-
-    codigo = "PENDIENTE"
-    estado_http = 501
-
-    def __init__(self, mensaje: str = "PENDIENTE: funcionalidad aún no implementada.") -> None:
-        super().__init__(mensaje)

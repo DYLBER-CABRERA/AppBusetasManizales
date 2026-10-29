@@ -95,3 +95,8 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Texto libre:** se quitan palabras vacías y se prueba la frase y cada palabra contra hitos y rutas (primero hitos). No hay lógica de intención más allá de palabras clave.
 - **`E501` permitido** en `bot_telegram.py` (textos largos de conversación).
 - **PENDIENTE(decisión):** «Ver en mapa» del mockup no se implementó (no hay URL de mapa pública definida); «Ver ruta» muestra empresas y paradas en texto. No se probó contra la red de Telegram: requiere un token real.
+
+## 2026-10-28 · backend-dev · B8 pulido
+
+- **Se eliminó el código `PENDIENTE` / `501`** (`ErrorPendiente`, `pendiente()` y la respuesta 501 en OpenAPI): resuelve la desviación de la lista de códigos de CLAUDE.md §6 anotada en B0.
+- **Pruebas de integración ampliadas** (`pruebas/integracion/test_flujos_bd.py`): 401/403/404, ETA con simulador, flujo de rodamiento con aislamiento entre jefes, eliminar ruta con confirmación, favoritos y planificación. **Escriben en la BD** (ver docstring). No se ejecutaron.

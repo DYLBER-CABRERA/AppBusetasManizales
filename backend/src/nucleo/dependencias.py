@@ -1,7 +1,7 @@
 """Dependencias FastAPI de autenticación. La autorización real vive en los casos de uso (recibe Identidad).
 
 Sin credencial en un endpoint protegido → 401; token inválido → 401; rol no permitido → 403; si no, el endpoint
-responde con su lógica (o 501 mientras su bloque no exista).
+responde con su lógica.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from fastapi import BackgroundTasks, Query, Request, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from nucleo.autorizacion import Identidad, Rol
-from nucleo.errores import ErrorNoAutenticado, ErrorNoAutorizado, ErrorPendiente, ErrorServicioExterno, ErrorValidacion
+from nucleo.errores import ErrorNoAutenticado, ErrorNoAutorizado, ErrorServicioExterno, ErrorValidacion
 from nucleo.eventos_uso import TipoEventoUso
 
 esquema_bearer = HTTPBearer(auto_error=False, scheme_name="bearerAuth", bearerFormat="JWT")
@@ -60,9 +60,6 @@ async def clave_fuente(valor: str | None = Security(esquema_clave_fuente)) -> st
     return valor
 
 
-def pendiente() -> None:
-    """Respuesta 501 estándar para endpoints sin lógica todavía."""
-    raise ErrorPendiente()
 
 
 def caso(nombre: str) -> Callable[[Request], Any]:

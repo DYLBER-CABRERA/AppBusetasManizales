@@ -180,7 +180,7 @@ El cliente reconecta con espera creciente (1, 2, 4, 8 s, máx. 15 s) y, mientras
 
 ## 7. Precisiones del esqueleto (B0)
 
-`contrato/openapi.json` se genera con `python backend/scripts/exportar_openapi.py` y una prueba (`test_openapi_json_publicado_esta_al_dia`) falla si se desactualiza. Todos los endpoints de este documento están declarados; **hasta que su bloque se implemente responden `501`** con `{ "error": { "codigo": "PENDIENTE", "mensaje": "...", "reintentable": false, "detalles": null } }`. Los endpoints protegidos ya responden `401 NO_AUTENTICADO` sin `Authorization`; con token responden 501 hasta que B4 verifique el JWT. Los WebSockets (`/ws/rutas/{rutaId}`, `/ws/notificaciones`) aceptan la conexión y solo contestan `"pong"` a `"ping"` (OpenAPI no describe WebSockets: el contrato es la §4).
+`contrato/openapi.json` se genera con `python backend/scripts/exportar_openapi.py` y una prueba (`test_openapi_json_publicado_esta_al_dia`) falla si se desactualiza. Todos los endpoints de este documento están declarados; **en B0 respondían `501 PENDIENTE`; desde B6 ninguno lo hace** (el código `PENDIENTE` ya no existe). Los endpoints protegidos responden `401 NO_AUTENTICADO` sin `Authorization` o con un token inválido, y `403 NO_AUTORIZADO` con un rol no permitido. Los WebSockets (`/ws/rutas/{rutaId}`, `/ws/notificaciones`) aceptan la conexión y solo contestan `"pong"` a `"ping"` (OpenAPI no describe WebSockets: el contrato es la §4).
 
 Formas fijadas al declarar los esquemas (cuando este documento no las daba; las que vienen de `referencia/openapi.yaml` se marcan):
 - `GET /salud` vive bajo el prefijo: `/api/v1/salud`. Los parámetros de ruta se llaman en el OpenAPI `ruta_id`, `paradero_id`, etc. (la URL no cambia).
@@ -283,3 +283,9 @@ El bot no agrega endpoints REST: es un adaptador que llama a los mismos casos de
 - **Avisarme cuando esté cerca:** crea una alerta con `telegram_chat_id` (D-P08) a 300 m (`distancia_aviso_llegada_m`); repetida → «Ya tenías una alerta activa». El bot escribe primero cuando la buseta llega a la distancia o se desvía («⚠️ La buseta N se desvió de su recorrido. Tu llegada puede cambiar.», una vez por episodio).
 - **Horarios / Avisos / texto libre:** horarios por ruta (de hoy), avisos vigentes (máx. 5) y coincidencia por palabras clave sin tildes (hitos y rutas); sin LLM. Sin coincidencia, vuelve al menú.
 - Los botones de la conversación usan identificadores cortos por chat (Telegram limita `callback_data` a 64 bytes); si un botón vence se pide compartir de nuevo la ubicación.
+
+## 16. Cierre (B8)
+
+- **Estado final:** todos los endpoints de §2 y los WebSockets de §4 tienen lógica; no queda ningún `501`. `contrato/openapi.json` se regenera con `backend/scripts/exportar_openapi.py` y una prueba falla si se desactualiza.
+- **Códigos de error vigentes:** `VALIDACION` 400, `NO_AUTENTICADO` 401, `NO_AUTORIZADO` 403, `NO_ENCONTRADO` 404, `CONFLICTO_VERSION` 409, `CONFLICTO_NEGOCIO` 409, `SERVICIO_EXTERNO_NO_DISPONIBLE` 503, `ERROR_INTERNO` 500 (`CONFLICTO_NEGOCIO` lleva la lista en `detalles`: `turnosAfectados`, `advertencias`, `turnosFuturos` o `rutas`; `CONFLICTO_VERSION` lleva `versionActual`).
+- **Limitaciones conocidas del prototipo:** una sola instancia del servidor (WebSockets, episodios de desvío, estado del bot y del simulador viven en memoria); el avance de una buseta sobre tramos que el circuito recorre dos veces es ambiguo; `senal_perdida` por WebSocket no se emite (usar `sin_senal` de `GET /rutas/{id}/busetas`); el bot no se probó contra la red de Telegram.
