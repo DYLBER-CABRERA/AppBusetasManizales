@@ -82,3 +82,67 @@ export const publicarRodamiento = (rodamientoId: string, version: number) =>
       body: { version },
     }),
   );
+
+// ---------- horarios y frecuencias (W4) ----------
+type Esq = components["schemas"];
+export type HorariosDeServicio = Esq["HorariosDeServicio"];
+export type FrecuenciasDeServicio = Esq["FrecuenciasDeServicio"];
+
+export function useHorariosDeServicio(rutaId: string | undefined, servicioId: string | undefined) {
+  const emp = useClaveEmpresa();
+  return useQuery({
+    queryKey: ["jefe", emp, "horarios", servicioId],
+    enabled: Boolean(rutaId && servicioId),
+    gcTime: 0, // el editor siempre parte de lo vigente
+    queryFn: async () => {
+      const r = await consultar(() =>
+        api.GET("/api/v1/rutas/{ruta_id}/horarios", { params: { path: { ruta_id: rutaId as string } } }),
+      );
+      return r.servicios.find((s) => s.servicioId === servicioId) ?? null;
+    },
+  });
+}
+
+export function useFrecuenciasDeServicio(rutaId: string | undefined, servicioId: string | undefined) {
+  const emp = useClaveEmpresa();
+  return useQuery({
+    queryKey: ["jefe", emp, "frecuencias", servicioId],
+    enabled: Boolean(rutaId && servicioId),
+    gcTime: 0,
+    queryFn: async () => {
+      const r = await consultar(() =>
+        api.GET("/api/v1/rutas/{ruta_id}/frecuencias", { params: { path: { ruta_id: rutaId as string } } }),
+      );
+      return r.servicios.find((s) => s.servicioId === servicioId) ?? null;
+    },
+  });
+}
+
+export const guardarHorarios = (servicioId: string, cuerpo: Esq["HorariosActualizar"]) =>
+  consultar(() =>
+    api.PUT("/api/v1/servicios/{servicio_id}/horarios", { params: { path: { servicio_id: servicioId } }, body: cuerpo }),
+  );
+
+export const guardarFrecuencias = (servicioId: string, cuerpo: Esq["FrecuenciasActualizar"]) =>
+  consultar(() =>
+    api.PUT("/api/v1/servicios/{servicio_id}/frecuencias", { params: { path: { servicio_id: servicioId } }, body: cuerpo }),
+  );
+
+export const crearBuseta = (cuerpo: Esq["BusetaCrear"]) => consultar(() => api.POST("/api/v1/busetas", { body: cuerpo }));
+export const crearConductor = (cuerpo: Esq["ConductorCrear"]) =>
+  consultar(() => api.POST("/api/v1/conductores", { body: cuerpo }));
+
+// ---------- estadísticas de uso (W4) ----------
+export function useEstadisticasUso(desde: string, hasta: string) {
+  const emp = useClaveEmpresa();
+  return useQuery({
+    queryKey: ["jefe", emp, "uso", desde, hasta],
+    queryFn: () =>
+      consultar(() =>
+        api.GET("/api/v1/estadisticas/uso", {
+          // El jefe lo ignora (usa su token); el administrador indica la empresa elegida.
+          params: { query: { desde, hasta, empresaId: empresaEfectiva()?.id ?? null } },
+        }),
+      ),
+  });
+}
