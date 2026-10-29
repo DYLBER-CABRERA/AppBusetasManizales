@@ -23,14 +23,14 @@ from modulos.operacion.aplicacion.casos_de_uso import (
     PublicarRodamiento,
 )
 from modulos.red import ServicioRuta
-from nucleo.autorizacion import Identidad, Rol
-from nucleo.dependencias import caso, requiere_rol
+from nucleo.autorizacion import Identidad
+from nucleo.dependencias import caso, identidad_de_gestion
 from nucleo.errores import ErrorValidacion
 from nucleo.esquemas import EsquemaBase, errores
 
 router = APIRouter(tags=["Operación"])
 
-_jefe = Depends(requiere_rol(Rol.JEFE_OPERACIONES))
+_jefe = Depends(identidad_de_gestion)
 
 PATRON_HORA = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
 

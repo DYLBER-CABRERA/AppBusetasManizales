@@ -5381,6 +5381,27 @@
     "/api/v1/busetas": {
       "get": {
         "operationId": "listar_busetas",
+        "parameters": [
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -5416,6 +5437,16 @@
             },
             "description": "NO_AUTORIZADO"
           },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -5449,6 +5480,27 @@
       },
       "post": {
         "operationId": "guardar_buseta",
+        "parameters": [
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5564,6 +5616,25 @@
               "format": "uuid",
               "title": "Buseta Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
             }
           }
         ],
@@ -5839,6 +5910,27 @@
     "/api/v1/conductores": {
       "get": {
         "operationId": "listar_conductores",
+        "parameters": [
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -5874,6 +5966,16 @@
             },
             "description": "NO_AUTORIZADO"
           },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -5907,6 +6009,27 @@
       },
       "post": {
         "operationId": "guardar_conductor",
+        "parameters": [
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6022,6 +6145,25 @@
               "format": "uuid",
               "title": "Conductor Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
             }
           }
         ],
@@ -6995,6 +7137,27 @@
     "/api/v1/mis-servicios": {
       "get": {
         "operationId": "listar_servicios_de_mi_empresa",
+        "parameters": [
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7029,6 +7192,16 @@
               }
             },
             "description": "NO_AUTORIZADO"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           },
           "500": {
             "content": {
@@ -7752,6 +7925,25 @@
               ],
               "title": "Hasta"
             }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
           }
         ],
         "responses": {
@@ -7842,6 +8034,27 @@
       },
       "post": {
         "operationId": "crear_rodamiento",
+        "parameters": [
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7968,6 +8181,25 @@
               "title": "Rodamiento Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
           }
         ],
         "responses": {
@@ -8063,6 +8295,25 @@
               "format": "uuid",
               "title": "Rodamiento Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
             }
           }
         ],
@@ -8192,6 +8443,25 @@
               "title": "Rodamiento Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
           }
         ],
         "requestBody": {
@@ -8309,6 +8579,25 @@
               "format": "uuid",
               "title": "Rodamiento Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
             }
           }
         ],
@@ -9518,6 +9807,25 @@
               "title": "Servicio Id",
               "type": "string"
             }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
+            }
           }
         ],
         "requestBody": {
@@ -9645,6 +9953,25 @@
               "format": "uuid",
               "title": "Servicio Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Solo administrador; el jefe lo ignora",
+            "in": "query",
+            "name": "empresaId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo administrador; el jefe lo ignora",
+              "title": "Empresaid"
             }
           }
         ],

@@ -12,7 +12,7 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-from servidor import crear_app
+from servidor import crear_app, fabrica_bucle
 
 pytestmark = [
     pytest.mark.integracion,
@@ -25,7 +25,8 @@ CENTRO = {"lat": 5.0703, "lng": -75.5138}
 
 @pytest.fixture(scope="module")
 def cliente():
-    with TestClient(crear_app()) as c:  # el lifespan abre el pool
+    # psycopg asíncrono no soporta ProactorEventLoop (Windows): mismo bucle que `--loop servidor:fabrica_bucle`
+    with TestClient(crear_app(), backend_options={"loop_factory": fabrica_bucle}) as c:  # el lifespan abre el pool
         yield c
 
 

@@ -64,7 +64,7 @@ pip install -e ".[dev]"
 python scripts/generar_trazados.py        # solo la primera vez; revisar los GeoJSON
 python scripts/cargar_semillas.py         # carga empresas, rutas, paraderos, horarios, busetas, rodamientos
 python scripts/crear_usuarios_demo.py
-uvicorn servidor:app --app-dir src --host 0.0.0.0 --port 8000 --reload
+uvicorn servidor:app --app-dir src --host 0.0.0.0 --port 8000 --loop servidor:fabrica_bucle --reload
 # Documentación interactiva: http://localhost:8000/docs
 
 # 2) Paneles web  (desde web-admin/)

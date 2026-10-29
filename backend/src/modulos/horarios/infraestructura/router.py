@@ -16,13 +16,13 @@ from modulos.horarios.infraestructura.esquemas import (
     HorariosDeServicio,
     HorariosRuta,
 )
-from nucleo.autorizacion import Identidad, Rol
-from nucleo.dependencias import RegistroUso, caso, requiere_rol
+from nucleo.autorizacion import Identidad
+from nucleo.dependencias import RegistroUso, caso, identidad_de_gestion
 from nucleo.esquemas import errores
 
 router = APIRouter(tags=["Horarios"])
 
-_jefe = requiere_rol(Rol.JEFE_OPERACIONES)
+_jefe = identidad_de_gestion
 
 
 @router.get("/rutas/{ruta_id}/horarios", response_model=HorariosRuta, responses=errores(404))

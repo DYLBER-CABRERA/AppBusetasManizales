@@ -10,11 +10,11 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from fastapi import BackgroundTasks, Request, Security
+from fastapi import BackgroundTasks, Query, Request, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from nucleo.autorizacion import Identidad, Rol
-from nucleo.errores import ErrorNoAutenticado, ErrorNoAutorizado, ErrorPendiente, ErrorServicioExterno
+from nucleo.errores import ErrorNoAutenticado, ErrorNoAutorizado, ErrorPendiente, ErrorServicioExterno, ErrorValidacion
 from nucleo.eventos_uso import TipoEventoUso
 
 esquema_bearer = HTTPBearer(auto_error=False, scheme_name="bearerAuth", bearerFormat="JWT")
@@ -89,3 +89,21 @@ class RegistroUso:
     def __call__(self, tipo: TipoEventoUso, ruta_id: UUID | None = None) -> None:
         if self._registrar is not None:
             self._tareas.add_task(self._registrar, tipo, ruta_id)
+
+
+async def identidad_de_gestion(
+    request: Request, credenciales: HTTPAuthorizationCredentials | None = Security(esquema_bearer),
+    empresa_id: UUID | None = Query(default=None, alias="empresaId", description="Solo administrador; el jefe lo ignora"),
+) -> Identidad:
+    """Endpoints del jefe: el jefe usa SIEMPRE la empresa de su token; el administrador (BR-07) debe indicar `empresaId`
+    y actúa como jefe de esa empresa (identidad efectiva)."""
+    if credenciales is None:
+        raise ErrorNoAutenticado("Inicia sesión para continuar.")
+    identidad = await _servicios(request).autenticacion.verificar_token(credenciales.credentials)
+    if identidad.rol == Rol.JEFE_OPERACIONES:
+        return identidad
+    if identidad.rol != Rol.ADMINISTRADOR:
+        raise ErrorNoAutorizado("No tienes permiso para esta acción.")
+    if empresa_id is None:
+        raise ErrorValidacion("Como administrador indica empresaId.")
+    return Identidad(identidad.usuario_id, Rol.JEFE_OPERACIONES, str(empresa_id))

@@ -181,7 +181,7 @@ def test_operacion_exige_el_rol_de_jefe(cliente: TestClient) -> None:
     for ruta in ("/mis-servicios", "/busetas", "/conductores", "/rodamientos"):
         assert cliente.get(f"/api/v1{ruta}").status_code == 401
         assert cliente.get(f"/api/v1{ruta}", headers=_con("tok-pasajera")).status_code == 403
-        assert cliente.get(f"/api/v1{ruta}", headers=_con("tok-admin")).status_code == 403
+        assert cliente.get(f"/api/v1{ruta}", headers=_con("tok-secretaria")).status_code == 403
 
 
 def test_mis_servicios_y_listas_son_de_mi_empresa(cliente: TestClient) -> None:
@@ -416,3 +416,22 @@ def test_publicar_aviso_avisa_por_websocket_a_los_clientes_de_la_ruta(repos: Rep
         ws.receive_json()  # foto inicial
         r = cliente.post("/api/v1/avisos", json={"titulo": "a", "cuerpo": "b", "rutaIds": [str(dobles.RUTA_ENEA)]}, headers=JEFE_H)
         assert ws.receive_json() == {"tipo": "aviso_nuevo", "avisoId": r.json()["id"]}
+
+
+def test_el_administrador_actua_sobre_la_empresa_que_indica(cliente: TestClient) -> None:
+    admin = _con("tok-admin")
+    assert cliente.get("/api/v1/busetas", headers=admin).status_code == 400  # falta empresaId
+    r = cliente.get("/api/v1/busetas", params={"empresaId": str(dobles.EMPRESA_SERVITURISMO)}, headers=admin)
+    assert [b["numeroLateral"] for b in r.json()] == ["2683"]
+    r = cliente.get("/api/v1/mis-servicios", params={"empresaId": str(dobles.EMPRESA_SIDERAL)}, headers=admin)
+    assert r.status_code == 200 and len(r.json()) == 1
+    url = f"/api/v1/servicios/{dobles.SERVICIO_SIDERAL_ENEA}/horarios"
+    ok = cliente.put(url, params={"empresaId": str(dobles.EMPRESA_SIDERAL)}, json={"horarios": [HORARIO], "version": 2}, headers=admin)
+    assert ok.status_code == 200
+    ajeno = cliente.put(url, params={"empresaId": str(dobles.EMPRESA_SERVITURISMO)}, json={"horarios": [HORARIO], "version": 3}, headers=admin)
+    assert ajeno.status_code == 404
+
+
+def test_el_jefe_ignora_empresa_id(cliente: TestClient) -> None:
+    r = cliente.get("/api/v1/busetas", params={"empresaId": str(dobles.EMPRESA_SERVITURISMO)}, headers=JEFE_H)
+    assert {b["numeroLateral"] for b in r.json()} == {"1544", "1520"}
