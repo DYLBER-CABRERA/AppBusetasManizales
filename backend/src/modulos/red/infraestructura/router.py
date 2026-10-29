@@ -1,4 +1,4 @@
-"""Router del módulo red. Solo traduce HTTP; B0 responde 501 PENDIENTE."""
+"""Router del módulo red. Solo traduce HTTP. Consulta pública (B2) implementada; gestión de la Secretaría: 501 (B5)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response
 
+from modulos.red.aplicacion.consultas import (
+    ConsultarParaderosCercanos,
+    ConsultarRutasCercanas,
+    ListarEmpresas,
+    ListarRutas,
+    ObtenerDetalleRuta,
+)
 from modulos.red.infraestructura.esquemas import (
     Empresa,
     Hito,
@@ -23,7 +30,7 @@ from modulos.red.infraestructura.esquemas import (
     ServicioRuta,
 )
 from nucleo.autorizacion import Rol
-from nucleo.dependencias import pendiente, requiere_rol
+from nucleo.dependencias import RegistroUso, caso, pendiente, requiere_rol
 from nucleo.esquemas import errores
 
 router = APIRouter(tags=["Red"])
@@ -36,18 +43,32 @@ async def consultar_rutas_cercanas(
     lat: float = Query(ge=-90, le=90),
     lng: float = Query(ge=-180, le=180),
     radio_m: int | None = Query(default=None, alias="radioM", ge=50, le=5000),
-) -> RutasCercanas:
-    pendiente()
+    caso_uso: ConsultarRutasCercanas = Depends(caso("consultar_rutas_cercanas")),
+    uso: RegistroUso = Depends(RegistroUso),
+) -> dict:
+    resultado = await caso_uso(lat, lng, radio_m)
+    uso("mapa")
+    return resultado
 
 
 @router.get("/rutas", response_model=list[RutaResumen])
-async def listar_rutas() -> list[RutaResumen]:
-    pendiente()
+async def listar_rutas(
+    caso_uso: ListarRutas = Depends(caso("listar_rutas")), uso: RegistroUso = Depends(RegistroUso)
+) -> list[dict]:
+    resultado = await caso_uso()
+    uso("mapa")
+    return resultado
 
 
 @router.get("/rutas/{ruta_id}", response_model=RutaDetalle, responses=errores(404))
-async def obtener_detalle_ruta(ruta_id: UUID) -> RutaDetalle:
-    pendiente()
+async def obtener_detalle_ruta(
+    ruta_id: UUID,
+    caso_uso: ObtenerDetalleRuta = Depends(caso("obtener_detalle_ruta")),
+    uso: RegistroUso = Depends(RegistroUso),
+) -> dict:
+    resultado = await caso_uso(ruta_id)
+    uso("detalle_ruta", ruta_id)
+    return resultado
 
 
 @router.get("/paraderos/cercanos", response_model=list[ParaderoCercano], responses=errores(400))
@@ -56,13 +77,17 @@ async def consultar_paraderos_cercanos(
     lng: float = Query(ge=-180, le=180),
     radio_m: int | None = Query(default=None, alias="radioM", ge=50, le=5000),
     ruta_id: UUID | None = Query(default=None, alias="rutaId"),
-) -> list[ParaderoCercano]:
-    pendiente()
+    caso_uso: ConsultarParaderosCercanos = Depends(caso("consultar_paraderos_cercanos")),
+    uso: RegistroUso = Depends(RegistroUso),
+) -> list[dict]:
+    resultado = await caso_uso(lat, lng, radio_m, ruta_id)
+    uso("mapa", ruta_id)
+    return resultado
 
 
 @router.get("/empresas", response_model=list[Empresa])
-async def listar_empresas() -> list[Empresa]:
-    pendiente()
+async def listar_empresas(caso_uso: ListarEmpresas = Depends(caso("listar_empresas"))) -> list[dict]:
+    return await caso_uso()
 
 
 # ---- Secretaría de Movilidad (S) y administrador (A) ----

@@ -8,6 +8,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from composicion import construir_contenedor
+from nucleo.configuracion import Configuracion
+from pruebas.dobles import repositorios_en_memoria
 from servidor import crear_app
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -42,7 +45,10 @@ ENDPOINTS_CONTRATO = [
 
 @pytest.fixture(scope="module")
 def cliente() -> TestClient:
-    return TestClient(crear_app(), raise_server_exceptions=False)
+    return TestClient(
+        crear_app(construir_contenedor(Configuracion(_env_file=None), repositorios_en_memoria())),
+        raise_server_exceptions=False,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +76,7 @@ def test_salud_no_toca_la_bd(cliente: TestClient) -> None:
 
 
 def test_endpoint_publico_sin_logica_responde_501(cliente: TestClient) -> None:
-    r = cliente.get("/api/v1/rutas")
+    r = cliente.get("/api/v1/rutas/00000000-0000-0000-0000-000000000000/busetas")
     assert r.status_code == 501
     assert r.json()["error"]["codigo"] == "PENDIENTE"
 
@@ -96,7 +102,8 @@ def test_validacion_usa_el_formato_de_error(cliente: TestClient) -> None:
 
 def test_cercanas_no_se_confunde_con_detalle(cliente: TestClient) -> None:
     r = cliente.get("/api/v1/rutas/cercanas", params={"lat": 5.07, "lng": -75.51})
-    assert r.status_code == 501
+    assert r.status_code == 200
+    assert "rutas" in r.json()
 
 
 def test_ws_responde_pong(cliente: TestClient) -> None:

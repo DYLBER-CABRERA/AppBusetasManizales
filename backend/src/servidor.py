@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -13,6 +14,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
+from psycopg import OperationalError as ErrorOperacionalBd
+from psycopg_pool import PoolTimeout
 from starlette.exceptions import HTTPException as ErrorHttpStarlette
 
 from adaptadores_externos.websocket_posiciones import router as router_ws
@@ -32,6 +35,16 @@ from nucleo.esquemas import EsquemaBase, errores
 from nucleo.registro import configurar_registro
 
 PREFIJO_API = "/api/v1"
+
+
+def fabrica_bucle() -> asyncio.AbstractEventLoop:
+    """Bucle de eventos compatible con psycopg asíncrono (en Windows uvicorn usa Proactor, que psycopg no admite).
+
+    Uso: `uvicorn servidor:app --app-dir src --loop servidor:fabrica_bucle`.
+    """
+    return asyncio.SelectorEventLoop()
+
+
 registro = logging.getLogger("busetasapp")
 
 
@@ -62,9 +75,14 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
-        # PENDIENTE(B2/B3/B7): abrir pool de BD, simulador (MODO_DEMO) y bot de Telegram.
-        app.state.contenedor = cont
-        yield
+        # PENDIENTE(B3/B7): simulador (MODO_DEMO) y bot de Telegram.
+        if cont.pool is not None:
+            await cont.pool.open(wait=False)  # no falla si la BD no responde: las consultas devuelven 503
+        try:
+            yield
+        finally:
+            if cont.pool is not None:
+                await cont.pool.close()
 
     app = FastAPI(
         title="BusetasApp API (prototipo)",
@@ -73,6 +91,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
         lifespan=ciclo_de_vida,
         generate_unique_id_function=_id_operacion,
     )
+    app.state.contenedor = cont
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cont.configuracion.lista_cors_origenes,
@@ -108,6 +127,15 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     async def manejar_http(_: Request, exc: ErrorHttpStarlette) -> JSONResponse:
         codigo = {401: "NO_AUTENTICADO", 403: "NO_AUTORIZADO", 404: "NO_ENCONTRADO"}.get(exc.status_code, "ERROR_INTERNO")
         return JSONResponse(status_code=exc.status_code, content=_cuerpo_error(codigo, str(exc.detail)))
+
+    @app.exception_handler(PoolTimeout)
+    @app.exception_handler(ErrorOperacionalBd)
+    async def manejar_bd_no_disponible(request: Request, exc: Exception) -> JSONResponse:
+        registro.error("Base de datos no disponible en %s (%s)", request.url.path, type(exc).__name__)
+        return JSONResponse(
+            status_code=503,
+            content=_cuerpo_error("SERVICIO_EXTERNO_NO_DISPONIBLE", "La base de datos no está disponible.", True),
+        )
 
     @app.exception_handler(Exception)
     async def manejar_inesperado(request: Request, exc: Exception) -> JSONResponse:

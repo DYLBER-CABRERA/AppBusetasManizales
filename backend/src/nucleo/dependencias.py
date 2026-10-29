@@ -7,12 +7,15 @@ se responde 401; con credencial, la verificación del JWT es PENDIENTE (B4/B5) y
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
+from uuid import UUID
 
-from fastapi import Depends, Security
+from fastapi import BackgroundTasks, Depends, Request, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from nucleo.autorizacion import Identidad, Rol
-from nucleo.errores import ErrorNoAutenticado, ErrorPendiente
+from nucleo.errores import ErrorNoAutenticado, ErrorPendiente, ErrorServicioExterno
+from nucleo.eventos_uso import TipoEventoUso
 
 esquema_bearer = HTTPBearer(auto_error=False, scheme_name="bearerAuth", bearerFormat="JWT")
 esquema_clave_fuente = APIKeyHeader(name="X-Clave-Fuente", auto_error=False, scheme_name="claveFuente")
@@ -51,3 +54,29 @@ async def clave_fuente(valor: str | None = Security(esquema_clave_fuente)) -> st
 def pendiente() -> None:
     """Respuesta 501 estándar para endpoints sin lógica todavía."""
     raise ErrorPendiente()
+
+
+def caso(nombre: str) -> Callable[[Request], Any]:
+    """Entrega el caso de uso `nombre` armado en `composicion.py` (los routers no crean nada)."""
+
+    def dependencia(request: Request) -> Any:
+        servicios = request.app.state.contenedor.servicios
+        if servicios is None:
+            raise ErrorServicioExterno("La base de datos no está configurada (DATABASE_URL).")
+        return getattr(servicios, nombre)
+
+    dependencia.__name__ = f"caso_{nombre}"
+    return dependencia
+
+
+class RegistroUso:
+    """Registra un evento de uso anónimo DESPUÉS de responder (RD-17). Uso: `uso("detalle_ruta", ruta_id)`."""
+
+    def __init__(self, request: Request, tareas: BackgroundTasks) -> None:
+        servicios = request.app.state.contenedor.servicios
+        self._registrar = servicios.registrar_evento_uso if servicios is not None else None
+        self._tareas = tareas
+
+    def __call__(self, tipo: TipoEventoUso, ruta_id: UUID | None = None) -> None:
+        if self._registrar is not None:
+            self._tareas.add_task(self._registrar, tipo, ruta_id)

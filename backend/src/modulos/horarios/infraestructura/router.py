@@ -1,4 +1,4 @@
-"""Router del módulo horarios. B0: 501 PENDIENTE."""
+"""Router del módulo horarios. Consulta pública (B2) implementada; edición del jefe: 501 (B4)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from modulos.horarios.aplicacion.consultas import ConsultarFrecuencias, ConsultarHorarios
 from modulos.horarios.infraestructura.esquemas import (
     FrecuenciasActualizar,
     FrecuenciasDeServicio,
@@ -15,7 +16,7 @@ from modulos.horarios.infraestructura.esquemas import (
     HorariosRuta,
 )
 from nucleo.autorizacion import Rol
-from nucleo.dependencias import pendiente, requiere_rol
+from nucleo.dependencias import RegistroUso, caso, pendiente, requiere_rol
 from nucleo.esquemas import errores
 
 router = APIRouter(tags=["Horarios"])
@@ -24,13 +25,25 @@ _jefe = Depends(requiere_rol(Rol.JEFE_OPERACIONES))
 
 
 @router.get("/rutas/{ruta_id}/horarios", response_model=HorariosRuta, responses=errores(404))
-async def consultar_horarios(ruta_id: UUID) -> HorariosRuta:
-    pendiente()
+async def consultar_horarios(
+    ruta_id: UUID,
+    caso_uso: ConsultarHorarios = Depends(caso("consultar_horarios")),
+    uso: RegistroUso = Depends(RegistroUso),
+) -> dict:
+    resultado = await caso_uso(ruta_id)
+    uso("horarios", ruta_id)
+    return resultado
 
 
 @router.get("/rutas/{ruta_id}/frecuencias", response_model=FrecuenciasRuta, responses=errores(404))
-async def consultar_frecuencias(ruta_id: UUID) -> FrecuenciasRuta:
-    pendiente()
+async def consultar_frecuencias(
+    ruta_id: UUID,
+    caso_uso: ConsultarFrecuencias = Depends(caso("consultar_frecuencias")),
+    uso: RegistroUso = Depends(RegistroUso),
+) -> dict:
+    resultado = await caso_uso(ruta_id)
+    uso("frecuencias", ruta_id)
+    return resultado
 
 
 @router.put(

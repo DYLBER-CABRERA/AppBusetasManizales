@@ -1,4 +1,4 @@
-"""Router del módulo avisos. B0: 501 PENDIENTE (GET en B2, publicar/retirar en B4)."""
+"""Router del módulo avisos. GET público (B2) implementado; publicar/retirar: 501 (B4/B5)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import Field
 
+from modulos.avisos.aplicacion.consultar_avisos_vigentes import ConsultarAvisosVigentes
 from nucleo.autorizacion import Rol
-from nucleo.dependencias import pendiente, requiere_rol
+from nucleo.dependencias import caso, pendiente, requiere_rol
 from nucleo.esquemas import EsquemaBase, errores
 
 router = APIRouter(tags=["Avisos"])
@@ -42,8 +43,11 @@ class AvisoCrear(EsquemaBase):
 
 
 @router.get("/avisos", response_model=list[Aviso])
-async def consultar_avisos_vigentes(ruta_id: UUID | None = Query(default=None, alias="rutaId")) -> list[Aviso]:
-    pendiente()
+async def consultar_avisos_vigentes(
+    ruta_id: UUID | None = Query(default=None, alias="rutaId"),
+    caso_uso: ConsultarAvisosVigentes = Depends(caso("consultar_avisos_vigentes")),
+) -> list[dict]:
+    return await caso_uso(ruta_id)
 
 
 @router.post(
