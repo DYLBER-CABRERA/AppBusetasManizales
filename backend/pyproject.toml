@@ -42,3 +42,4 @@ ignore = ["B008"]  # Depends/Query/Security como valor por defecto es el patrón
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/*" = ["E501"]  # scripts con SQL en línea
+"pruebas/*" = ["E501"]  # literales de datos y peticiones HTTP en una línea

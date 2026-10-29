@@ -12,6 +12,7 @@ Manejador = Callable[[dict[str, Any]], Awaitable[None]]
 registro = logging.getLogger("busetasapp.eventos")
 
 POSICION_ACEPTADA = "posicion.aceptada"
+AVISO_PUBLICADO = "aviso.publicado"
 
 
 class EmisorEventos(Protocol):

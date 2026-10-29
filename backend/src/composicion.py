@@ -26,10 +26,31 @@ from modulos.administracion import (
     RepositorioFuentesGpsSql,
     RepositorioUsuariosSql,
 )
-from modulos.avisos import ConsultarAvisosVigentes, RepositorioAvisosSql
+from modulos.avisos import ConsultarAvisosVigentes, PublicarAviso, RepositorioAvisosSql, RetirarAviso
 from modulos.busqueda import BuscarHitos, BuscarRutasPorTexto, ConsultarRutasPorHito, RepositorioBusquedaSql
 from modulos.estadisticas import RegistrarEventoUso, RepositorioEventosUsoSql
-from modulos.horarios import CalculadorTipoDia, ConsultarFrecuencias, ConsultarHorarios, RepositorioHorariosSql
+from modulos.horarios import (
+    ActualizarFrecuenciasServicio,
+    ActualizarHorariosServicio,
+    CalculadorTipoDia,
+    ConsultarFrecuencias,
+    ConsultarHorarios,
+    RepositorioHorariosSql,
+)
+from modulos.operacion import (
+    ActualizarRodamiento,
+    AnularRodamiento,
+    CrearRodamiento,
+    GuardarBuseta,
+    GuardarConductor,
+    ListarBusetas,
+    ListarConductores,
+    ListarRodamientos,
+    ListarServiciosDeMiEmpresa,
+    ObtenerRodamiento,
+    PublicarRodamiento,
+    RepositorioOperacionSql,
+)
 from modulos.red import (
     ConsultarParaderosCercanos,
     ConsultarRutasCercanas,
@@ -49,7 +70,7 @@ from modulos.seguimiento import (
 )
 from nucleo.autenticacion import PuertoAutenticacion
 from nucleo.configuracion import Configuracion, obtener_configuracion
-from nucleo.emisor_eventos import POSICION_ACEPTADA, EmisorEventos, EmisorEventosEnMemoria
+from nucleo.emisor_eventos import AVISO_PUBLICADO, POSICION_ACEPTADA, EmisorEventos, EmisorEventosEnMemoria
 from nucleo.reloj import PuertoReloj, RelojSimulado
 
 
@@ -68,6 +89,7 @@ class Repositorios:
     usuarios: Any = None
     autenticacion: Any = None  # PuertoAutenticacion
     simulacion: Any = None  # RepositorioSimulacion (solo MODO_DEMO)
+    operacion: Any = None
 
 
 @dataclass
@@ -94,6 +116,21 @@ class Servicios:
     obtener_perfil: ObtenerPerfil
     consultar_estado_demo: ConsultarEstadoDemo
     ejecutar_escenario_demo: EjecutarEscenarioDemo
+    actualizar_horarios_servicio: ActualizarHorariosServicio
+    actualizar_frecuencias_servicio: ActualizarFrecuenciasServicio
+    listar_servicios_de_mi_empresa: ListarServiciosDeMiEmpresa
+    listar_busetas: ListarBusetas
+    guardar_buseta: GuardarBuseta
+    listar_conductores: ListarConductores
+    guardar_conductor: GuardarConductor
+    listar_rodamientos: ListarRodamientos
+    obtener_rodamiento: ObtenerRodamiento
+    crear_rodamiento: CrearRodamiento
+    actualizar_rodamiento: ActualizarRodamiento
+    publicar_rodamiento: PublicarRodamiento
+    anular_rodamiento: AnularRodamiento
+    publicar_aviso: PublicarAviso
+    retirar_aviso: RetirarAviso
     simulador: SimuladorGps | None = None
 
 
@@ -146,6 +183,21 @@ def construir_servicios(
         obtener_perfil=ObtenerPerfil(repos.usuarios),
         consultar_estado_demo=ConsultarEstadoDemo(simulador, configuracion.modo_demo),
         ejecutar_escenario_demo=EjecutarEscenarioDemo(simulador, configuracion.modo_demo),
+        actualizar_horarios_servicio=ActualizarHorariosServicio(repos.horarios),
+        actualizar_frecuencias_servicio=ActualizarFrecuenciasServicio(repos.horarios),
+        listar_servicios_de_mi_empresa=ListarServiciosDeMiEmpresa(repos.operacion),
+        listar_busetas=ListarBusetas(repos.operacion),
+        guardar_buseta=GuardarBuseta(repos.operacion),
+        listar_conductores=ListarConductores(repos.operacion),
+        guardar_conductor=GuardarConductor(repos.operacion),
+        listar_rodamientos=ListarRodamientos(repos.operacion),
+        obtener_rodamiento=ObtenerRodamiento(repos.operacion),
+        crear_rodamiento=CrearRodamiento(repos.operacion, repos.parametros, reloj),
+        actualizar_rodamiento=ActualizarRodamiento(repos.operacion),
+        publicar_rodamiento=PublicarRodamiento(repos.operacion),
+        anular_rodamiento=AnularRodamiento(repos.operacion),
+        publicar_aviso=PublicarAviso(repos.avisos, repos.parametros, reloj, emisor),
+        retirar_aviso=RetirarAviso(repos.avisos),
         simulador=simulador,
     )
 
@@ -166,6 +218,7 @@ def _repositorios_sql(pool: AsyncConnectionPool, config: Configuracion, cliente_
             config.supabase_url, config.supabase_anon_key.get_secret_value(), usuarios, cliente_http
         ),
         simulacion=RepositorioSimulacionSql(pool),
+        operacion=RepositorioOperacionSql(pool),
     )
 
 
@@ -205,4 +258,10 @@ def construir_contenedor(
 
     contenedor.armar_mensaje_posiciones = armar_mensaje_posiciones
     emisor.suscribir(POSICION_ACEPTADA, DifusorPosiciones(gestor, armar_mensaje_posiciones).al_aceptar_posicion)
+
+    async def difundir_aviso_nuevo(carga: dict[str, Any]) -> None:
+        for ruta_id in carga["ruta_ids"]:
+            await gestor.difundir(ruta_id, {"tipo": "aviso_nuevo", "avisoId": str(carga["aviso_id"])})
+
+    emisor.suscribir(AVISO_PUBLICADO, difundir_aviso_nuevo)
     return contenedor

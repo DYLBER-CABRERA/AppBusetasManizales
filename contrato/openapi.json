@@ -5235,6 +5235,16 @@
             },
             "description": "NO_AUTORIZADO"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_ENCONTRADO"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -7759,6 +7769,16 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "VALIDACION"
+          },
           "401": {
             "content": {
               "application/json": {
@@ -7872,6 +7892,16 @@
               }
             },
             "description": "NO_AUTORIZADO"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_ENCONTRADO"
           },
           "409": {
             "content": {

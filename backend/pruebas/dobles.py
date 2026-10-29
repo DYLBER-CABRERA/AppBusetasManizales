@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import replace
 from datetime import UTC, datetime, time
 from typing import Any
 from uuid import UUID, uuid4
@@ -11,7 +12,7 @@ from zoneinfo import ZoneInfo
 from composicion import Repositorios
 from modulos.seguimiento import hash_de_clave
 from nucleo.autorizacion import Identidad, Rol
-from nucleo.errores import ErrorNoAutenticado
+from nucleo.errores import ErrorConflictoNegocio, ErrorConflictoVersion, ErrorNoAutenticado, ErrorNoEncontrado
 
 ZONA = ZoneInfo("America/Bogota")
 LUNES_MEDIODIA = datetime(2026, 10, 26, 12, 0, tzinfo=ZONA)
@@ -138,6 +139,39 @@ class HorariosEnMemoria:
         ]
 
 
+def _horarios_edicion(clase):
+    return clase
+
+
+@_horarios_edicion
+class HorariosEdicion(HorariosEnMemoria):
+    """Extiende los dobles de lectura con la edición del jefe (versión por servicio)."""
+
+    def __init__(self) -> None:
+        self.versiones = {SERVICIO_SIDERAL_ENEA: 2, SERVICIO_SERVITURISMO_ENEA: 1}
+        self.horarios_guardados: list[Any] = []
+        self.franjas_guardadas: list[Any] = []
+
+    async def servicio_de_empresa(self, servicio_id: UUID, empresa_id: UUID) -> dict[str, Any] | None:
+        propietarios = {SERVICIO_SIDERAL_ENEA: (EMPRESA_SIDERAL, "Sideral", "39"),
+                        SERVICIO_SERVITURISMO_ENEA: (EMPRESA_SERVITURISMO, "Serviturismo", None)}
+        datos = propietarios.get(servicio_id)
+        if datos is None or datos[0] != empresa_id:
+            return None
+        return {"servicio_id": servicio_id, "empresa_id": empresa_id, "empresa_nombre": datos[1],
+                "codigo_publico": datos[2], "version": self.versiones[servicio_id]}
+
+    async def reemplazar_horarios(self, servicio_id: UUID, version: int, horarios: list[Any]) -> int:
+        self.horarios_guardados = horarios
+        self.versiones[servicio_id] += 1
+        return self.versiones[servicio_id]
+
+    async def reemplazar_frecuencias(self, servicio_id: UUID, version: int, franjas: list[Any]) -> int:
+        self.franjas_guardadas = franjas
+        self.versiones[servicio_id] += 1
+        return self.versiones[servicio_id]
+
+
 class BusquedaEnMemoria:
     def __init__(self) -> None:
         self.hitos = {
@@ -181,6 +215,39 @@ class AvisosEnMemoria:
         }]
 
 
+class AvisosGestionEnMemoria(AvisosEnMemoria):
+    def __init__(self) -> None:
+        super().__init__()
+        self.creados: list[dict[str, Any]] = []
+        self.activos: dict[UUID, dict[str, Any]] = {}
+        self.retirados: list[UUID] = []
+
+    async def rutas_de_empresa(self, empresa_id: UUID) -> set[UUID]:
+        return {RUTA_ENEA} if empresa_id == EMPRESA_SIDERAL else set()
+
+    async def existen_destinos(self, ruta_ids: list[UUID], paradero_ids: list[UUID]) -> bool:
+        rutas_ok = all(r in (RUTA_ENEA, RUTA_VILLAMARIA) for r in ruta_ids)
+        return rutas_ok and all(p in (PARADERO_A, PARADERO_B) for p in paradero_ids)
+
+    async def crear(self, definicion, autor_id, titulo, cuerpo, desde, hasta, ruta_ids, paradero_ids) -> dict[str, Any]:
+        aviso = {
+            "id": uuid4(), "origen": definicion.origen, "empresa_id": definicion.empresa_id,
+            "empresa_nombre": "Sideral" if definicion.empresa_id else None, "tipo_cambio": definicion.tipo_cambio,
+            "titulo": titulo, "cuerpo": cuerpo, "desde": desde, "hasta": hasta,
+            "ruta_ids": list(ruta_ids), "paradero_ids": list(paradero_ids),
+        }
+        self.creados.append(aviso)
+        self.activos[aviso["id"]] = aviso
+        return aviso
+
+    async def obtener_activo(self, aviso_id: UUID) -> dict[str, Any] | None:
+        return self.activos.get(aviso_id)
+
+    async def retirar(self, aviso_id: UUID) -> None:
+        self.activos.pop(aviso_id, None)
+        self.retirados.append(aviso_id)
+
+
 class EventosEnMemoria:
     def __init__(self, falla: bool = False) -> None:
         self.eventos: list[tuple[str, UUID | None]] = []
@@ -197,6 +264,7 @@ class ParametrosEnMemoria:
         self.valores: dict[str, Any] = {
             "radio_busqueda_m": 800, "radio_hito_m": 300, "velocidad_default_kmh": 20,
             "umbral_posicion_obsoleta_s": 60, "umbral_desvio_m": 100,
+            "longitud_max_aviso": 500, "dias_max_rodamiento_adelante": 15,
             "caja_ciudad": {"minLat": 4.95, "maxLat": 5.20, "minLng": -75.65, "maxLng": -75.40},
         } | (valores or {})
 
@@ -298,13 +366,22 @@ class FuentesGpsEnMemoria:
         self.usos.append(credencial_id)
 
 
+BUSETA_1520 = uuid4()
+BUSETA_OTRA_EMPRESA = uuid4()
+CONDUCTOR_CARLOS = uuid4()
+CONDUCTOR_MARTA = uuid4()
+CONDUCTOR_OTRA_EMPRESA = uuid4()
+SERVICIO_CENTRO = uuid4()
 USUARIO_ADMIN = uuid4()
+USUARIO_JEFE_OTRA = uuid4()
 USUARIO_JEFE = uuid4()
 USUARIO_PASAJERA = uuid4()
 TOKENS = {
     "tok-admin": Identidad(str(USUARIO_ADMIN), Rol.ADMINISTRADOR),
     "tok-jefe": Identidad(str(USUARIO_JEFE), Rol.JEFE_OPERACIONES, str(EMPRESA_SIDERAL)),
     "tok-pasajera": Identidad(str(USUARIO_PASAJERA), Rol.PASAJERO),
+    "tok-jefe-otra": Identidad(str(USUARIO_JEFE_OTRA), Rol.JEFE_OPERACIONES, str(EMPRESA_SERVITURISMO)),
+    "tok-secretaria": Identidad(str(uuid4()), Rol.SECRETARIA_MOVILIDAD),
 }
 
 
@@ -322,6 +399,8 @@ class UsuariosEnMemoria:
                             "empresa_id": None, "empresa_nombre": None, "activo": True},
             USUARIO_JEFE: {"usuario_id": USUARIO_JEFE, "correo": "jefe@sideral.example", "rol": "jefe_operaciones",
                            "empresa_id": EMPRESA_SIDERAL, "empresa_nombre": "Sideral", "activo": True},
+            USUARIO_JEFE_OTRA: {"usuario_id": USUARIO_JEFE_OTRA, "correo": "jefe@serviturismo.example", "rol": "jefe_operaciones",
+                                "empresa_id": EMPRESA_SERVITURISMO, "empresa_nombre": "Serviturismo", "activo": True},
             USUARIO_PASAJERA: {"usuario_id": USUARIO_PASAJERA, "correo": "pasajera@correo.example", "rol": "pasajero",
                                "empresa_id": EMPRESA_SIDERAL, "empresa_nombre": "Sideral", "activo": True},
         }
@@ -357,11 +436,123 @@ class SimulacionEnMemoria:
 
 
 
+class OperacionEnMemoria:
+    """Busetas, conductores y rodamientos de Sideral y de Serviturismo (aislados por empresa)."""
+
+    def __init__(self) -> None:
+        self.busetas = {
+            BUSETA_1544: {"id": BUSETA_1544, "empresa": EMPRESA_SIDERAL, "numero_lateral": "1544", "placa": None,
+                          "estado": "activa", "version": 1},
+            BUSETA_1520: {"id": BUSETA_1520, "empresa": EMPRESA_SIDERAL, "numero_lateral": "1520", "placa": None,
+                          "estado": "activa", "version": 1},
+            BUSETA_OTRA_EMPRESA: {"id": BUSETA_OTRA_EMPRESA, "empresa": EMPRESA_SERVITURISMO, "numero_lateral": "2683",
+                                  "placa": None, "estado": "activa", "version": 1},
+        }
+        self.conductores = {
+            CONDUCTOR_CARLOS: {"id": CONDUCTOR_CARLOS, "empresa": EMPRESA_SIDERAL, "nombre": "Carlos R.", "codigo": "S01",
+                               "estado": "activo", "version": 1},
+            CONDUCTOR_MARTA: {"id": CONDUCTOR_MARTA, "empresa": EMPRESA_SIDERAL, "nombre": "Marta L.", "codigo": "S02",
+                              "estado": "activo", "version": 1},
+            CONDUCTOR_OTRA_EMPRESA: {"id": CONDUCTOR_OTRA_EMPRESA, "empresa": EMPRESA_SERVITURISMO, "nombre": "Jorge T.",
+                                     "codigo": "V01", "estado": "activo", "version": 1},
+        }
+        self.rodamientos: dict[UUID, dict[str, Any]] = {}
+        self.estados_cambiados: list[tuple[UUID, str, UUID]] = []
+
+    async def servicios_de_empresa(self, empresa_id: UUID) -> list[dict[str, Any]]:
+        if empresa_id != EMPRESA_SIDERAL:
+            return []
+        return [{"id": SERVICIO_SIDERAL_ENEA, "ruta_id": RUTA_ENEA, "ruta_nombre": "La Enea", "empresa_id": empresa_id,
+                 "empresa_nombre": "Sideral", "codigo_publico": "39", "codigo_interno": None, "duracion_estandar_min": 60,
+                 "estado": "activo", "version": 2}]
+
+    @staticmethod
+    def _sin_empresa(fila: dict[str, Any]) -> dict[str, Any]:
+        return {k: v for k, v in fila.items() if k != "empresa"}
+
+    async def listar_busetas(self, empresa_id: UUID) -> list[dict[str, Any]]:
+        return [self._sin_empresa(b) for b in self.busetas.values() if b["empresa"] == empresa_id]
+
+    async def crear_buseta(self, empresa_id: UUID, numero_lateral: str, placa: str | None) -> dict[str, Any]:
+        if any(b["empresa"] == empresa_id and b["numero_lateral"] == numero_lateral for b in self.busetas.values()):
+            raise ErrorConflictoNegocio("Ya existe una buseta con ese número lateral en tu empresa.")
+        nueva = {"id": uuid4(), "empresa": empresa_id, "numero_lateral": numero_lateral, "placa": placa,
+                 "estado": "activa", "version": 1}
+        self.busetas[nueva["id"]] = nueva
+        return self._sin_empresa(nueva)
+
+    @staticmethod
+    def _editar(tabla: dict, empresa_id: UUID, identificador: UUID, version: int, cambios: dict) -> dict[str, Any]:
+        fila = tabla.get(identificador)
+        if fila is None or fila["empresa"] != empresa_id:
+            raise ErrorNoEncontrado("El recurso no existe.")
+        if fila["version"] != version:
+            raise ErrorConflictoVersion(fila["version"])
+        fila.update({k: v for k, v in cambios.items() if v is not None})
+        fila["version"] += 1
+        return {k: v for k, v in fila.items() if k != "empresa"}
+
+    async def editar_buseta(self, empresa_id, buseta_id, version, cambios) -> dict[str, Any]:
+        return self._editar(self.busetas, empresa_id, buseta_id, version, cambios)
+
+    async def listar_conductores(self, empresa_id: UUID) -> list[dict[str, Any]]:
+        return [self._sin_empresa(c) for c in self.conductores.values() if c["empresa"] == empresa_id]
+
+    async def crear_conductor(self, empresa_id: UUID, nombre: str, codigo: str | None) -> dict[str, Any]:
+        nuevo = {"id": uuid4(), "empresa": empresa_id, "nombre": nombre, "codigo": codigo, "estado": "activo", "version": 1}
+        self.conductores[nuevo["id"]] = nuevo
+        return self._sin_empresa(nuevo)
+
+    async def editar_conductor(self, empresa_id, conductor_id, version, cambios) -> dict[str, Any]:
+        return self._editar(self.conductores, empresa_id, conductor_id, version, cambios)
+
+    async def recursos_de_empresa(self, empresa_id: UUID) -> dict[str, Any]:
+        return {
+            "servicios": {SERVICIO_SIDERAL_ENEA: 60} if empresa_id == EMPRESA_SIDERAL else {SERVICIO_SERVITURISMO_ENEA: 60},
+            "busetas": {i: b["numero_lateral"] for i, b in self.busetas.items() if b["empresa"] == empresa_id},
+            "conductores": {i: c["nombre"] for i, c in self.conductores.items() if c["empresa"] == empresa_id},
+        }
+
+    def _turnos(self, datos: list) -> list[dict[str, Any]]:
+        return [{"datos": replace(t, id=uuid4()), "estado": "programado"} for t in datos]
+
+    async def listar_rodamientos(self, empresa_id: UUID, desde, hasta) -> list[dict[str, Any]]:
+        return [r for r in self.rodamientos.values() if r["empresa"] == empresa_id
+                and (desde is None or r["fecha"] >= desde) and (hasta is None or r["fecha"] <= hasta)]
+
+    async def obtener_rodamiento(self, empresa_id: UUID, rodamiento_id: UUID) -> dict[str, Any] | None:
+        r = self.rodamientos.get(rodamiento_id)
+        return r if r and r["empresa"] == empresa_id else None
+
+    async def rodamiento_de_fecha(self, empresa_id: UUID, fecha) -> dict[str, Any] | None:
+        return next((r for r in self.rodamientos.values()
+                     if r["empresa"] == empresa_id and r["fecha"] == fecha and r["estado"] != "anulado"), None)
+
+    async def crear_rodamiento(self, empresa_id: UUID, fecha, turnos) -> UUID:
+        rid = uuid4()
+        self.rodamientos[rid] = {"rodamiento_id": rid, "empresa": empresa_id, "fecha": fecha, "estado": "borrador",
+                                 "version": 1, "turnos": self._turnos(turnos)}
+        return rid
+
+    async def reemplazar_turnos(self, rodamiento_id: UUID, version: int, turnos) -> int:
+        r = self.rodamientos[rodamiento_id]
+        r["turnos"] = self._turnos(turnos)
+        r["version"] += 1
+        return r["version"]
+
+    async def cambiar_estado(self, rodamiento_id: UUID, version: int, estado: str, usuario_id: UUID) -> int:
+        r = self.rodamientos[rodamiento_id]
+        r["estado"] = estado
+        r["version"] += 1
+        self.estados_cambiados.append((rodamiento_id, estado, usuario_id))
+        return r["version"]
+
+
 def repositorios_en_memoria() -> Repositorios:
     seguimiento = SeguimientoEnMemoria()
     return Repositorios(
-        rutas=RutasEnMemoria(), horarios=HorariosEnMemoria(), busqueda=BusquedaEnMemoria(),
-        avisos=AvisosEnMemoria(), eventos_uso=EventosEnMemoria(), parametros=ParametrosEnMemoria(),
+        rutas=RutasEnMemoria(), horarios=HorariosEdicion(), busqueda=BusquedaEnMemoria(),
+        avisos=AvisosGestionEnMemoria(), eventos_uso=EventosEnMemoria(), parametros=ParametrosEnMemoria(),
         seguimiento=seguimiento, fuentes_gps=FuentesGpsEnMemoria(), usuarios=UsuariosEnMemoria(),
-        autenticacion=AutenticacionFalsa(), simulacion=SimulacionEnMemoria(seguimiento),
+        autenticacion=AutenticacionFalsa(), simulacion=SimulacionEnMemoria(seguimiento), operacion=OperacionEnMemoria(),
     )

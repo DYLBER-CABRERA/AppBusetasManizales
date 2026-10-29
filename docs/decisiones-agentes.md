@@ -58,3 +58,14 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Bucle de eventos:** el simulador y la difusión WebSocket corren en el mismo bucle de uvicorn; el WebSocket solo funciona sobre una instancia (límite documentado).
 - **PENDIENTE(B4/B6):** `senal_perdida`, `aviso_nuevo` y `/ws/notificaciones` con token.
 - **PENDIENTE(decisión):** el simulador solo comprueba el turno; no consulta el horario del servicio para decidir si "ya cerró" (docs/01 §4 pide no mover la buseta fuera del horario). El ETA sí responde "El servicio ya cerró" / "Aún no inicia".
+
+## 2026-10-28 · backend-dev · B4 operación del jefe y avisos por rol
+
+- **Sin dependencias nuevas.** `ValidadorRodamiento` y `PoliticaDeAvisos` en `dominio/` (stdlib), con pruebas.
+- **`version` de horarios y frecuencias = `servicio_ruta.version`** (un solo contador por servicio, incrementado por cada `PUT` de cualquiera de los dos): simple y atómico; el panel debe refrescar la versión con cada respuesta.
+- **`PUT` de busetas/conductores:** `null` u omitido significa "no cambiar" (no se puede vaciar placa o código). Decisión por simplicidad del contrato actual, que no distingue ausencia de `null`.
+- **Un solo `409 CONFLICTO_NEGOCIO` para el reemplazo (D-P15) y para publicar con solapamientos**, con la lista en `detalles` (`turnosAfectados` / `advertencias`).
+- **Un rodamiento publicado no se edita** (solo se anula): evita cambiar turnos que el ETA y el simulador ya usan; si el equipo quiere editar uno publicado hay que definirlo.
+- **Avisos del jefe sin paraderos** (BR-05: avisos de su empresa sobre sus rutas). Retirar = `estado: retirado` (no se borra la fila).
+- **`aviso_nuevo` por WebSocket** al publicar (evento interno `aviso.publicado`), cerrando el PENDIENTE de B3b.
+- **Pruebas:** se permite `E501` en `pruebas/` (literales largos de peticiones HTTP).

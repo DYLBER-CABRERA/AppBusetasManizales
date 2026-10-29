@@ -4,8 +4,9 @@
 Una sola instancia (no escala horizontalmente). Un cliente lento o caído no bloquea el ciclo de posiciones: la difusión
 corre en su propia tarea, con tiempo de espera por cliente, y las conexiones caídas se limpian.
 
-PENDIENTE(B3b → B4/B6): `senal_perdida` (detector de señal), `aviso_nuevo` (al publicar avisos, B4) y
-`/ws/notificaciones` con token (`alerta_llegada` y `alerta_desvio`, B6). Hoy `/ws/notificaciones` solo responde ping/pong.
+`aviso_nuevo` se difunde al publicar un aviso (B4, ver composicion.py).
+PENDIENTE: `senal_perdida` (detector de señal) y `/ws/notificaciones` con token (`alerta_llegada` y `alerta_desvio`, B6);
+hoy `/ws/notificaciones` solo responde ping/pong.
 """
 
 from __future__ import annotations
