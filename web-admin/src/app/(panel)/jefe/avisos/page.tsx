@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaAvisos } from "@/componentes/jefe/PantallaAvisos";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Avisos de la empresa" bloque="W4" />;
+  return <PantallaAvisos modo="jefe" />;
 }
