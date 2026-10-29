@@ -44,3 +44,11 @@ export function errorDesdeRespuesta(estado: number, cuerpo: unknown): ErrorApi {
 export function errorDeRed(): ErrorApi {
   return new ErrorApi(503, "SERVICIO_EXTERNO_NO_DISPONIBLE", MENSAJE_SIN_CONEXION, true);
 }
+
+/** Lista dentro de `detalles` de un 409 (p. ej. `turnosFuturos`, `rutas`): contrato §13 y §16. */
+export function listaDeDetalles(e: unknown, clave: string): Record<string, unknown>[] {
+  if (!(e instanceof ErrorApi)) return [];
+  const d = e.detalles as Record<string, unknown> | null;
+  const lista = d?.[clave];
+  return Array.isArray(lista) ? (lista as Record<string, unknown>[]) : [];
+}
