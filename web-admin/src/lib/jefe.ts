@@ -1,9 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { api, consultar } from "./api";
-import { empresaEfectiva, useEmpresaElegida } from "./contexto-empresa";
-import { busetasEjemplo, conductoresEjemplo, empresasEjemplo, servidorJefe } from "./mocks-jefe";
-import { serviciosEjemplo } from "./mocks";
+import { useEmpresaElegida, empresaEfectiva } from "./contexto-empresa";
 import type { Rodamiento } from "./rodamiento";
 import type { components } from "./tipos-api";
 
@@ -20,7 +18,7 @@ export function useServicios() {
   const emp = useClaveEmpresa();
   return useQuery({
     queryKey: ["jefe", emp, "servicios"],
-    queryFn: () => consultar(() => api.GET("/api/v1/mis-servicios"), () => serviciosEjemplo(empresaEfectiva()?.id)),
+    queryFn: () => consultar(() => api.GET("/api/v1/mis-servicios")),
   });
 }
 
@@ -28,7 +26,7 @@ export function useBusetas() {
   const emp = useClaveEmpresa();
   return useQuery({
     queryKey: ["jefe", emp, "busetas"],
-    queryFn: () => consultar(() => api.GET("/api/v1/busetas"), () => busetasEjemplo(empresaEfectiva()?.id)),
+    queryFn: () => consultar(() => api.GET("/api/v1/busetas")),
   });
 }
 
@@ -36,22 +34,21 @@ export function useConductores() {
   const emp = useClaveEmpresa();
   return useQuery({
     queryKey: ["jefe", emp, "conductores"],
-    queryFn: () => consultar(() => api.GET("/api/v1/conductores"), () => conductoresEjemplo(empresaEfectiva()?.id)),
+    queryFn: () => consultar(() => api.GET("/api/v1/conductores")),
   });
 }
 
 export function useEmpresasPublicas() {
   return useQuery({
     queryKey: ["empresas"],
-    queryFn: () => consultar(() => api.GET("/api/v1/empresas"), () => empresasEjemplo()),
+    queryFn: () => consultar(() => api.GET("/api/v1/empresas")),
   });
 }
 
 /** Rodamiento de la fecha (uno por empresa y fecha) o `null` si aún no existe. */
 export async function buscarRodamiento(fecha: string): Promise<Rodamiento | null> {
-  const lista = await consultar(
-    () => api.GET("/api/v1/rodamientos", { params: { query: { desde: fecha, hasta: fecha } } }),
-    () => servidorJefe.listar(fecha),
+  const lista = await consultar(() =>
+    api.GET("/api/v1/rodamientos", { params: { query: { desde: fecha, hasta: fecha } } }),
   );
   return lista.find((r) => r.fecha === fecha) ?? null;
 }
@@ -67,22 +64,21 @@ export function useRodamiento(fecha: string) {
 export const guardarTurnos = (
   rodamientoId: string,
   cuerpo: { turnos: components["schemas"]["TurnoEntrada"][]; version: number; confirmarReemplazo?: boolean },
-) => {
-  const body = { ...cuerpo, confirmarReemplazo: cuerpo.confirmarReemplazo ?? false };
-  return consultar(
-    () => api.PUT("/api/v1/rodamientos/{rodamiento_id}", { params: { path: { rodamiento_id: rodamientoId } }, body }),
-    () => servidorJefe.actualizar(rodamientoId, body),
+) =>
+  consultar(() =>
+    api.PUT("/api/v1/rodamientos/{rodamiento_id}", {
+      params: { path: { rodamiento_id: rodamientoId } },
+      body: { ...cuerpo, confirmarReemplazo: cuerpo.confirmarReemplazo ?? false },
+    }),
   );
-};
 
 export const crearRodamiento = (cuerpo: components["schemas"]["RodamientoCrear"]) =>
-  consultar(
-    () => api.POST("/api/v1/rodamientos", { body: cuerpo }),
-    () => servidorJefe.crear(cuerpo),
-  );
+  consultar(() => api.POST("/api/v1/rodamientos", { body: cuerpo }));
 
 export const publicarRodamiento = (rodamientoId: string, version: number) =>
-  consultar(
-    () => api.POST("/api/v1/rodamientos/{rodamiento_id}/publicar", { params: { path: { rodamiento_id: rodamientoId } }, body: { version } }),
-    () => servidorJefe.publicar(rodamientoId, version),
+  consultar(() =>
+    api.POST("/api/v1/rodamientos/{rodamiento_id}/publicar", {
+      params: { path: { rodamiento_id: rodamientoId } },
+      body: { version },
+    }),
   );

@@ -86,7 +86,13 @@ function FilaParametro({ parametro, onConflicto }: { parametro: Parametro; onCon
             </button>
           </form>
         ) : (
-          <span id={id}>{String(parametro.valor)}</span>
+          <div id={id}>
+            <code className="break-all text-sm">{typeof parametro.valor === "object" ? JSON.stringify(parametro.valor) : String(parametro.valor)}</code>
+            <p className="mt-1 text-sm">
+              {/* PENDIENTE(decisión): editor de caja_ciudad (el backend exige un objeto con las mismas claves). */}
+              Solo lectura en esta versión.
+            </p>
+          </div>
         )}
       </td>
     </tr>
@@ -99,7 +105,8 @@ export function PantallaParametros() {
 
   return (
     <section>
-      <h1 className="mb-4 text-2xl font-bold">Parámetros</h1>
+      <h1 className="mb-2 text-2xl font-bold">Parámetros</h1>
+      <p className="mb-4 text-sm">Un cambio puede tardar hasta 60 s en reflejarse en las apps.</p>
       {parametros.isError ? (
         <div className="mb-4">
           <BannerError mensaje={parametros.error.message} onReintentar={() => parametros.refetch()} />

@@ -122,3 +122,9 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Mapa en vivo:** `BusetaDemo` no trae `empresaId`, ruta ni coordenadas, así que el panel usa `GET /empresas` (nombre → id para los escenarios por empresa) y, por cada ruta de `GET /rutas`, el WebSocket `/ws/rutas/{id}` con reconexión (1, 2, 4, 8 s, máx. 15 s) y respaldo `GET /rutas/{id}/busetas` cada 5 s cuando el WebSocket no entrega datos en 8 s. Etiqueta de cada buseta con su número y, si no tiene señal, la palabra «sin señal» (borde rojo ladrillo, círculo vacío).
 - **Parámetros y fuentes GPS (PENDIENTE, datos de ejemplo hasta B5):** `src/lib/mocks-admin.ts`. Los mínimos y máximos de ejemplo son inventados salvo «50 a 2000» de la distancia de aviso; los reales los manda el backend (`minimo`/`maximo`). La clave de una fuente nunca se guarda: vive en memoria mientras el modal está abierto (sin Esc para cerrarlo por accidente) y se borra de la caché de la mutación.
 - **`Modal`** admite `sinEscape`.
+
+## 2026-10-28 · web-admin-dev · integración con el backend completo (B5 a B8)
+
+- **Datos de ejemplo eliminados:** se borraron `mocks.ts`, `mocks-jefe.ts` y `mocks-admin.ts`, el parámetro `ejemplo` de `consultar`, la sesión de ejemplo (cookie y modo de login) y `NEXT_PUBLIC_USAR_MOCKS`. Ningún endpoint del contrato responde 501. El login exige Supabase configurado.
+- **`empresaId`** ya es parámetro tipado del contrato (§12). El middleware de `src/lib/api.ts` lo agrega solo cuando el administrador eligió empresa y solo a las rutas del jefe y a `PUT /servicios/{id}/horarios|frecuencias`.
+- **Parámetros:** `caja_ciudad` (objeto, sin mínimo ni máximo) se muestra de solo lectura (`PENDIENTE(decisión)`: editor). La pantalla avisa que un cambio tarda hasta 60 s (caché del backend). Fuentes GPS solo lista empresas en estado `activo`.

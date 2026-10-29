@@ -146,6 +146,7 @@ function TarjetaEmpresa({ empresa, onClaveNueva }: { empresa: EmpresaAdmin; onCl
 
 export function PantallaFuentesGps() {
   const empresas = useEmpresasAdmin();
+  const activas = empresas.data?.filter((e) => e.estado === "activo");
   const toast = useToast();
   // La clave vive solo aquí, en memoria, mientras el modal está abierto: nunca en caché ni en el almacenamiento.
   const [nueva, setNueva] = useState<{ credencial: CredencialCreada; empresa: string } | null>(null);
@@ -167,10 +168,10 @@ export function PantallaFuentesGps() {
 
       {empresas.isError ? <BannerError mensaje={empresas.error.message} onReintentar={() => empresas.refetch()} /> : null}
       {empresas.isPending ? <Esqueleto filas={4} /> : null}
-      {empresas.data && empresas.data.length === 0 ? (
+      {activas && activas.length === 0 ? (
         <Vacio titulo="No hay empresas" causa="Sin empresas no hay fuentes GPS." accion={<span>Crea una empresa en la sección Empresas.</span>} />
       ) : null}
-      {empresas.data?.map((e) => (
+      {activas?.map((e) => (
         <TarjetaEmpresa key={e.id} empresa={e} onClaveNueva={(credencial, empresa) => setNueva({ credencial, empresa })} />
       ))}
 

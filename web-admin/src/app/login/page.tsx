@@ -6,10 +6,9 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { BannerEjemplo } from "@/componentes/BannerEjemplo";
-import { registrarPerfil } from "@/lib/contexto-empresa";
 import { api, consultar } from "@/lib/api";
-import { cerrarSesion, correoSesionEjemplo, hayCredencialesSupabase, iniciarSesion, rutaInicial } from "@/lib/auth";
-import { PERFILES_EJEMPLO } from "@/lib/mocks";
+import { cerrarSesion, iniciarSesion, rutaInicial } from "@/lib/auth";
+import { registrarPerfil } from "@/lib/contexto-empresa";
 
 const esquema = z.object({
   correo: z.string().min(1, "Escribe tu correo.").email("Escribe un correo válido."),
@@ -21,7 +20,6 @@ export default function Login() {
   const router = useRouter();
   const cliente = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const modoEjemplo = !hayCredencialesSupabase();
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Datos>({
     resolver: zodResolver(esquema),
   });
@@ -30,14 +28,7 @@ export default function Login() {
     setError(null);
     try {
       await iniciarSesion(d.correo, d.contrasena);
-      const perfil = await consultar(
-        () => api.GET("/api/v1/yo"),
-        () => {
-          const p = PERFILES_EJEMPLO[correoSesionEjemplo() ?? ""];
-          if (!p) throw new Error("Esa cuenta no existe en el modo de ejemplo.");
-          return p;
-        },
-      );
+      const perfil = await consultar(() => api.GET("/api/v1/yo"));
       if (perfil.rol === "pasajero") {
         await cerrarSesion();
         setError("Esta aplicación es para el personal de gestión. Los pasajeros usan la app móvil o Telegram.");
@@ -58,12 +49,6 @@ export default function Login() {
       <main className="mx-auto mt-16 w-full max-w-md rounded-lg bg-white p-8 shadow">
         <h1 className="text-2xl font-bold">BusetasApp · Gestión</h1>
         <p className="mt-1 text-sm">Inicia sesión con tu cuenta de gestión.</p>
-        {modoEjemplo ? (
-          <p className="mt-3 rounded bg-aviso p-3 text-sm" role="note">
-            Modo de ejemplo (sin Supabase configurado): no se verifica la contraseña. Prueba con
-            {" "}<code>jefe@sideral.example</code>, <code>movilidad@alcaldia.example</code> o <code>admin@busetasapp.example</code>.
-          </p>
-        ) : null}
         <form onSubmit={handleSubmit(enviar)} noValidate className="mt-5 space-y-4">
           <div>
             <label htmlFor="correo" className="block font-semibold">Correo</label>
