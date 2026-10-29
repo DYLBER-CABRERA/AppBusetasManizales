@@ -6,8 +6,27 @@ from copy import deepcopy
 from datetime import UTC, datetime, time
 from typing import Any
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 from composicion import Repositorios
+from modulos.seguimiento import hash_de_clave
+
+ZONA = ZoneInfo("America/Bogota")
+LUNES_MEDIODIA = datetime(2026, 10, 26, 12, 0, tzinfo=ZONA)
+
+
+class RelojFijo:
+    """PuertoReloj de pruebas: avanza solo cuando la prueba lo pide."""
+
+    def __init__(self, ahora: datetime = LUNES_MEDIODIA) -> None:
+        self._ahora = ahora
+
+    def ahora(self) -> datetime:
+        return self._ahora
+
+    def fijar(self, ahora: datetime) -> None:
+        self._ahora = ahora
+
 
 EMPRESA_SIDERAL = uuid4()
 EMPRESA_SERVITURISMO = uuid4()
@@ -172,15 +191,110 @@ class EventosEnMemoria:
 
 
 class ParametrosEnMemoria:
-    def __init__(self, valores: dict[str, float] | None = None) -> None:
-        self.valores = {"radio_busqueda_m": 800, "radio_hito_m": 300} | (valores or {})
+    def __init__(self, valores: dict[str, Any] | None = None) -> None:
+        self.valores: dict[str, Any] = {
+            "radio_busqueda_m": 800, "radio_hito_m": 300, "velocidad_default_kmh": 20, "umbral_posicion_obsoleta_s": 60,
+            "caja_ciudad": {"minLat": 4.95, "maxLat": 5.20, "minLng": -75.65, "maxLng": -75.40},
+        } | (valores or {})
 
     async def numero(self, clave: str) -> float:
+        return float(self.valores[clave])
+
+    async def objeto(self, clave: str) -> dict[str, Any]:
         return self.valores[clave]
+
+
+BUSETA_1544 = uuid4()
+BUSETA_2683 = uuid4()
+CLAVE_SIDERAL = "clave-de-prueba-sideral"
+CREDENCIAL = uuid4()
+
+
+class SeguimientoEnMemoria:
+    """Implementa RepositorioPosiciones, RepositorioRodamientos y RepositorioEta con turnos fijos 05:00-23:00 de hoy."""
+
+    def __init__(self) -> None:
+        self.busetas = {
+            (EMPRESA_SIDERAL, "1544"): {"id": BUSETA_1544, "numero_lateral": "1544"},
+            (EMPRESA_SERVITURISMO, "2683"): {"id": BUSETA_2683, "numero_lateral": "2683"},
+        }
+        self.turnos = {(EMPRESA_SIDERAL, "1544"): (time(5, 0), time(23, 0), SERVICIO_SIDERAL_ENEA)}
+        self.guardadas: dict[UUID, dict[str, Any]] = {}
+        self.progreso_buseta = 9500.0
+        self.longitud = 10000.0
+        self.progreso_paradero_m = 500.0
+
+    async def buscar_buseta(self, empresa_id: UUID, numero_lateral: str) -> dict[str, Any] | None:
+        return self.busetas.get((empresa_id, numero_lateral))
+
+    async def guardar_posicion(self, buseta_id, servicio_id, lat, lng, velocidad_kmh, rumbo, reportada_en) -> bool:
+        previa = self.guardadas.get(buseta_id)
+        if previa and previa["reportada_en"] >= reportada_en:
+            return False
+        self.guardadas[buseta_id] = {
+            "buseta_id": buseta_id, "numero_lateral": "1544", "empresa": "Sideral", "servicio_id": servicio_id,
+            "lat": lat, "lng": lng, "velocidad_kmh": velocidad_kmh, "rumbo": rumbo, "reportada_en": reportada_en,
+        }
+        return True
+
+    async def posiciones_de_ruta(self, ruta_id: UUID, ahora: datetime) -> list[dict[str, Any]]:
+        return [p for p in self.guardadas.values() if p["servicio_id"] == SERVICIO_SIDERAL_ENEA]
+
+    async def unidades_en_servicio(self, ruta_id: UUID, ahora: datetime) -> int:
+        return 2 if ruta_id == RUTA_ENEA else 0
+
+    async def posiciones_para_eta(self, servicio_ids, ruta_id, ahora) -> list[dict[str, Any]]:
+        return [
+            {"servicio_id": p["servicio_id"], "numero_lateral": p["numero_lateral"], "velocidad_kmh": p["velocidad_kmh"],
+             "reportada_en": p["reportada_en"], "progreso_m": self.progreso_buseta}
+            for p in self.guardadas.values() if p["servicio_id"] in servicio_ids
+        ]
+
+    async def limpiar_posiciones(self) -> None:
+        self.guardadas.clear()
+
+    async def turno_vigente(self, empresa_id: UUID, numero_lateral: str, instante: datetime) -> UUID | None:
+        turno = self.turnos.get((empresa_id, numero_lateral))
+        if turno and turno[0] <= instante.time().replace(tzinfo=None) <= turno[1]:
+            return turno[2]
+        return None
+
+    async def ruta_de_servicio(self, servicio_id: UUID) -> UUID | None:
+        return RUTA_ENEA
+
+    async def ruta_activa_existe(self, ruta_id: UUID) -> bool:
+        return ruta_id in (RUTA_ENEA, RUTA_VILLAMARIA)
+
+    async def progreso_paradero(self, ruta_id: UUID, paradero_id: UUID) -> dict[str, Any] | None:
+        if ruta_id != RUTA_ENEA or paradero_id != PARADERO_A:
+            return None
+        return {"progreso_m": self.progreso_paradero_m, "longitud_m": self.longitud}
+
+    async def servicios_para_eta(self, ruta_id: UUID) -> list[dict[str, Any]]:
+        return [
+            {"servicio_id": SERVICIO_SIDERAL_ENEA, "empresa_nombre": "Sideral", "codigo_publico": "39", "estado": "activo",
+             "duracion_estandar_min": 60},
+            {"servicio_id": SERVICIO_SERVITURISMO_ENEA, "empresa_nombre": "Serviturismo", "codigo_publico": None,
+             "estado": "activo", "duracion_estandar_min": 60},
+        ]
+
+
+class FuentesGpsEnMemoria:
+    def __init__(self) -> None:
+        self.usos: list[UUID] = []
+
+    async def empresa_por_hash(self, hash_clave: str) -> dict[str, Any] | None:
+        if hash_clave == hash_de_clave(CLAVE_SIDERAL):
+            return {"credencial_id": CREDENCIAL, "empresa_id": EMPRESA_SIDERAL}
+        return None
+
+    async def marcar_uso(self, credencial_id: UUID, ahora: datetime) -> None:
+        self.usos.append(credencial_id)
 
 
 def repositorios_en_memoria() -> Repositorios:
     return Repositorios(
         rutas=RutasEnMemoria(), horarios=HorariosEnMemoria(), busqueda=BusquedaEnMemoria(),
         avisos=AvisosEnMemoria(), eventos_uso=EventosEnMemoria(), parametros=ParametrosEnMemoria(),
+        seguimiento=SeguimientoEnMemoria(), fuentes_gps=FuentesGpsEnMemoria(),
     )

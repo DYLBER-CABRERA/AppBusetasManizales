@@ -76,7 +76,8 @@ def test_salud_no_toca_la_bd(cliente: TestClient) -> None:
 
 
 def test_endpoint_publico_sin_logica_responde_501(cliente: TestClient) -> None:
-    r = cliente.get("/api/v1/rutas/00000000-0000-0000-0000-000000000000/busetas")
+    cuerpo = {"origen": {"lat": 5.07, "lng": -75.5}, "destino": {"lat": 5.06, "lng": -75.5}}
+    r = cliente.post("/api/v1/viajes/planificar", json=cuerpo)
     assert r.status_code == 501
     assert r.json()["error"]["codigo"] == "PENDIENTE"
 

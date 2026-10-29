@@ -58,8 +58,8 @@ class RespuestaEta(EsquemaBase):
 
 class PosicionEntrada(EsquemaBase):
     numero_lateral: str = Field(max_length=20)
-    lat: float = Field(ge=-90, le=90)
-    lng: float = Field(ge=-180, le=180)
+    lat: float = Field(description="Se valida por posición: fuera de rango → rechazada `coordenadas_invalidas`")
+    lng: float
     velocidad_kmh: float | None = Field(default=None, ge=0, le=150)
     rumbo: float | None = Field(default=None, ge=0, lt=360)
     reportada_en: datetime = Field(description="No más de 60 s en el futuro")

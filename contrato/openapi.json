@@ -2231,14 +2231,11 @@
       "PosicionEntrada": {
         "properties": {
           "lat": {
-            "maximum": 90.0,
-            "minimum": -90.0,
+            "description": "Se valida por posición: fuera de rango → rechazada `coordenadas_invalidas`",
             "title": "Lat",
             "type": "number"
           },
           "lng": {
-            "maximum": 180.0,
-            "minimum": -180.0,
             "title": "Lng",
             "type": "number"
           },

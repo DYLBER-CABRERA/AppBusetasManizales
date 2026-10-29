@@ -1,7 +1,7 @@
 """Composición: ÚNICO lugar que crea adaptadores y los inyecta (CLAUDE.md §4).
 
-B2: pool de BD, repositorios de consulta pública y sus casos de uso. B3+ agrega emisor de eventos, autenticación,
-simulador y bot. Las pruebas arman `Repositorios` con dobles en memoria y reutilizan `construir_servicios`.
+B2/B3: pool de BD, repositorios, casos de uso y emisor de eventos. B3b+ agrega autenticación, simulador y bot.
+Las pruebas arman `Repositorios` con dobles en memoria y reutilizan `construir_servicios`.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import Any
 from psycopg_pool import AsyncConnectionPool
 
 from adaptadores_externos.base_datos import crear_pool
-from modulos.administracion import ParametrosSql
+from modulos.administracion import ParametrosSql, RepositorioFuentesGpsSql
 from modulos.avisos import ConsultarAvisosVigentes, RepositorioAvisosSql
 from modulos.busqueda import BuscarHitos, BuscarRutasPorTexto, ConsultarRutasPorHito, RepositorioBusquedaSql
 from modulos.estadisticas import RegistrarEventoUso, RepositorioEventosUsoSql
@@ -25,7 +25,16 @@ from modulos.red import (
     ObtenerDetalleRuta,
     RepositorioRutasSql,
 )
+from modulos.seguimiento import (
+    AutenticarFuenteGps,
+    CalcularEtaParadero,
+    ConsultarBusetasEnVivo,
+    DeductorDeRuta,
+    RegistrarPosiciones,
+    RepositorioSeguimientoSql,
+)
 from nucleo.configuracion import Configuracion, obtener_configuracion
+from nucleo.emisor_eventos import EmisorEventos, EmisorEventosEnMemoria
 from nucleo.reloj import PuertoReloj, RelojSimulado
 
 
@@ -39,6 +48,8 @@ class Repositorios:
     avisos: Any
     eventos_uso: Any
     parametros: Any
+    seguimiento: Any  # RepositorioPosiciones + RepositorioRodamientos + RepositorioEta
+    fuentes_gps: Any
 
 
 @dataclass
@@ -57,6 +68,10 @@ class Servicios:
     consultar_rutas_por_hito: ConsultarRutasPorHito
     consultar_avisos_vigentes: ConsultarAvisosVigentes
     registrar_evento_uso: RegistrarEventoUso
+    registrar_posiciones: RegistrarPosiciones
+    autenticar_fuente_gps: AutenticarFuenteGps
+    consultar_busetas_en_vivo: ConsultarBusetasEnVivo
+    calcular_eta_paradero: CalcularEtaParadero
 
 
 @dataclass
@@ -64,10 +79,13 @@ class Contenedor:
     configuracion: Configuracion
     reloj: PuertoReloj
     servicios: Servicios | None = None
+    emisor: EmisorEventos | None = None
     pool: AsyncConnectionPool | None = None
 
 
-def construir_servicios(repos: Repositorios, configuracion: Configuracion, reloj: PuertoReloj) -> Servicios:
+def construir_servicios(
+    repos: Repositorios, configuracion: Configuracion, reloj: PuertoReloj, emisor: EmisorEventos
+) -> Servicios:
     calculador_tipo_dia = CalculadorTipoDia(configuracion.lista_festivos)
     return Servicios(
         consultar_rutas_cercanas=ConsultarRutasCercanas(repos.rutas, repos.parametros),
@@ -82,6 +100,14 @@ def construir_servicios(repos: Repositorios, configuracion: Configuracion, reloj
         consultar_rutas_por_hito=ConsultarRutasPorHito(repos.busqueda, repos.rutas, repos.rutas, repos.parametros),
         consultar_avisos_vigentes=ConsultarAvisosVigentes(repos.avisos, reloj),
         registrar_evento_uso=RegistrarEventoUso(repos.eventos_uso),
+        registrar_posiciones=RegistrarPosiciones(
+            repos.seguimiento, DeductorDeRuta(repos.seguimiento), repos.seguimiento, repos.parametros, reloj, emisor
+        ),
+        autenticar_fuente_gps=AutenticarFuenteGps(repos.fuentes_gps, reloj),
+        consultar_busetas_en_vivo=ConsultarBusetasEnVivo(repos.seguimiento, repos.seguimiento, repos.parametros, reloj),
+        calcular_eta_paradero=CalcularEtaParadero(
+            repos.seguimiento, repos.seguimiento, repos.horarios, calculador_tipo_dia, repos.parametros, reloj
+        ),
     )
 
 
@@ -93,19 +119,25 @@ def _repositorios_sql(pool: AsyncConnectionPool) -> Repositorios:
         avisos=RepositorioAvisosSql(pool),
         eventos_uso=RepositorioEventosUsoSql(pool),
         parametros=ParametrosSql(pool),
+        seguimiento=RepositorioSeguimientoSql(pool),
+        fuentes_gps=RepositorioFuentesGpsSql(pool),
     )
 
 
 def construir_contenedor(
-    configuracion: Configuracion | None = None, repositorios: Repositorios | None = None
+    configuracion: Configuracion | None = None,
+    repositorios: Repositorios | None = None,
+    reloj: PuertoReloj | None = None,
 ) -> Contenedor:
     config = configuracion or obtener_configuracion()
-    reloj = RelojSimulado()
+    reloj = reloj or RelojSimulado()
+    emisor: EmisorEventos | None = None
     pool: AsyncConnectionPool | None = None
     if repositorios is None:
         cadena = config.database_url.get_secret_value()
         if cadena:
             pool = crear_pool(cadena)  # sin abrir: el lifespan lo abre
             repositorios = _repositorios_sql(pool)
-    servicios = construir_servicios(repositorios, config, reloj) if repositorios is not None else None
-    return Contenedor(configuracion=config, reloj=reloj, servicios=servicios, pool=pool)
+    emisor = EmisorEventosEnMemoria()
+    servicios = construir_servicios(repositorios, config, reloj, emisor) if repositorios is not None else None
+    return Contenedor(configuracion=config, reloj=reloj, servicios=servicios, emisor=emisor, pool=pool)
