@@ -75,15 +75,22 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
-        # PENDIENTE(B7): bot de Telegram.
         if cont.pool is not None:
             await cont.pool.open(wait=False)  # no falla si la BD no responde: las consultas devuelven 503
         simulador = cont.servicios.simulador if cont.servicios is not None else None
         if simulador is not None:
             await simulador.iniciar()  # MODO_DEMO: asegura el rodamiento de hoy y arranca el movimiento
+        if cont.bot is not None:
+            try:
+                await cont.bot.iniciar()
+            except Exception as exc:  # noqa: BLE001 - sin red o token inválido: la API sigue funcionando
+                registro.error("No se pudo iniciar el bot de Telegram (%s)", type(exc).__name__)
+                cont.bot = None
         try:
             yield
         finally:
+            if cont.bot is not None:
+                await cont.bot.detener()
             if simulador is not None:
                 await simulador.detener()
             if cont.cliente_http is not None:

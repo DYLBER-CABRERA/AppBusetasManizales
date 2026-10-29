@@ -14,6 +14,7 @@ import httpx
 from psycopg_pool import AsyncConnectionPool
 
 from adaptadores_externos.base_datos import crear_pool
+from adaptadores_externos.bot_telegram import BotTelegram, LogicaBot
 from adaptadores_externos.notificaciones import NotificadorCompuesto
 from adaptadores_externos.websocket_posiciones import DifusorPosiciones, GestorConexiones
 from herramientas.repositorio_simulacion_sql import RepositorioSimulacionSql
@@ -219,6 +220,7 @@ class Contenedor:
     cliente_http: httpx.AsyncClient | None = None
     gestor_ws: GestorConexiones | None = None
     notificador: NotificadorCompuesto | None = None
+    bot: BotTelegram | None = None
     armar_mensaje_posiciones: Any = None
 
 
@@ -385,4 +387,7 @@ def construir_contenedor(
 
     emisor.suscribir(AVISO_PUBLICADO, difundir_aviso_nuevo)
     emisor.suscribir(POSICION_ACEPTADA, servicios.evaluar_alertas_por_posicion)
+    if config.bot_telegram_activo:  # el bot solo llama a casos de uso (D-P08: el chat_id hace de identidad)
+        contenedor.bot = BotTelegram(config.telegram_bot_token.get_secret_value(), LogicaBot(servicios, reloj))
+        contenedor.notificador.enviar_telegram = contenedor.bot.enviar
     return contenedor

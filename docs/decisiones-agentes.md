@@ -87,3 +87,11 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Sin frecuencia o sin horario hoy ⇒ sin opción** en la planificación (el ETA sí muestra `no_disponible`).
 - **`requiere_rol(..., mensaje=)`** permite el texto «Inicia sesión para guardar.» del contrato en favoritos y alertas.
 - **El estado de episodios de desvío vive en memoria** del servidor (una instancia): un reinicio puede repetir un aviso de desvío.
+
+## 2026-10-28 · backend-dev · B7 bot de Telegram
+
+- **Sin dependencias nuevas** (`python-telegram-bot` 22.8 ya estaba fijada). `adaptadores_externos/bot_telegram.py` tiene `LogicaBot` (conversación pura, probada sin red) y `BotTelegram` (adaptador PTB).
+- **Estado del chat en memoria** (ubicación ≤ 10 min y pares ruta/paradero de los botones); se pierde al reiniciar el servidor, a propósito.
+- **Texto libre:** se quitan palabras vacías y se prueba la frase y cada palabra contra hitos y rutas (primero hitos). No hay lógica de intención más allá de palabras clave.
+- **`E501` permitido** en `bot_telegram.py` (textos largos de conversación).
+- **PENDIENTE(decisión):** «Ver en mapa» del mockup no se implementó (no hay URL de mapa pública definida); «Ver ruta» muestra empresas y paradas en texto. No se probó contra la red de Telegram: requiere un token real.

@@ -27,4 +27,5 @@ class NotificadorCompuesto:
             if self.enviar_telegram is None:
                 registro.info("Alerta para un chat de Telegram omitida: el bot no está activo")
                 return
-            await self.enviar_telegram(destino.telegram_chat_id, mensaje)
+            prefijo = "⚠️ " if datos.get("tipo") == "alerta_desvio" else ""
+            await self.enviar_telegram(destino.telegram_chat_id, prefijo + mensaje)
