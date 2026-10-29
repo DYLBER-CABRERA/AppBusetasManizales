@@ -51,3 +51,31 @@ export const revocarCredencial = (credencialId: string) =>
   consultar(() =>
     api.DELETE("/api/v1/admin/credenciales-gps/{credencial_id}", { params: { path: { credencial_id: credencialId } } }),
   );
+
+// ---------- usuarios y empresas (W4) ----------
+export type Usuario = components["schemas"]["Usuario"];
+export const CLAVE_USUARIOS = ["admin", "usuarios"] as const;
+export const CLAVE_EMPRESAS_ADMIN = ["admin", "empresas"] as const;
+
+export function useUsuarios(correo: string) {
+  return useQuery({
+    queryKey: [...CLAVE_USUARIOS, correo],
+    queryFn: () =>
+      consultar(() => api.GET("/api/v1/admin/usuarios", { params: { query: { correo: correo.trim() || null } } })),
+  });
+}
+
+export const crearUsuario = (cuerpo: components["schemas"]["UsuarioCrear"]) =>
+  consultar(() => api.POST("/api/v1/admin/usuarios", { body: cuerpo }));
+
+export const editarUsuario = (usuarioId: string, cuerpo: components["schemas"]["UsuarioEditar"]) =>
+  consultar(() =>
+    api.PUT("/api/v1/admin/usuarios/{usuario_id}", { params: { path: { usuario_id: usuarioId } }, body: cuerpo }),
+  );
+
+export const crearEmpresa = (nombre: string) => consultar(() => api.POST("/api/v1/admin/empresas", { body: { nombre } }));
+
+export const editarEmpresa = (empresaId: string, cuerpo: components["schemas"]["EmpresaEditar"]) =>
+  consultar(() =>
+    api.PUT("/api/v1/admin/empresas/{empresa_id}", { params: { path: { empresa_id: empresaId } }, body: cuerpo }),
+  );

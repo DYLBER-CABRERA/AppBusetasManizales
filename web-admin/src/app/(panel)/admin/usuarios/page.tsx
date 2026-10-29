@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaUsuarios } from "@/componentes/admin/PantallaUsuarios";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Usuarios" bloque="W4" />;
+  return <PantallaUsuarios />;
 }
