@@ -265,9 +265,7 @@ def test_usuario_inactivo_en_yo_responde_401(cliente: TestClient, repos: Reposit
     assert cliente.get("/api/v1/yo", headers=_con("tok-jefe")).status_code == 401
 
 
-def test_endpoint_de_otro_bloque_con_rol_correcto_sigue_en_501(cliente: TestClient) -> None:
-    r = cliente.get("/api/v1/favoritos", headers=_con("tok-pasajera"))
-    assert r.status_code == 501
+def test_endpoint_de_gestion_con_rol_equivocado_403(cliente: TestClient) -> None:
     assert cliente.get("/api/v1/admin/usuarios", headers=_con("tok-jefe")).status_code == 403
 
 

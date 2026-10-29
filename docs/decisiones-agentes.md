@@ -77,3 +77,13 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Baja de paradero usado:** advierte pero no desvincula de las rutas (decisión de seguridad: no alterar trazados en silencio).
 - **Identidad efectiva del administrador en endpoints del jefe:** `identidad_de_gestion` (nucleo/dependencias) devuelve un `Identidad` con rol jefe y la empresa de `empresaId`; los casos de uso no cambian. El `usuario_id` real queda como autor.
 - **`dar_de_baja_ruta` usa `current_date` de la BD** (función de B1): el límite "turnos futuros" del chequeo previo usa la fecha del `PuertoReloj` (Bogotá); pueden diferir unas horas al caer la noche (UTC).
+
+## 2026-10-28 · backend-dev · B6 pasajero, alertas y planificación
+
+- **Sin dependencias nuevas.** `PuertoNotificador` (nucleo) con `NotificadorCompuesto`: WebSocket por usuario y, para chats de Telegram, una función `enviar_telegram` que asignará el bot (B7); sin bot el aviso por chat se omite con un registro informativo.
+- **`CrearAlertaLlegada.para_destino`** admite `usuario_id` o `telegram_chat_id` (D-P08): el bot de B7 reutiliza el mismo caso de uso.
+- **Estado `notificada`:** tras el primer aviso la alerta sigue evaluándose (el enfriamiento evita repeticiones); solo `DELETE` la desactiva.
+- **Caminata de la planificación** = suma de la caminata de origen y de destino (docs/03 tenía un único `caminataMin`).
+- **Sin frecuencia o sin horario hoy ⇒ sin opción** en la planificación (el ETA sí muestra `no_disponible`).
+- **`requiere_rol(..., mensaje=)`** permite el texto «Inicia sesión para guardar.» del contrato en favoritos y alertas.
+- **El estado de episodios de desvío vive en memoria** del servidor (una instancia): un reinicio puede repetir un aviso de desvío.

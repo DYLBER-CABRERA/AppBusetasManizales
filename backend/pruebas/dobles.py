@@ -97,6 +97,10 @@ class RutasEnMemoria:
 
     async def paraderos_cercanos(self, lat: float, lng: float, radio_m: int, ruta_id: UUID | None) -> list[dict[str, Any]]:
         self.llamadas.append(("paraderos_cercanos", radio_m, ruta_id))
+        if lat >= 6:
+            return []  # sin paraderos cerca
+        if lat >= 5.075:  # "destino" de las pruebas de planificación
+            return [{**self.paraderos[1], "distancia_m": 200.0}] if radio_m >= 200 else []
         return [p for p in self.paraderos if p["distancia_m"] <= radio_m]
 
     async def paradero_mas_cercano(self, lat: float, lng: float) -> dict[str, Any] | None:
@@ -274,7 +278,8 @@ class ParametrosEnMemoria:
         self.valores: dict[str, Any] = {
             "radio_busqueda_m": 800, "radio_hito_m": 300, "velocidad_default_kmh": 20,
             "umbral_posicion_obsoleta_s": 60, "umbral_desvio_m": 100,
-            "longitud_max_aviso": 500, "dias_max_rodamiento_adelante": 15, "rango_max_estadisticas_dias": 365,
+            "longitud_max_aviso": 500, "distancia_aviso_llegada_m": 300, "radio_caminata_m": 500,
+            "max_opciones_viaje": 3, "enfriamiento_alerta_min": 10, "dias_max_rodamiento_adelante": 15, "rango_max_estadisticas_dias": 365,
             "caja_ciudad": {"minLat": 4.95, "maxLat": 5.20, "minLng": -75.65, "maxLng": -75.40},
         } | (valores or {})
 
@@ -350,9 +355,10 @@ class SeguimientoEnMemoria:
         return ruta_id in (RUTA_ENEA, RUTA_VILLAMARIA)
 
     async def progreso_paradero(self, ruta_id: UUID, paradero_id: UUID) -> dict[str, Any] | None:
-        if ruta_id != RUTA_ENEA or paradero_id != PARADERO_A:
+        if ruta_id != RUTA_ENEA or paradero_id not in (PARADERO_A, PARADERO_B):
             return None
-        return {"progreso_m": self.progreso_paradero_m, "longitud_m": self.longitud}
+        progreso = self.progreso_paradero_m if paradero_id == PARADERO_A else 3000.0
+        return {"progreso_m": progreso, "longitud_m": self.longitud}
 
     async def servicios_para_eta(self, ruta_id: UUID) -> list[dict[str, Any]]:
         return [
@@ -756,6 +762,91 @@ class GestionRedEnMemoria:
         self.bajas.append(("servicio", servicio_id))
 
 
+class FavoritosEnMemoria:
+    def __init__(self) -> None:
+        self.filas: dict[UUID, dict[str, Any]] = {}
+
+    @staticmethod
+    def _sin_dueno(f: dict[str, Any]) -> dict[str, Any]:
+        return {k: v for k, v in f.items() if k != "usuario_id"}
+
+    async def listar(self, usuario_id):
+        return [self._sin_dueno(f) for f in self.filas.values() if f["usuario_id"] == usuario_id]
+
+    async def destino_existe(self, tipo, objetivo_id):
+        return objetivo_id in ((RUTA_ENEA, RUTA_VILLAMARIA) if tipo == "ruta" else (PARADERO_A, PARADERO_B))
+
+    async def buscar(self, usuario_id, tipo, objetivo_id):
+        f = next((f for f in self.filas.values()
+                  if f["usuario_id"] == usuario_id and objetivo_id in (f["ruta_id"], f["paradero_id"])), None)
+        return self._sin_dueno(f) if f else None
+
+    async def crear(self, usuario_id, tipo, objetivo_id):
+        f = {"id": uuid4(), "usuario_id": usuario_id, "tipo": tipo, "ruta_id": objetivo_id if tipo == "ruta" else None,
+             "paradero_id": objetivo_id if tipo == "paradero" else None, "nombre": "X", "disponible": True}
+        self.filas[f["id"]] = f
+        return self._sin_dueno(f)
+
+    async def eliminar(self, usuario_id, favorito_id):
+        f = self.filas.get(favorito_id)
+        if f is None or f["usuario_id"] != usuario_id:
+            return False
+        del self.filas[favorito_id]
+        return True
+
+
+class AlertasEnMemoria:
+    def __init__(self) -> None:
+        self.filas: dict[UUID, dict[str, Any]] = {}
+        self.punto = {"progreso_m": 300.0, "desvio_m": 5.0, "longitud_m": 10000.0}  # a 200 m del paradero A (500 m)
+        self.notificadas: list[tuple[UUID, Any]] = []
+
+    async def paradero_en_ruta_activa(self, ruta_id, paradero_id):
+        return ruta_id == RUTA_ENEA and paradero_id in (PARADERO_A, PARADERO_B)
+
+    async def listar(self, usuario_id):
+        return [self._publica(a) for a in self.filas.values() if a["usuario_id"] == usuario_id and a["estado"] != "desactivada"]
+
+    @staticmethod
+    def _publica(a):
+        return {k: a[k] for k in ("id", "ruta_id", "paradero_id", "distancia_aviso_m", "estado", "ultima_notificacion_en", "version")}
+
+    async def crear(self, usuario_id, telegram_chat_id, ruta_id, paradero_id, distancia_m):
+        if any(a["estado"] != "desactivada" and a["paradero_id"] == paradero_id and a["ruta_id"] == ruta_id
+               and (a["usuario_id"], a["telegram_chat_id"]) == (usuario_id, telegram_chat_id) for a in self.filas.values()):
+            raise ErrorConflictoNegocio("Ya tienes una alerta activa para ese paradero en esa ruta.")
+        a = {"id": uuid4(), "usuario_id": usuario_id, "telegram_chat_id": telegram_chat_id, "ruta_id": ruta_id,
+             "paradero_id": paradero_id, "distancia_aviso_m": distancia_m, "estado": "activa",
+             "ultima_notificacion_en": None, "version": 1}
+        self.filas[a["id"]] = a
+        return self._publica(a)
+
+    async def desactivar(self, usuario_id, alerta_id):
+        a = self.filas.get(alerta_id)
+        if a is None or a["usuario_id"] != usuario_id or a["estado"] == "desactivada":
+            return False
+        a["estado"] = "desactivada"
+        return True
+
+    async def activas_de_ruta(self, ruta_id):
+        return [dict(a) for a in self.filas.values() if a["ruta_id"] == ruta_id and a["estado"] != "desactivada"]
+
+    async def marcar_notificada(self, alerta_id, cuando):
+        self.filas[alerta_id].update(estado="notificada", ultima_notificacion_en=cuando)
+        self.notificadas.append((alerta_id, cuando))
+
+    async def progreso_de_punto(self, ruta_id, lat, lng):
+        return dict(self.punto)
+
+    async def progreso_paradero(self, ruta_id, paradero_id):
+        return {"progreso_m": 500.0, "longitud_m": 10000.0} if paradero_id == PARADERO_A else None
+
+
+class PlanificacionEnMemoria:
+    async def rutas_de_paraderos(self, paradero_ids):
+        return {p: {RUTA_ENEA} for p in paradero_ids if p in (PARADERO_A, PARADERO_B)}
+
+
 def repositorios_en_memoria() -> Repositorios:
     seguimiento = SeguimientoEnMemoria()
     usuarios = UsuariosEnMemoria()
@@ -765,4 +856,5 @@ def repositorios_en_memoria() -> Repositorios:
         seguimiento=seguimiento, fuentes_gps=FuentesGpsEnMemoria(), usuarios=usuarios,
         autenticacion=AutenticacionFalsa(), simulacion=SimulacionEnMemoria(seguimiento), operacion=OperacionEnMemoria(),
         admin=AdminEnMemoria(usuarios), gestion_red=GestionRedEnMemoria(),
+        favoritos=FavoritosEnMemoria(), alertas=AlertasEnMemoria(), planificacion=PlanificacionEnMemoria(),
     )

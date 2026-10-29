@@ -5,8 +5,8 @@ Una sola instancia (no escala horizontalmente). Un cliente lento o caído no blo
 corre en su propia tarea, con tiempo de espera por cliente, y las conexiones caídas se limpian.
 
 `aviso_nuevo` se difunde al publicar un aviso (B4, ver composicion.py).
-PENDIENTE: `senal_perdida` (detector de señal) y `/ws/notificaciones` con token (`alerta_llegada` y `alerta_desvio`, B6);
-hoy `/ws/notificaciones` solo responde ping/pong.
+`/ws/notificaciones?token=` entrega `alerta_llegada` y `alerta_desvio` al pasajero (B6).
+PENDIENTE: `senal_perdida` (detector de señal).
 """
 
 from __future__ import annotations
@@ -20,6 +20,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from nucleo.autorizacion import Rol
+
 registro = logging.getLogger("busetasapp.ws")
 
 TIEMPO_ESPERA_ENVIO_S = 2.0
@@ -29,6 +31,7 @@ RETRASO_AGRUPACION_S = 0.2
 class GestorConexiones:
     def __init__(self) -> None:
         self._por_ruta: dict[UUID, set[WebSocket]] = defaultdict(set)
+        self._por_usuario: dict[UUID, set[WebSocket]] = defaultdict(set)
 
     def conectar(self, ruta_id: UUID, ws: WebSocket) -> None:
         self._por_ruta[ruta_id].add(ws)
@@ -38,11 +41,30 @@ class GestorConexiones:
         if not self._por_ruta[ruta_id]:
             del self._por_ruta[ruta_id]
 
+    def conectar_usuario(self, usuario_id: UUID, ws: WebSocket) -> None:
+        self._por_usuario[usuario_id].add(ws)
+
+    def desconectar_usuario(self, usuario_id: UUID, ws: WebSocket) -> None:
+        self._por_usuario[usuario_id].discard(ws)
+        if not self._por_usuario[usuario_id]:
+            del self._por_usuario[usuario_id]
+
+    async def difundir_usuario(self, usuario_id: UUID, mensaje: dict[str, Any]) -> None:
+        clientes = list(self._por_usuario.get(usuario_id, ()))
+
+        async def enviar(ws: WebSocket) -> None:
+            try:
+                await asyncio.wait_for(ws.send_json(mensaje), TIEMPO_ESPERA_ENVIO_S)
+            except Exception:  # noqa: BLE001 - cliente caído o lento
+                self.desconectar_usuario(usuario_id, ws)
+
+        await asyncio.gather(*(enviar(ws) for ws in clientes))
+
     def hay_clientes(self, ruta_id: UUID) -> bool:
         return bool(self._por_ruta.get(ruta_id))
 
     def total(self) -> int:
-        return sum(len(c) for c in self._por_ruta.values())
+        return sum(len(c) for c in self._por_ruta.values()) + sum(len(c) for c in self._por_usuario.values())
 
     async def difundir(self, ruta_id: UUID, mensaje: dict[str, Any]) -> None:
         clientes = list(self._por_ruta.get(ruta_id, ()))
@@ -122,9 +144,25 @@ async def ws_rutas(ws: WebSocket, ruta_id: UUID) -> None:
 
 
 @router.websocket("/ws/notificaciones")
-async def ws_notificaciones(ws: WebSocket) -> None:
+async def ws_notificaciones(ws: WebSocket, token: str | None = None) -> None:
+    """Solo pasajeros con sesión (U). El token va en la consulta (contrato §4) y NUNCA se registra."""
+    contenedor = ws.app.state.contenedor
+    identidad = None
+    if token and contenedor.servicios is not None:
+        try:
+            identidad = await contenedor.servicios.autenticacion.verificar_token(token)
+        except Exception:  # noqa: BLE001 - token inválido, vencido o servicio de autenticación caído
+            identidad = None
+    if identidad is None or identidad.rol != Rol.PASAJERO:
+        await ws.close(code=1008)  # violación de política: sin sesión válida
+        return
+    usuario_id = UUID(identidad.usuario_id)
     await ws.accept()
+    gestor: GestorConexiones = contenedor.gestor_ws
+    gestor.conectar_usuario(usuario_id, ws)
     try:
         await _ping_pong(ws)
     except WebSocketDisconnect:
-        return
+        pass
+    finally:
+        gestor.desconectar_usuario(usuario_id, ws)

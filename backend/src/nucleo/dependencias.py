@@ -37,14 +37,14 @@ async def identidad_opcional(
     return await _servicios(request).autenticacion.verificar_token(credenciales.credentials)
 
 
-def requiere_rol(*roles: Rol) -> Callable[..., object]:
+def requiere_rol(*roles: Rol, mensaje: str = "Inicia sesión para continuar.") -> Callable[..., object]:
     """Exige sesión y uno de los roles. El filtro por empresa y la autorización fina viven en el caso de uso."""
 
     async def dependencia(
         request: Request, credenciales: HTTPAuthorizationCredentials | None = Security(esquema_bearer)
     ) -> Identidad:
         if credenciales is None:
-            raise ErrorNoAutenticado("Inicia sesión para continuar.")
+            raise ErrorNoAutenticado(mensaje)
         identidad = await _servicios(request).autenticacion.verificar_token(credenciales.credentials)
         if identidad.rol not in roles:
             raise ErrorNoAutorizado("No tienes permiso para esta acción.")

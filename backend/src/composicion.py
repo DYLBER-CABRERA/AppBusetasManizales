@@ -14,6 +14,7 @@ import httpx
 from psycopg_pool import AsyncConnectionPool
 
 from adaptadores_externos.base_datos import crear_pool
+from adaptadores_externos.notificaciones import NotificadorCompuesto
 from adaptadores_externos.websocket_posiciones import DifusorPosiciones, GestorConexiones
 from herramientas.repositorio_simulacion_sql import RepositorioSimulacionSql
 from herramientas.simulador_gps import SimuladorGps
@@ -64,6 +65,18 @@ from modulos.operacion import (
     PublicarRodamiento,
     RepositorioOperacionSql,
 )
+from modulos.pasajero import (
+    AgregarFavorito,
+    CrearAlertaLlegada,
+    EliminarAlerta,
+    EvaluarAlertasPorPosicion,
+    ListarAlertas,
+    ListarFavoritos,
+    QuitarFavorito,
+    RepositorioAlertasSql,
+    RepositorioFavoritosSql,
+)
+from modulos.planificacion import PlanificarViaje, RepositorioPlanificacionSql
 from modulos.red import (
     AsignarRutaAEmpresa,
     ConsultarParaderosCercanos,
@@ -96,6 +109,7 @@ from modulos.seguimiento import (
 from nucleo.autenticacion import PuertoAutenticacion
 from nucleo.configuracion import Configuracion, obtener_configuracion
 from nucleo.emisor_eventos import AVISO_PUBLICADO, POSICION_ACEPTADA, EmisorEventos, EmisorEventosEnMemoria
+from nucleo.notificador import PuertoNotificador
 from nucleo.reloj import PuertoReloj, RelojSimulado
 
 
@@ -117,6 +131,9 @@ class Repositorios:
     operacion: Any = None
     admin: Any = None
     gestion_red: Any = None
+    favoritos: Any = None
+    alertas: Any = None
+    planificacion: Any = None
 
 
 @dataclass
@@ -181,6 +198,14 @@ class Servicios:
     editar_paradero: EditarParadero
     eliminar_paradero: EliminarParadero
     crear_hito: CrearHito
+    listar_favoritos: ListarFavoritos
+    agregar_favorito: AgregarFavorito
+    quitar_favorito: QuitarFavorito
+    listar_alertas: ListarAlertas
+    crear_alerta_llegada: CrearAlertaLlegada
+    eliminar_alerta: EliminarAlerta
+    evaluar_alertas_por_posicion: EvaluarAlertasPorPosicion
+    planificar_viaje: PlanificarViaje
     simulador: SimuladorGps | None = None
 
 
@@ -193,11 +218,13 @@ class Contenedor:
     pool: AsyncConnectionPool | None = None
     cliente_http: httpx.AsyncClient | None = None
     gestor_ws: GestorConexiones | None = None
+    notificador: NotificadorCompuesto | None = None
     armar_mensaje_posiciones: Any = None
 
 
 def construir_servicios(
-    repos: Repositorios, configuracion: Configuracion, reloj: PuertoReloj, emisor: EmisorEventos
+    repos: Repositorios, configuracion: Configuracion, reloj: PuertoReloj, emisor: EmisorEventos,
+    notificador: PuertoNotificador | None = None,
 ) -> Servicios:
     calculador_tipo_dia = CalculadorTipoDia(configuracion.lista_festivos)
     deductor = DeductorDeRuta(repos.seguimiento)
@@ -271,6 +298,19 @@ def construir_servicios(
         editar_paradero=EditarParadero(repos.gestion_red),
         eliminar_paradero=EliminarParadero(repos.gestion_red),
         crear_hito=CrearHito(repos.gestion_red),
+        listar_favoritos=ListarFavoritos(repos.favoritos),
+        agregar_favorito=AgregarFavorito(repos.favoritos),
+        quitar_favorito=QuitarFavorito(repos.favoritos),
+        listar_alertas=ListarAlertas(repos.alertas),
+        crear_alerta_llegada=CrearAlertaLlegada(repos.alertas, repos.parametros),
+        eliminar_alerta=EliminarAlerta(repos.alertas),
+        evaluar_alertas_por_posicion=EvaluarAlertasPorPosicion(
+            repos.alertas, repos.alertas, notificador, repos.parametros, reloj
+        ),
+        planificar_viaje=PlanificarViaje(
+            repos.planificacion, repos.rutas, repos.busqueda, repos.seguimiento, repos.horarios, calculador_tipo_dia,
+            repos.parametros, reloj,
+        ),
         simulador=simulador,
     )
 
@@ -295,6 +335,9 @@ def _repositorios_sql(pool: AsyncConnectionPool, config: Configuracion, cliente_
         operacion=RepositorioOperacionSql(pool),
         admin=RepositorioAdminSql(pool),
         gestion_red=RepositorioGestionRedSql(pool),
+        favoritos=RepositorioFavoritosSql(pool),
+        alertas=RepositorioAlertasSql(pool),
+        planificacion=RepositorioPlanificacionSql(pool),
     )
 
 
@@ -320,7 +363,8 @@ def construir_contenedor(
     )
     if repositorios is None:
         return contenedor
-    servicios = construir_servicios(repositorios, config, reloj, emisor)
+    contenedor.notificador = NotificadorCompuesto(gestor)
+    servicios = construir_servicios(repositorios, config, reloj, emisor, contenedor.notificador)
     contenedor.servicios = servicios
 
     async def armar_mensaje_posiciones(ruta_id: UUID) -> dict[str, Any] | None:
@@ -340,4 +384,5 @@ def construir_contenedor(
             await gestor.difundir(ruta_id, {"tipo": "aviso_nuevo", "avisoId": str(carga["aviso_id"])})
 
     emisor.suscribir(AVISO_PUBLICADO, difundir_aviso_nuevo)
+    emisor.suscribir(POSICION_ACEPTADA, servicios.evaluar_alertas_por_posicion)
     return contenedor

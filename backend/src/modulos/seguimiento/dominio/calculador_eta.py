@@ -72,6 +72,19 @@ def _texto_frecuencia(franja: FranjaFrecuencia) -> str:
     return f"cada {franja.minutos_min} a {franja.minutos_max} min"
 
 
+def motivo_fuera_de_horario(horario: HorarioDia, duracion_min: int | None, ahora: datetime) -> str | None:
+    """«Aún no inicia…» / «El servicio ya cerró.» / None si está en horario (cierre, o última salida + duración)."""
+    hora = ahora.time().replace(tzinfo=None)
+    if hora < horario.primera_salida:
+        return "Aún no inicia el servicio."
+    if horario.cierre is not None:
+        limite = horario.cierre
+    else:
+        fin = datetime.combine(ahora.date(), horario.ultima_salida) + timedelta(minutes=duracion_min or DURACION_POR_DEFECTO_MIN)
+        limite = time(23, 59, 59) if fin.date() > ahora.date() else fin.time()
+    return "El servicio ya cerró." if hora > limite else None
+
+
 class CalculadorEta:
     def __init__(self, velocidad_default_kmh: float, umbral_obsoleta_s: float) -> None:
         self._velocidad_default = velocidad_default_kmh
@@ -125,17 +138,5 @@ class CalculadorEta:
 
     @staticmethod
     def _fuera_de_horario(entrada: EntradaEta, ahora: datetime) -> str | None:
-        horario = entrada.horario
-        assert horario is not None
-        hora = ahora.time().replace(tzinfo=None)
-        if hora < horario.primera_salida:
-            return "Aún no inicia el servicio."
-        if horario.cierre is not None:
-            limite = horario.cierre
-        else:
-            duracion = timedelta(minutes=entrada.duracion_min or DURACION_POR_DEFECTO_MIN)
-            fin = datetime.combine(ahora.date(), horario.ultima_salida) + duracion
-            limite = time(23, 59, 59) if fin.date() > ahora.date() else fin.time()
-        if hora > limite:
-            return "El servicio ya cerró."
-        return None
+        assert entrada.horario is not None
+        return motivo_fuera_de_horario(entrada.horario, entrada.duracion_min, ahora)

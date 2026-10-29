@@ -4902,6 +4902,16 @@
             },
             "description": "NO_AUTENTICADO"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -4975,6 +4985,16 @@
               }
             },
             "description": "NO_AUTENTICADO"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
           },
           "404": {
             "content": {
@@ -5066,6 +5086,16 @@
               }
             },
             "description": "NO_AUTENTICADO"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
           },
           "404": {
             "content": {
@@ -6672,6 +6702,16 @@
             },
             "description": "NO_AUTENTICADO"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -6756,6 +6796,16 @@
             },
             "description": "NO_AUTENTICADO"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -6836,6 +6886,16 @@
               }
             },
             "description": "NO_AUTENTICADO"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
           },
           "404": {
             "content": {
