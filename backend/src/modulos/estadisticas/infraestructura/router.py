@@ -1,4 +1,4 @@
-"""Router del módulo estadísticas (J y A). B0: 501 PENDIENTE (lógica en B5).
+"""Router del módulo estadísticas (J y A).
 
 La forma de la respuesta no está en docs/03; se toma de docs/referencia/openapi.yaml (EstadisticasUso).
 """
@@ -10,8 +10,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from nucleo.autorizacion import Rol
-from nucleo.dependencias import pendiente, requiere_rol
+from modulos.estadisticas.aplicacion.consultar_estadisticas_uso import ConsultarEstadisticasUso
+from nucleo.autorizacion import Identidad, Rol
+from nucleo.dependencias import caso, requiere_rol
 from nucleo.esquemas import EsquemaBase, errores
 
 router = APIRouter(tags=["Estadísticas"])
@@ -40,14 +41,12 @@ class EstadisticasUso(EsquemaBase):
     por_dia: list[TotalPorDia] = []
 
 
-@router.get(
-    "/estadisticas/uso", response_model=EstadisticasUso,
-    dependencies=[Depends(requiere_rol(Rol.JEFE_OPERACIONES, Rol.ADMINISTRADOR))],
-    responses=errores(400, 401, 403),
-)
+@router.get("/estadisticas/uso", response_model=EstadisticasUso, responses=errores(400, 401, 403))
 async def consultar_estadisticas_uso(
     desde: date,
     hasta: date,
     empresa_id: UUID | None = Query(default=None, alias="empresaId", description="Solo administrador; el jefe lo ignora"),
-) -> EstadisticasUso:
-    pendiente()
+    identidad: Identidad = Depends(requiere_rol(Rol.JEFE_OPERACIONES, Rol.ADMINISTRADOR)),
+    caso_uso: ConsultarEstadisticasUso = Depends(caso("consultar_estadisticas_uso")),
+) -> dict:
+    return await caso_uso(identidad, desde, hasta, empresa_id)

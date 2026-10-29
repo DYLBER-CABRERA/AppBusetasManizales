@@ -69,3 +69,11 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Avisos del jefe sin paraderos** (BR-05: avisos de su empresa sobre sus rutas). Retirar = `estado: retirado` (no se borra la fila).
 - **`aviso_nuevo` por WebSocket** al publicar (evento interno `aviso.publicado`), cerrando el PENDIENTE de B3b.
 - **Pruebas:** se permite `E501` en `pruebas/` (literales largos de peticiones HTTP).
+
+## 2026-10-28 · backend-dev · B5 movilidad, administración y estadísticas
+
+- **Sin dependencias nuevas.** Alta de usuarios con la API admin de Supabase Auth vía `httpx` y `SUPABASE_SERVICE_ROLE_KEY` (solo backend, nunca registrada): `POST /auth/v1/invite`. Decisión: invitación por correo en vez de contraseña inicial, porque el contrato no maneja contraseñas. Si el correo de invitación no está configurado en el proyecto Supabase, la creación fallará con `503`.
+- **Ruta compartida al registrar:** `confirmarCompartida` se exige cuando el alta trae más de una empresa (docs/03 solo lo nombraba para "ruta ya asignada a otra empresa").
+- **Baja de paradero usado:** advierte pero no desvincula de las rutas (decisión de seguridad: no alterar trazados en silencio).
+- **Identidad efectiva del administrador en endpoints del jefe:** `identidad_de_gestion` (nucleo/dependencias) devuelve un `Identidad` con rol jefe y la empresa de `empresaId`; los casos de uso no cambian. El `usuario_id` real queda como autor.
+- **`dar_de_baja_ruta` usa `current_date` de la BD** (función de B1): el límite "turnos futuros" del chequeo previo usa la fecha del `PuertoReloj` (Bogotá); pueden diferir unas horas al caer la noche (UTC).

@@ -1,4 +1,4 @@
-"""Router del módulo red. Solo traduce HTTP. Consulta pública (B2) implementada; gestión de la Secretaría: 501 (B5)."""
+"""Router del módulo red. Solo traduce HTTP. Consulta pública (B2) y gestión de la Secretaría (B5)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,18 @@ from modulos.red.aplicacion.consultas import (
     ListarEmpresas,
     ListarRutas,
     ObtenerDetalleRuta,
+)
+from modulos.red.aplicacion.gestion import (
+    AsignarRutaAEmpresa,
+    CrearHito,
+    CrearParadero,
+    EditarParadero,
+    EditarRuta,
+    EliminarParadero,
+    EliminarRuta,
+    ListarParaderos,
+    RegistrarRuta,
+    RetirarRutaDeEmpresa,
 )
 from modulos.red.infraestructura.esquemas import (
     Empresa,
@@ -29,8 +41,8 @@ from modulos.red.infraestructura.esquemas import (
     ServicioAsignar,
     ServicioRuta,
 )
-from nucleo.autorizacion import Rol
-from nucleo.dependencias import RegistroUso, caso, pendiente, requiere_rol
+from nucleo.autorizacion import Identidad, Rol
+from nucleo.dependencias import RegistroUso, caso, requiere_rol
 from nucleo.esquemas import errores
 
 router = APIRouter(tags=["Red"])
@@ -93,84 +105,109 @@ async def listar_empresas(caso_uso: ListarEmpresas = Depends(caso("listar_empres
 # ---- Secretaría de Movilidad (S) y administrador (A) ----
 
 
-@router.post(
-    "/rutas", response_model=RutaDetalle, status_code=201, dependencies=[_gestion],
-    responses=errores(400, 401, 403, 404, 409),
-)
-async def registrar_ruta(cuerpo: RutaCrear) -> RutaDetalle:
-    pendiente()
+@router.post("/rutas", response_model=RutaDetalle, status_code=201, responses=errores(400, 401, 403, 404, 409))
+async def registrar_ruta(
+    cuerpo: RutaCrear,
+    identidad: Identidad = _gestion,
+    caso_uso: RegistrarRuta = Depends(caso("registrar_ruta")),
+) -> dict:
+    return await caso_uso(
+        identidad, cuerpo.nombre, cuerpo.ruta_principal_id, cuerpo.paradero_ids,
+        [sv.model_dump() for sv in cuerpo.servicios], cuerpo.confirmar_compartida,
+    )
 
 
-@router.put(
-    "/rutas/{ruta_id}", response_model=RutaDetalle, dependencies=[_gestion],
-    responses=errores(400, 401, 403, 404, 409),
-)
-async def editar_ruta(ruta_id: UUID, cuerpo: RutaEditar) -> RutaDetalle:
-    pendiente()
+@router.put("/rutas/{ruta_id}", response_model=RutaDetalle, responses=errores(400, 401, 403, 404, 409))
+async def editar_ruta(
+    ruta_id: UUID,
+    cuerpo: RutaEditar,
+    identidad: Identidad = _gestion,
+    caso_uso: EditarRuta = Depends(caso("editar_ruta")),
+) -> dict:
+    return await caso_uso(identidad, ruta_id, cuerpo.nombre, cuerpo.descripcion, cuerpo.paradero_ids, cuerpo.version)
 
 
-@router.delete(
-    "/rutas/{ruta_id}", status_code=204, dependencies=[_gestion],
-    responses=errores(401, 403, 404, 409),
-)
+@router.delete("/rutas/{ruta_id}", status_code=204, responses=errores(401, 403, 404, 409))
 async def eliminar_ruta(
-    ruta_id: UUID, version: int = Query(ge=1), confirmar: bool = False
+    ruta_id: UUID,
+    version: int = Query(ge=1),
+    confirmar: bool = False,
+    identidad: Identidad = _gestion,
+    caso_uso: EliminarRuta = Depends(caso("eliminar_ruta")),
 ) -> Response:
-    pendiente()
+    await caso_uso(identidad, ruta_id, version, confirmar)
+    return Response(status_code=204)
 
 
 @router.post(
-    "/rutas/{ruta_id}/servicios", response_model=ServicioRuta, status_code=201, dependencies=[_gestion],
-    responses=errores(400, 401, 403, 404, 409),
+    "/rutas/{ruta_id}/servicios", response_model=ServicioRuta, status_code=201, responses=errores(400, 401, 403, 404, 409)
 )
-async def asignar_ruta_a_empresa(ruta_id: UUID, cuerpo: ServicioAsignar) -> ServicioRuta:
-    pendiente()
+async def asignar_ruta_a_empresa(
+    ruta_id: UUID,
+    cuerpo: ServicioAsignar,
+    identidad: Identidad = _gestion,
+    caso_uso: AsignarRutaAEmpresa = Depends(caso("asignar_ruta_a_empresa")),
+) -> dict:
+    return await caso_uso(
+        identidad, ruta_id, cuerpo.empresa_id, cuerpo.codigo_publico, cuerpo.codigo_interno, cuerpo.confirmar_compartida
+    )
 
 
-@router.delete(
-    "/servicios/{servicio_id}", status_code=204, dependencies=[_gestion],
-    responses=errores(401, 403, 404, 409),
-)
+@router.delete("/servicios/{servicio_id}", status_code=204, responses=errores(401, 403, 404, 409))
 async def retirar_ruta_de_empresa(
-    servicio_id: UUID, version: int = Query(ge=1), confirmar: bool = False
+    servicio_id: UUID,
+    version: int = Query(ge=1),
+    confirmar: bool = False,
+    identidad: Identidad = _gestion,
+    caso_uso: RetirarRutaDeEmpresa = Depends(caso("retirar_ruta_de_empresa")),
 ) -> Response:
-    pendiente()
+    await caso_uso(identidad, servicio_id, version, confirmar)
+    return Response(status_code=204)
 
 
-@router.get("/paraderos", response_model=list[Paradero], dependencies=[_gestion], responses=errores(401, 403))
-async def listar_paraderos() -> list[Paradero]:
-    pendiente()
+@router.get("/paraderos", response_model=list[Paradero], responses=errores(401, 403))
+async def listar_paraderos(
+    identidad: Identidad = _gestion, caso_uso: ListarParaderos = Depends(caso("listar_paraderos"))
+) -> list[dict]:
+    return await caso_uso(identidad)
 
 
-@router.post(
-    "/paraderos", response_model=Paradero, status_code=201, dependencies=[_gestion],
-    responses=errores(400, 401, 403, 409),
-)
-async def crear_paradero(cuerpo: ParaderoCrear) -> Paradero:
-    pendiente()
+@router.post("/paraderos", response_model=Paradero, status_code=201, responses=errores(400, 401, 403, 409))
+async def crear_paradero(
+    cuerpo: ParaderoCrear,
+    identidad: Identidad = _gestion,
+    caso_uso: CrearParadero = Depends(caso("crear_paradero")),
+) -> dict:
+    return await caso_uso(identidad, cuerpo.nombre, cuerpo.direccion, cuerpo.lat, cuerpo.lng)
 
 
-@router.put(
-    "/paraderos/{paradero_id}", response_model=Paradero, dependencies=[_gestion],
-    responses=errores(400, 401, 403, 404, 409),
-)
-async def editar_paradero(paradero_id: UUID, cuerpo: ParaderoEditar) -> Paradero:
-    pendiente()
+@router.put("/paraderos/{paradero_id}", response_model=Paradero, responses=errores(400, 401, 403, 404, 409))
+async def editar_paradero(
+    paradero_id: UUID,
+    cuerpo: ParaderoEditar,
+    identidad: Identidad = _gestion,
+    caso_uso: EditarParadero = Depends(caso("editar_paradero")),
+) -> dict:
+    cambios = cuerpo.model_dump(exclude={"version"})
+    return await caso_uso(identidad, paradero_id, cambios, cuerpo.version)
 
 
-@router.delete(
-    "/paraderos/{paradero_id}", status_code=204, dependencies=[_gestion],
-    responses=errores(401, 403, 404, 409),
-)
+@router.delete("/paraderos/{paradero_id}", status_code=204, responses=errores(401, 403, 404, 409))
 async def eliminar_paradero(
-    paradero_id: UUID, version: int = Query(ge=1), confirmar: bool = False
+    paradero_id: UUID,
+    version: int = Query(ge=1),
+    confirmar: bool = False,
+    identidad: Identidad = _gestion,
+    caso_uso: EliminarParadero = Depends(caso("eliminar_paradero")),
 ) -> Response:
-    pendiente()
+    await caso_uso(identidad, paradero_id, version, confirmar)
+    return Response(status_code=204)
 
 
-@router.post(
-    "/hitos", response_model=Hito, status_code=201, dependencies=[_gestion],
-    responses=errores(400, 401, 403),
-)
-async def crear_hito(cuerpo: HitoCrear) -> Hito:
-    pendiente()
+@router.post("/hitos", response_model=Hito, status_code=201, responses=errores(400, 401, 403))
+async def crear_hito(
+    cuerpo: HitoCrear,
+    identidad: Identidad = _gestion,
+    caso_uso: CrearHito = Depends(caso("crear_hito")),
+) -> dict:
+    return await caso_uso(identidad, cuerpo.nombre, cuerpo.tipo, cuerpo.alias, cuerpo.lat, cuerpo.lng)

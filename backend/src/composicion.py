@@ -19,16 +19,29 @@ from herramientas.repositorio_simulacion_sql import RepositorioSimulacionSql
 from herramientas.simulador_gps import SimuladorGps
 from modulos.administracion import (
     AutenticacionSupabase,
+    ConfigurarParametro,
     ConsultarEstadoDemo,
+    CrearCredencialGps,
+    CrearEmpresa,
+    CrearUsuario,
+    EditarEmpresa,
+    EditarUsuario,
     EjecutarEscenarioDemo,
+    ListarCredencialesGps,
+    ListarEmpresasAdmin,
+    ListarParametros,
+    ListarRoles,
+    ListarUsuarios,
     ObtenerPerfil,
     ParametrosSql,
+    RepositorioAdminSql,
     RepositorioFuentesGpsSql,
     RepositorioUsuariosSql,
+    RevocarCredencialGps,
 )
 from modulos.avisos import ConsultarAvisosVigentes, PublicarAviso, RepositorioAvisosSql, RetirarAviso
 from modulos.busqueda import BuscarHitos, BuscarRutasPorTexto, ConsultarRutasPorHito, RepositorioBusquedaSql
-from modulos.estadisticas import RegistrarEventoUso, RepositorioEventosUsoSql
+from modulos.estadisticas import ConsultarEstadisticasUso, RegistrarEventoUso, RepositorioEventosUsoSql
 from modulos.horarios import (
     ActualizarFrecuenciasServicio,
     ActualizarHorariosServicio,
@@ -52,12 +65,23 @@ from modulos.operacion import (
     RepositorioOperacionSql,
 )
 from modulos.red import (
+    AsignarRutaAEmpresa,
     ConsultarParaderosCercanos,
     ConsultarRutasCercanas,
+    CrearHito,
+    CrearParadero,
+    EditarParadero,
+    EditarRuta,
+    EliminarParadero,
+    EliminarRuta,
     ListarEmpresas,
+    ListarParaderos,
     ListarRutas,
     ObtenerDetalleRuta,
+    RegistrarRuta,
+    RepositorioGestionRedSql,
     RepositorioRutasSql,
+    RetirarRutaDeEmpresa,
 )
 from modulos.seguimiento import (
     AutenticarFuenteGps,
@@ -67,6 +91,7 @@ from modulos.seguimiento import (
     DeductorDeRuta,
     RegistrarPosiciones,
     RepositorioSeguimientoSql,
+    hash_de_clave,
 )
 from nucleo.autenticacion import PuertoAutenticacion
 from nucleo.configuracion import Configuracion, obtener_configuracion
@@ -90,6 +115,8 @@ class Repositorios:
     autenticacion: Any = None  # PuertoAutenticacion
     simulacion: Any = None  # RepositorioSimulacion (solo MODO_DEMO)
     operacion: Any = None
+    admin: Any = None
+    gestion_red: Any = None
 
 
 @dataclass
@@ -131,6 +158,29 @@ class Servicios:
     anular_rodamiento: AnularRodamiento
     publicar_aviso: PublicarAviso
     retirar_aviso: RetirarAviso
+    listar_roles: ListarRoles
+    listar_usuarios: ListarUsuarios
+    crear_usuario: CrearUsuario
+    editar_usuario: EditarUsuario
+    listar_empresas_admin: ListarEmpresasAdmin
+    crear_empresa: CrearEmpresa
+    editar_empresa: EditarEmpresa
+    listar_credenciales_gps: ListarCredencialesGps
+    crear_credencial_gps: CrearCredencialGps
+    revocar_credencial_gps: RevocarCredencialGps
+    listar_parametros: ListarParametros
+    configurar_parametro: ConfigurarParametro
+    consultar_estadisticas_uso: ConsultarEstadisticasUso
+    registrar_ruta: RegistrarRuta
+    editar_ruta: EditarRuta
+    eliminar_ruta: EliminarRuta
+    asignar_ruta_a_empresa: AsignarRutaAEmpresa
+    retirar_ruta_de_empresa: RetirarRutaDeEmpresa
+    listar_paraderos: ListarParaderos
+    crear_paradero: CrearParadero
+    editar_paradero: EditarParadero
+    eliminar_paradero: EliminarParadero
+    crear_hito: CrearHito
     simulador: SimuladorGps | None = None
 
 
@@ -198,6 +248,29 @@ def construir_servicios(
         anular_rodamiento=AnularRodamiento(repos.operacion),
         publicar_aviso=PublicarAviso(repos.avisos, repos.parametros, reloj, emisor),
         retirar_aviso=RetirarAviso(repos.avisos),
+        listar_roles=ListarRoles(),
+        listar_usuarios=ListarUsuarios(repos.admin),
+        crear_usuario=CrearUsuario(repos.admin, repos.autenticacion),
+        editar_usuario=EditarUsuario(repos.admin),
+        listar_empresas_admin=ListarEmpresasAdmin(repos.admin),
+        crear_empresa=CrearEmpresa(repos.admin),
+        editar_empresa=EditarEmpresa(repos.admin),
+        listar_credenciales_gps=ListarCredencialesGps(repos.admin),
+        crear_credencial_gps=CrearCredencialGps(repos.admin, hash_de_clave),
+        revocar_credencial_gps=RevocarCredencialGps(repos.admin),
+        listar_parametros=ListarParametros(repos.admin),
+        configurar_parametro=ConfigurarParametro(repos.admin),
+        consultar_estadisticas_uso=ConsultarEstadisticasUso(repos.eventos_uso, repos.parametros),
+        registrar_ruta=RegistrarRuta(repos.gestion_red, repos.rutas, repos.avisos, reloj),
+        editar_ruta=EditarRuta(repos.gestion_red, repos.rutas, repos.avisos, reloj),
+        eliminar_ruta=EliminarRuta(repos.gestion_red, repos.rutas, reloj),
+        asignar_ruta_a_empresa=AsignarRutaAEmpresa(repos.gestion_red),
+        retirar_ruta_de_empresa=RetirarRutaDeEmpresa(repos.gestion_red, reloj),
+        listar_paraderos=ListarParaderos(repos.gestion_red),
+        crear_paradero=CrearParadero(repos.gestion_red),
+        editar_paradero=EditarParadero(repos.gestion_red),
+        eliminar_paradero=EliminarParadero(repos.gestion_red),
+        crear_hito=CrearHito(repos.gestion_red),
         simulador=simulador,
     )
 
@@ -215,10 +288,13 @@ def _repositorios_sql(pool: AsyncConnectionPool, config: Configuracion, cliente_
         fuentes_gps=RepositorioFuentesGpsSql(pool),
         usuarios=usuarios,
         autenticacion=AutenticacionSupabase(
-            config.supabase_url, config.supabase_anon_key.get_secret_value(), usuarios, cliente_http
+            config.supabase_url, config.supabase_anon_key.get_secret_value(), usuarios, cliente_http,
+            clave_servicio=config.supabase_service_role_key.get_secret_value(),
         ),
         simulacion=RepositorioSimulacionSql(pool),
         operacion=RepositorioOperacionSql(pool),
+        admin=RepositorioAdminSql(pool),
+        gestion_red=RepositorioGestionRedSql(pool),
     )
 
 

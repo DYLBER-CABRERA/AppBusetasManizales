@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import replace
 from datetime import UTC, datetime, time
+from datetime import date as _date
 from typing import Any
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -258,13 +259,22 @@ class EventosEnMemoria:
             raise RuntimeError("BD caída")
         self.eventos.append((tipo, ruta_id))
 
+    async def estadisticas(self, empresa_id, desde: _date, hasta: _date) -> dict[str, list[dict[str, Any]]]:
+        self.consultas_estadisticas = getattr(self, "consultas_estadisticas", [])
+        self.consultas_estadisticas.append((empresa_id, desde, hasta))
+        if empresa_id == EMPRESA_SERVITURISMO:
+            return {"totales_por_tipo": [], "por_ruta": [], "por_dia": []}
+        return {"totales_por_tipo": [{"tipo": "eta", "total": 5}],
+                "por_ruta": [{"ruta_id": RUTA_ENEA, "ruta_nombre": "La Enea", "total": 5}],
+                "por_dia": [{"dia": _date(2026, 10, 25), "total": 5}]}
+
 
 class ParametrosEnMemoria:
     def __init__(self, valores: dict[str, Any] | None = None) -> None:
         self.valores: dict[str, Any] = {
             "radio_busqueda_m": 800, "radio_hito_m": 300, "velocidad_default_kmh": 20,
             "umbral_posicion_obsoleta_s": 60, "umbral_desvio_m": 100,
-            "longitud_max_aviso": 500, "dias_max_rodamiento_adelante": 15,
+            "longitud_max_aviso": 500, "dias_max_rodamiento_adelante": 15, "rango_max_estadisticas_dias": 365,
             "caja_ciudad": {"minLat": 4.95, "maxLat": 5.20, "minLng": -75.65, "maxLng": -75.40},
         } | (valores or {})
 
@@ -386,6 +396,13 @@ TOKENS = {
 
 
 class AutenticacionFalsa:
+    def __init__(self) -> None:
+        self.invitados: list[str] = []
+
+    async def crear_usuario(self, correo: str, nombre: str | None) -> UUID:
+        self.invitados.append(correo)
+        return uuid4()
+
     async def verificar_token(self, jwt: str) -> Identidad:
         if jwt not in TOKENS:
             raise ErrorNoAutenticado("Sesión inválida o vencida.")
@@ -548,11 +565,204 @@ class OperacionEnMemoria:
         return r["version"]
 
 
+class AdminEnMemoria:
+    def __init__(self, usuarios: UsuariosEnMemoria) -> None:
+        self._u = usuarios
+        self.empresas = {
+            EMPRESA_SIDERAL: {"id": EMPRESA_SIDERAL, "nombre": "Sideral", "estado": "activo", "version": 1},
+            EMPRESA_SERVITURISMO: {"id": EMPRESA_SERVITURISMO, "nombre": "Serviturismo", "estado": "activo", "version": 1},
+        }
+        self.credenciales: dict[UUID, dict[str, Any]] = {}
+        self.hashes: list[str] = []
+        self.parametros = {
+            "radio_busqueda_m": {"clave": "radio_busqueda_m", "valor": 800, "descripcion": "Radio", "minimo": 100.0,
+                                 "maximo": 5000.0, "version": 1},
+            "caja_ciudad": {"clave": "caja_ciudad", "valor": {"minLat": 4.95, "maxLat": 5.2, "minLng": -75.65, "maxLng": -75.4},
+                            "descripcion": "Caja", "minimo": None, "maximo": None, "version": 1},
+        }
+
+    @staticmethod
+    def _usuario(p: dict[str, Any]) -> dict[str, Any]:
+        return {"id": p["usuario_id"], "correo": p["correo"], "nombre": p.get("nombre"), "rol": p["rol"],
+                "empresa_id": p["empresa_id"], "activo": p["activo"], "version": p.get("version", 1)}
+
+    async def listar_usuarios(self, correo):
+        return [self._usuario(p) for p in self._u.perfiles.values() if correo is None or correo in p["correo"]]
+
+    async def obtener_usuario(self, usuario_id):
+        p = self._u.perfiles.get(usuario_id)
+        return self._usuario(p) if p else None
+
+    async def correo_existe(self, correo):
+        return any(p["correo"] == correo for p in self._u.perfiles.values())
+
+    async def crear_perfil(self, usuario_id, correo, nombre, rol, empresa_id):
+        p = {"usuario_id": usuario_id, "correo": correo, "nombre": nombre, "rol": rol, "empresa_id": empresa_id,
+             "empresa_nombre": None, "activo": True, "version": 1}
+        self._u.perfiles[usuario_id] = p
+        return self._usuario(p)
+
+    async def editar_usuario(self, usuario_id, version, nombre, rol, empresa_id, activo):
+        p = self._u.perfiles[usuario_id]
+        p.update(rol=rol, empresa_id=empresa_id, activo=activo, version=version + 1)
+        if nombre:
+            p["nombre"] = nombre
+        return self._usuario(p)
+
+    async def contar_administradores_activos(self):
+        return sum(1 for p in self._u.perfiles.values() if p["rol"] == "administrador" and p["activo"])
+
+    async def empresa_activa(self, empresa_id):
+        return empresa_id in self.empresas
+
+    async def listar_empresas(self):
+        return list(self.empresas.values())
+
+    async def crear_empresa(self, nombre):
+        if any(e["nombre"].lower() == nombre.lower() for e in self.empresas.values()):
+            raise ErrorConflictoNegocio("Ya existe una empresa con ese nombre.")
+        e = {"id": uuid4(), "nombre": nombre, "estado": "activo", "version": 1}
+        self.empresas[e["id"]] = e
+        return e
+
+    async def editar_empresa(self, empresa_id, version, nombre, estado):
+        e = self.empresas.get(empresa_id)
+        if e is None:
+            raise ErrorNoEncontrado("El recurso no existe.")
+        if e["version"] != version:
+            raise ErrorConflictoVersion(e["version"])
+        e.update(nombre=nombre or e["nombre"], estado=estado or e["estado"], version=version + 1)
+        return e
+
+    async def listar_credenciales(self, empresa_id):
+        return [{k: v for k, v in c.items() if k != "empresa_id"} for c in self.credenciales.values()
+                if c["empresa_id"] == empresa_id]
+
+    async def crear_credencial(self, empresa_id, nombre, hash_clave):
+        self.hashes.append(hash_clave)
+        c = {"id": uuid4(), "empresa_id": empresa_id, "nombre": nombre, "activa": True, "creada_en": LUNES_MEDIODIA,
+             "ultimo_uso": None}
+        self.credenciales[c["id"]] = c
+        return {k: v for k, v in c.items() if k != "empresa_id"}
+
+    async def revocar_credencial(self, credencial_id):
+        if credencial_id not in self.credenciales:
+            return False
+        self.credenciales[credencial_id]["activa"] = False
+        return True
+
+    async def listar_parametros(self):
+        return list(self.parametros.values())
+
+    async def obtener_parametro(self, clave):
+        return self.parametros.get(clave)
+
+    async def actualizar_parametro(self, clave, valor, version):
+        p = self.parametros[clave]
+        p.update(valor=valor, version=version + 1)
+        return p
+
+
+class GestionRedEnMemoria:
+    def __init__(self) -> None:
+        self.paraderos = {
+            PARADERO_A: {"id": PARADERO_A, "nombre": "Parada A", "direccion": None, "lat": 5.07, "lng": -75.51,
+                         "estado": "activo", "version": 1},
+            PARADERO_B: {"id": PARADERO_B, "nombre": "Parada B", "direccion": None, "lat": 5.071, "lng": -75.512,
+                         "estado": "activo", "version": 1},
+        }
+        self.rutas_creadas: list[dict[str, Any]] = []
+        self.bajas: list[tuple[str, UUID]] = []
+        self.turnos_futuros: list[dict[str, Any]] = []
+        self.servicios = {SERVICIO_SIDERAL_ENEA: {"id": SERVICIO_SIDERAL_ENEA, "ruta_id": RUTA_ENEA, "ruta_nombre": "La Enea",
+                          "empresa_id": EMPRESA_SIDERAL, "empresa_nombre": "Sideral", "codigo_publico": "39",
+                          "codigo_interno": None, "duracion_estandar_min": 60, "estado": "activo", "version": 2}}
+        self.asignados: list[dict[str, Any]] = []
+
+    async def listar_paraderos(self):
+        return list(self.paraderos.values())
+
+    async def obtener_paradero(self, paradero_id):
+        return self.paraderos.get(paradero_id)
+
+    async def hay_paradero_duplicado(self, nombre, lat, lng, excluir_id):
+        return any(p["nombre"].lower() == nombre.lower() and abs(p["lat"] - lat) < 0.0001 and abs(p["lng"] - lng) < 0.0001
+                   and p["id"] != excluir_id for p in self.paraderos.values())
+
+    async def crear_paradero(self, nombre, direccion, lat, lng):
+        p = {"id": uuid4(), "nombre": nombre, "direccion": direccion, "lat": lat, "lng": lng, "estado": "activo", "version": 1}
+        self.paraderos[p["id"]] = p
+        return p
+
+    async def editar_paradero(self, paradero_id, version, nombre, direccion, lat, lng):
+        p = self.paraderos[paradero_id]
+        p.update(nombre=nombre, lat=lat, lng=lng, version=version + 1)
+        return p
+
+    async def rutas_que_usan_paradero(self, paradero_id):
+        return [{"rutaId": str(RUTA_ENEA), "nombre": "La Enea"}] if paradero_id == PARADERO_A else []
+
+    async def dar_de_baja_paradero(self, paradero_id, version):
+        self.bajas.append(("paradero", paradero_id))
+
+    async def crear_hito(self, nombre, tipo, alias, lat, lng):
+        return {"id": uuid4(), "nombre": nombre, "tipo": tipo, "alias": alias, "lat": lat, "lng": lng}
+
+    async def paraderos_activos_existen(self, paradero_ids):
+        return all(p in self.paraderos for p in paradero_ids)
+
+    async def empresas_activas_existen(self, empresa_ids):
+        return all(e in (EMPRESA_SIDERAL, EMPRESA_SERVITURISMO) for e in empresa_ids)
+
+    async def ruta_principal_valida(self, ruta_id):
+        return ruta_id == RUTA_ENEA
+
+    async def crear_ruta(self, nombre, ruta_principal_id, paradero_ids, servicios):
+        self.rutas_creadas.append({"nombre": nombre, "paraderos": paradero_ids, "servicios": servicios})
+        return RUTA_ENEA
+
+    async def editar_ruta(self, ruta_id, version, nombre, descripcion, paradero_ids):
+        self.rutas_creadas.append({"editada": ruta_id, "nombre": nombre, "paraderos": paradero_ids})
+
+    async def turnos_futuros_de_ruta(self, ruta_id, desde):
+        return self.turnos_futuros
+
+    async def dar_de_baja_ruta(self, ruta_id, version):
+        self.bajas.append(("ruta", ruta_id))
+
+    async def ruta_activa_existe(self, ruta_id):
+        return ruta_id in (RUTA_ENEA, RUTA_VILLAMARIA)
+
+    async def empresa_opera_ruta(self, ruta_id, empresa_id):
+        return (ruta_id, empresa_id) == (RUTA_ENEA, EMPRESA_SIDERAL)
+
+    async def empresas_que_operan_ruta(self, ruta_id):
+        return [EMPRESA_SIDERAL] if ruta_id == RUTA_ENEA else []
+
+    async def asignar_servicio(self, ruta_id, empresa_id, codigo_publico, codigo_interno):
+        s = {"id": uuid4(), "ruta_id": ruta_id, "ruta_nombre": "X", "empresa_id": empresa_id, "empresa_nombre": "Y",
+             "codigo_publico": codigo_publico, "codigo_interno": codigo_interno, "duracion_estandar_min": None,
+             "estado": "activo", "version": 1}
+        self.asignados.append(s)
+        return s
+
+    async def obtener_servicio(self, servicio_id):
+        return self.servicios.get(servicio_id)
+
+    async def turnos_futuros_de_servicio(self, servicio_id, desde):
+        return self.turnos_futuros
+
+    async def retirar_servicio(self, servicio_id, version, hoy):
+        self.bajas.append(("servicio", servicio_id))
+
+
 def repositorios_en_memoria() -> Repositorios:
     seguimiento = SeguimientoEnMemoria()
+    usuarios = UsuariosEnMemoria()
     return Repositorios(
         rutas=RutasEnMemoria(), horarios=HorariosEdicion(), busqueda=BusquedaEnMemoria(),
         avisos=AvisosGestionEnMemoria(), eventos_uso=EventosEnMemoria(), parametros=ParametrosEnMemoria(),
-        seguimiento=seguimiento, fuentes_gps=FuentesGpsEnMemoria(), usuarios=UsuariosEnMemoria(),
+        seguimiento=seguimiento, fuentes_gps=FuentesGpsEnMemoria(), usuarios=usuarios,
         autenticacion=AutenticacionFalsa(), simulacion=SimulacionEnMemoria(seguimiento), operacion=OperacionEnMemoria(),
+        admin=AdminEnMemoria(usuarios), gestion_red=GestionRedEnMemoria(),
     )
