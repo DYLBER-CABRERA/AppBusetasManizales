@@ -9,12 +9,15 @@ import { Vacio } from "@/componentes/Vacio";
 import { cerrarSesion, puedeEntrar, rutaInicial } from "@/lib/auth";
 import { ErrorApi, MENSAJE_SIN_PERMISO } from "@/lib/errores";
 import { ETIQUETA_ROL, gruposDeRol } from "@/lib/navegacion";
+import { useEstadoDemo } from "@/lib/demo";
 import { usePerfil } from "@/lib/perfil";
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const ruta = usePathname();
   const router = useRouter();
   const { data: perfil, error, isPending, refetch } = usePerfil();
+  // El Panel de demo solo existe si GET /demo/estado responde 200 (MODO_DEMO=true).
+  const demo = useEstadoDemo({ habilitado: perfil?.rol === "administrador" });
 
   const sinSesion = !isPending && !perfil && (!(error instanceof ErrorApi) || error.estado === 401);
   useEffect(() => {
@@ -42,7 +45,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const grupos = gruposDeRol(perfil.rol);
+  const grupos = gruposDeRol(perfil.rol).map((g) => ({
+    ...g,
+    secciones: g.secciones.filter((s) => s.href !== "/admin/demo" || demo.isSuccess),
+  }));
   const permitido = puedeEntrar(perfil.rol, ruta);
 
   return (

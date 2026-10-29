@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaParametros } from "@/componentes/admin/PantallaParametros";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Parámetros" bloque="W2" />;
+  return <PantallaParametros />;
 }

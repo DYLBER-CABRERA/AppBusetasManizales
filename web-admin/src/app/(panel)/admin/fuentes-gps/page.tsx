@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaFuentesGps } from "@/componentes/admin/PantallaFuentesGps";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Fuentes GPS" bloque="W2" />;
+  return <PantallaFuentesGps />;
 }

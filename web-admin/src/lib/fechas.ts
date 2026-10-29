@@ -36,3 +36,17 @@ export function minutos(hhmm: string): number {
   const [h, m] = hhmm.split(":");
   return Number(h) * 60 + Number(m);
 }
+
+/** «hace 4 s», «hace 3 min», «hace 2 h», «hace 1 d». */
+export function haceTexto(iso: string, ahora: number): string {
+  const s = Math.max(0, Math.round((ahora - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `hace ${s} s`;
+  if (s < 3600) return `hace ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `hace ${Math.floor(s / 3600)} h`;
+  return `hace ${Math.floor(s / 86400)} d`;
+}
+
+/** Hora local de Bogotá `HH:MM` de un instante ISO. */
+export function horaBogota(iso: string): string {
+  return new Intl.DateTimeFormat("es-CO", { timeZone: ZONA, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+}

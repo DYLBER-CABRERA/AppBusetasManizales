@@ -3,8 +3,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 /** Diálogo accesible (elemento <dialog> nativo: foco atrapado, Esc cierra). */
 export function Modal({
-  abierto, titulo, onCerrar, children, acciones,
-}: { abierto: boolean; titulo: string; onCerrar: () => void; children: ReactNode; acciones: ReactNode }) {
+  abierto, titulo, onCerrar, children, acciones, sinEscape = false,
+}: { abierto: boolean; titulo: string; onCerrar: () => void; children: ReactNode; acciones: ReactNode; sinEscape?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -16,6 +16,7 @@ export function Modal({
     <dialog
       ref={ref}
       onClose={onCerrar}
+      onCancel={sinEscape ? (e) => e.preventDefault() : undefined}
       aria-labelledby="modal-titulo"
       className="m-auto w-full max-w-md rounded-lg p-6 text-tinta backdrop:bg-tinta/50"
     >
