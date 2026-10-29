@@ -75,12 +75,19 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
-        # PENDIENTE(B3/B7): simulador (MODO_DEMO) y bot de Telegram.
+        # PENDIENTE(B7): bot de Telegram.
         if cont.pool is not None:
             await cont.pool.open(wait=False)  # no falla si la BD no responde: las consultas devuelven 503
+        simulador = cont.servicios.simulador if cont.servicios is not None else None
+        if simulador is not None:
+            await simulador.iniciar()  # MODO_DEMO: asegura el rodamiento de hoy y arranca el movimiento
         try:
             yield
         finally:
+            if simulador is not None:
+                await simulador.detener()
+            if cont.cliente_http is not None:
+                await cont.cliente_http.aclose()
             if cont.pool is not None:
                 await cont.pool.close()
 

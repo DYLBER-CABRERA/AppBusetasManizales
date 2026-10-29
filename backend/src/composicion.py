@@ -8,11 +8,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
+import httpx
 from psycopg_pool import AsyncConnectionPool
 
 from adaptadores_externos.base_datos import crear_pool
-from modulos.administracion import ParametrosSql, RepositorioFuentesGpsSql
+from adaptadores_externos.websocket_posiciones import DifusorPosiciones, GestorConexiones
+from herramientas.repositorio_simulacion_sql import RepositorioSimulacionSql
+from herramientas.simulador_gps import SimuladorGps
+from modulos.administracion import (
+    AutenticacionSupabase,
+    ConsultarEstadoDemo,
+    EjecutarEscenarioDemo,
+    ObtenerPerfil,
+    ParametrosSql,
+    RepositorioFuentesGpsSql,
+    RepositorioUsuariosSql,
+)
 from modulos.avisos import ConsultarAvisosVigentes, RepositorioAvisosSql
 from modulos.busqueda import BuscarHitos, BuscarRutasPorTexto, ConsultarRutasPorHito, RepositorioBusquedaSql
 from modulos.estadisticas import RegistrarEventoUso, RepositorioEventosUsoSql
@@ -27,14 +40,16 @@ from modulos.red import (
 )
 from modulos.seguimiento import (
     AutenticarFuenteGps,
+    BusetaEnVivo,
     CalcularEtaParadero,
     ConsultarBusetasEnVivo,
     DeductorDeRuta,
     RegistrarPosiciones,
     RepositorioSeguimientoSql,
 )
+from nucleo.autenticacion import PuertoAutenticacion
 from nucleo.configuracion import Configuracion, obtener_configuracion
-from nucleo.emisor_eventos import EmisorEventos, EmisorEventosEnMemoria
+from nucleo.emisor_eventos import POSICION_ACEPTADA, EmisorEventos, EmisorEventosEnMemoria
 from nucleo.reloj import PuertoReloj, RelojSimulado
 
 
@@ -50,6 +65,9 @@ class Repositorios:
     parametros: Any
     seguimiento: Any  # RepositorioPosiciones + RepositorioRodamientos + RepositorioEta
     fuentes_gps: Any
+    usuarios: Any = None
+    autenticacion: Any = None  # PuertoAutenticacion
+    simulacion: Any = None  # RepositorioSimulacion (solo MODO_DEMO)
 
 
 @dataclass
@@ -72,6 +90,11 @@ class Servicios:
     autenticar_fuente_gps: AutenticarFuenteGps
     consultar_busetas_en_vivo: ConsultarBusetasEnVivo
     calcular_eta_paradero: CalcularEtaParadero
+    autenticacion: PuertoAutenticacion
+    obtener_perfil: ObtenerPerfil
+    consultar_estado_demo: ConsultarEstadoDemo
+    ejecutar_escenario_demo: EjecutarEscenarioDemo
+    simulador: SimuladorGps | None = None
 
 
 @dataclass
@@ -81,12 +104,25 @@ class Contenedor:
     servicios: Servicios | None = None
     emisor: EmisorEventos | None = None
     pool: AsyncConnectionPool | None = None
+    cliente_http: httpx.AsyncClient | None = None
+    gestor_ws: GestorConexiones | None = None
+    armar_mensaje_posiciones: Any = None
 
 
 def construir_servicios(
     repos: Repositorios, configuracion: Configuracion, reloj: PuertoReloj, emisor: EmisorEventos
 ) -> Servicios:
     calculador_tipo_dia = CalculadorTipoDia(configuracion.lista_festivos)
+    deductor = DeductorDeRuta(repos.seguimiento)
+    registrar_posiciones = RegistrarPosiciones(
+        repos.seguimiento, deductor, repos.seguimiento, repos.parametros, reloj, emisor
+    )
+    simulador = None
+    if configuracion.modo_demo and repos.simulacion is not None and isinstance(reloj, RelojSimulado):
+        simulador = SimuladorGps(
+            repos.simulacion, registrar_posiciones, deductor, repos.seguimiento, repos.parametros, reloj,
+            configuracion.sim_velocidad_kmh, configuracion.sim_intervalo_s,
+        )
     return Servicios(
         consultar_rutas_cercanas=ConsultarRutasCercanas(repos.rutas, repos.parametros),
         listar_rutas=ListarRutas(repos.rutas),
@@ -100,18 +136,22 @@ def construir_servicios(
         consultar_rutas_por_hito=ConsultarRutasPorHito(repos.busqueda, repos.rutas, repos.rutas, repos.parametros),
         consultar_avisos_vigentes=ConsultarAvisosVigentes(repos.avisos, reloj),
         registrar_evento_uso=RegistrarEventoUso(repos.eventos_uso),
-        registrar_posiciones=RegistrarPosiciones(
-            repos.seguimiento, DeductorDeRuta(repos.seguimiento), repos.seguimiento, repos.parametros, reloj, emisor
-        ),
+        registrar_posiciones=registrar_posiciones,
         autenticar_fuente_gps=AutenticarFuenteGps(repos.fuentes_gps, reloj),
         consultar_busetas_en_vivo=ConsultarBusetasEnVivo(repos.seguimiento, repos.seguimiento, repos.parametros, reloj),
         calcular_eta_paradero=CalcularEtaParadero(
             repos.seguimiento, repos.seguimiento, repos.horarios, calculador_tipo_dia, repos.parametros, reloj
         ),
+        autenticacion=repos.autenticacion,
+        obtener_perfil=ObtenerPerfil(repos.usuarios),
+        consultar_estado_demo=ConsultarEstadoDemo(simulador, configuracion.modo_demo),
+        ejecutar_escenario_demo=EjecutarEscenarioDemo(simulador, configuracion.modo_demo),
+        simulador=simulador,
     )
 
 
-def _repositorios_sql(pool: AsyncConnectionPool) -> Repositorios:
+def _repositorios_sql(pool: AsyncConnectionPool, config: Configuracion, cliente_http: httpx.AsyncClient) -> Repositorios:
+    usuarios = RepositorioUsuariosSql(pool)
     return Repositorios(
         rutas=RepositorioRutasSql(pool),
         horarios=RepositorioHorariosSql(pool),
@@ -121,6 +161,11 @@ def _repositorios_sql(pool: AsyncConnectionPool) -> Repositorios:
         parametros=ParametrosSql(pool),
         seguimiento=RepositorioSeguimientoSql(pool),
         fuentes_gps=RepositorioFuentesGpsSql(pool),
+        usuarios=usuarios,
+        autenticacion=AutenticacionSupabase(
+            config.supabase_url, config.supabase_anon_key.get_secret_value(), usuarios, cliente_http
+        ),
+        simulacion=RepositorioSimulacionSql(pool),
     )
 
 
@@ -131,13 +176,33 @@ def construir_contenedor(
 ) -> Contenedor:
     config = configuracion or obtener_configuracion()
     reloj = reloj or RelojSimulado()
-    emisor: EmisorEventos | None = None
     pool: AsyncConnectionPool | None = None
+    cliente_http: httpx.AsyncClient | None = None
     if repositorios is None:
         cadena = config.database_url.get_secret_value()
         if cadena:
             pool = crear_pool(cadena)  # sin abrir: el lifespan lo abre
-            repositorios = _repositorios_sql(pool)
+            cliente_http = httpx.AsyncClient(timeout=5.0)
+            repositorios = _repositorios_sql(pool, config, cliente_http)
     emisor = EmisorEventosEnMemoria()
-    servicios = construir_servicios(repositorios, config, reloj, emisor) if repositorios is not None else None
-    return Contenedor(configuracion=config, reloj=reloj, servicios=servicios, emisor=emisor, pool=pool)
+    gestor = GestorConexiones()
+    contenedor = Contenedor(
+        configuracion=config, reloj=reloj, emisor=emisor, pool=pool, cliente_http=cliente_http, gestor_ws=gestor
+    )
+    if repositorios is None:
+        return contenedor
+    servicios = construir_servicios(repositorios, config, reloj, emisor)
+    contenedor.servicios = servicios
+
+    async def armar_mensaje_posiciones(ruta_id: UUID) -> dict[str, Any] | None:
+        datos = await servicios.consultar_busetas_en_vivo(ruta_id)
+        return {
+            "tipo": "posiciones",
+            "rutaId": str(ruta_id),
+            "calculadoEn": datos["calculado_en"].isoformat(),
+            "busetas": [BusetaEnVivo.model_validate(b).model_dump(by_alias=True, mode="json") for b in datos["busetas"]],
+        }
+
+    contenedor.armar_mensaje_posiciones = armar_mensaje_posiciones
+    emisor.suscribir(POSICION_ACEPTADA, DifusorPosiciones(gestor, armar_mensaje_posiciones).al_aceptar_posicion)
+    return contenedor

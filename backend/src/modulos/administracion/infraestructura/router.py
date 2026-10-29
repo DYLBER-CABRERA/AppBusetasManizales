@@ -1,4 +1,5 @@
-"""Router del módulo administración (A) y perfil `GET /yo`. B0: 501 PENDIENTE (lógica en B3/B5).
+"""Router del módulo administración (A), perfil `GET /yo` y panel de demo. `/yo` y `/demo/*` implementados (B3b);
+el resto 501 PENDIENTE (B5).
 
 Formas tomadas de docs/03 y, donde 03 no las define, de docs/referencia/openapi.yaml.
 """
@@ -12,8 +13,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import Field
 
-from nucleo.autorizacion import Rol
-from nucleo.dependencias import pendiente, requiere_rol
+from modulos.administracion.aplicacion.casos_de_uso import ConsultarEstadoDemo, EjecutarEscenarioDemo, ObtenerPerfil
+from nucleo.autorizacion import Identidad, Rol
+from nucleo.dependencias import caso, pendiente, requiere_rol
 from nucleo.esquemas import EsquemaBase, errores
 
 router = APIRouter(tags=["Administración"])
@@ -133,12 +135,12 @@ class EstadoDemo(EsquemaBase):
     busetas: list[BusetaDemo]
 
 
-@router.get(
-    "/yo", response_model=Perfil, responses=errores(401),
-    dependencies=[Depends(requiere_rol(*Rol))],
-)
-async def obtener_perfil() -> Perfil:
-    pendiente()
+@router.get("/yo", response_model=Perfil, responses=errores(401))
+async def obtener_perfil(
+    identidad: Identidad = Depends(requiere_rol(*Rol)),
+    caso_uso: ObtenerPerfil = Depends(caso("obtener_perfil")),
+) -> dict:
+    return await caso_uso(identidad)
 
 
 @router.get("/admin/usuarios", response_model=list[Usuario], dependencies=[_admin], responses=errores(401, 403))
@@ -225,16 +227,18 @@ async def configurar_parametro(clave: str, cuerpo: ParametroActualizar) -> Param
     pendiente()
 
 
-@router.get(
-    "/demo/estado", response_model=EstadoDemo, dependencies=[_admin], responses=errores(401, 403, 404),
-)
-async def consultar_estado_demo() -> EstadoDemo:
-    pendiente()
+@router.get("/demo/estado", response_model=EstadoDemo, responses=errores(401, 403, 404))
+async def consultar_estado_demo(
+    identidad: Identidad = Depends(requiere_rol(Rol.ADMINISTRADOR)),
+    caso_uso: ConsultarEstadoDemo = Depends(caso("consultar_estado_demo")),
+) -> dict:
+    return await caso_uso(identidad)
 
 
-@router.post(
-    "/demo/escenarios", response_model=EstadoDemo, dependencies=[_admin],
-    responses=errores(400, 401, 403, 404),
-)
-async def ejecutar_escenario_demo(cuerpo: EscenarioDemo) -> EstadoDemo:
-    pendiente()
+@router.post("/demo/escenarios", response_model=EstadoDemo, responses=errores(400, 401, 403, 404))
+async def ejecutar_escenario_demo(
+    cuerpo: EscenarioDemo,
+    identidad: Identidad = Depends(requiere_rol(Rol.ADMINISTRADOR)),
+    caso_uso: EjecutarEscenarioDemo = Depends(caso("ejecutar_escenario_demo")),
+) -> dict:
+    return await caso_uso(identidad, cuerpo.model_dump())

@@ -1,7 +1,7 @@
 """Dependencias FastAPI de autenticación. La autorización real vive en los casos de uso (recibe Identidad).
 
-B0: el contrato queda declarado (esquemas de seguridad en OpenAPI). Sin credencial en un endpoint protegido
-se responde 401; con credencial, la verificación del JWT es PENDIENTE (B4/B5) y el endpoint responde 501.
+Sin credencial en un endpoint protegido → 401; token inválido → 401; rol no permitido → 403; si no, el endpoint
+responde con su lógica (o 501 mientras su bloque no exista).
 """
 
 from __future__ import annotations
@@ -10,36 +10,45 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from fastapi import BackgroundTasks, Depends, Request, Security
+from fastapi import BackgroundTasks, Request, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from nucleo.autorizacion import Identidad, Rol
-from nucleo.errores import ErrorNoAutenticado, ErrorPendiente, ErrorServicioExterno
+from nucleo.errores import ErrorNoAutenticado, ErrorNoAutorizado, ErrorPendiente, ErrorServicioExterno
 from nucleo.eventos_uso import TipoEventoUso
 
 esquema_bearer = HTTPBearer(auto_error=False, scheme_name="bearerAuth", bearerFormat="JWT")
 esquema_clave_fuente = APIKeyHeader(name="X-Clave-Fuente", auto_error=False, scheme_name="claveFuente")
 
 
+def _servicios(request: Request) -> Any:
+    servicios = request.app.state.contenedor.servicios
+    if servicios is None:
+        raise ErrorServicioExterno("La base de datos no está configurada (DATABASE_URL).")
+    return servicios
+
+
 async def identidad_opcional(
-    credenciales: HTTPAuthorizationCredentials | None = Security(esquema_bearer),
+    request: Request, credenciales: HTTPAuthorizationCredentials | None = Security(esquema_bearer)
 ) -> Identidad | None:
+    """Sin credencial → None (endpoints públicos). Con credencial inválida → 401."""
     if credenciales is None:
         return None
-    # PENDIENTE(B4): PuertoAutenticacion.verificar_token(jwt) -> Identidad (JWT de Supabase Auth).
-    raise ErrorPendiente("PENDIENTE: la verificación del JWT se implementa en B4.")
+    return await _servicios(request).autenticacion.verificar_token(credenciales.credentials)
 
 
 def requiere_rol(*roles: Rol) -> Callable[..., object]:
-    """Exige sesión. El filtro por rol y empresa se aplica en el caso de uso (CLAUDE.md §11)."""
+    """Exige sesión y uno de los roles. El filtro por empresa y la autorización fina viven en el caso de uso."""
 
     async def dependencia(
-        credenciales: HTTPAuthorizationCredentials | None = Security(esquema_bearer),
-        _identidad: Identidad | None = Depends(identidad_opcional),
+        request: Request, credenciales: HTTPAuthorizationCredentials | None = Security(esquema_bearer)
     ) -> Identidad:
         if credenciales is None:
             raise ErrorNoAutenticado("Inicia sesión para continuar.")
-        raise ErrorPendiente("PENDIENTE: la verificación del JWT se implementa en B4.")
+        identidad = await _servicios(request).autenticacion.verificar_token(credenciales.credentials)
+        if identidad.rol not in roles:
+            raise ErrorNoAutorizado("No tienes permiso para esta acción.")
+        return identidad
 
     dependencia.__doc__ = "Roles permitidos: " + ", ".join(r.value for r in roles)
     return dependencia

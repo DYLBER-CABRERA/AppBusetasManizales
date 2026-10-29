@@ -10,6 +10,8 @@ from zoneinfo import ZoneInfo
 
 from composicion import Repositorios
 from modulos.seguimiento import hash_de_clave
+from nucleo.autorizacion import Identidad, Rol
+from nucleo.errores import ErrorNoAutenticado
 
 ZONA = ZoneInfo("America/Bogota")
 LUNES_MEDIODIA = datetime(2026, 10, 26, 12, 0, tzinfo=ZONA)
@@ -193,7 +195,8 @@ class EventosEnMemoria:
 class ParametrosEnMemoria:
     def __init__(self, valores: dict[str, Any] | None = None) -> None:
         self.valores: dict[str, Any] = {
-            "radio_busqueda_m": 800, "radio_hito_m": 300, "velocidad_default_kmh": 20, "umbral_posicion_obsoleta_s": 60,
+            "radio_busqueda_m": 800, "radio_hito_m": 300, "velocidad_default_kmh": 20,
+            "umbral_posicion_obsoleta_s": 60, "umbral_desvio_m": 100,
             "caja_ciudad": {"minLat": 4.95, "maxLat": 5.20, "minLng": -75.65, "maxLng": -75.40},
         } | (valores or {})
 
@@ -218,7 +221,10 @@ class SeguimientoEnMemoria:
             (EMPRESA_SIDERAL, "1544"): {"id": BUSETA_1544, "numero_lateral": "1544"},
             (EMPRESA_SERVITURISMO, "2683"): {"id": BUSETA_2683, "numero_lateral": "2683"},
         }
-        self.turnos = {(EMPRESA_SIDERAL, "1544"): (time(5, 0), time(23, 0), SERVICIO_SIDERAL_ENEA)}
+        self.turnos = {
+            (EMPRESA_SIDERAL, "1544"): (time(5, 0), time(23, 0), SERVICIO_SIDERAL_ENEA),
+            (EMPRESA_SERVITURISMO, "2683"): (time(5, 0), time(23, 0), SERVICIO_SERVITURISMO_ENEA),
+        }
         self.guardadas: dict[UUID, dict[str, Any]] = {}
         self.progreso_buseta = 9500.0
         self.longitud = 10000.0
@@ -292,9 +298,70 @@ class FuentesGpsEnMemoria:
         self.usos.append(credencial_id)
 
 
+USUARIO_ADMIN = uuid4()
+USUARIO_JEFE = uuid4()
+USUARIO_PASAJERA = uuid4()
+TOKENS = {
+    "tok-admin": Identidad(str(USUARIO_ADMIN), Rol.ADMINISTRADOR),
+    "tok-jefe": Identidad(str(USUARIO_JEFE), Rol.JEFE_OPERACIONES, str(EMPRESA_SIDERAL)),
+    "tok-pasajera": Identidad(str(USUARIO_PASAJERA), Rol.PASAJERO),
+}
+
+
+class AutenticacionFalsa:
+    async def verificar_token(self, jwt: str) -> Identidad:
+        if jwt not in TOKENS:
+            raise ErrorNoAutenticado("Sesión inválida o vencida.")
+        return TOKENS[jwt]
+
+
+class UsuariosEnMemoria:
+    def __init__(self) -> None:
+        self.perfiles = {
+            USUARIO_ADMIN: {"usuario_id": USUARIO_ADMIN, "correo": "admin@busetasapp.example", "rol": "administrador",
+                            "empresa_id": None, "empresa_nombre": None, "activo": True},
+            USUARIO_JEFE: {"usuario_id": USUARIO_JEFE, "correo": "jefe@sideral.example", "rol": "jefe_operaciones",
+                           "empresa_id": EMPRESA_SIDERAL, "empresa_nombre": "Sideral", "activo": True},
+            USUARIO_PASAJERA: {"usuario_id": USUARIO_PASAJERA, "correo": "pasajera@correo.example", "rol": "pasajero",
+                               "empresa_id": EMPRESA_SIDERAL, "empresa_nombre": "Sideral", "activo": True},
+        }
+
+    async def perfil(self, usuario_id: UUID) -> dict[str, Any] | None:
+        return self.perfiles.get(usuario_id)
+
+
+CUADRADO = [[-75.52, 5.06], [-75.50, 5.06], [-75.50, 5.08], [-75.52, 5.08], [-75.52, 5.06]]  # [lng, lat]
+
+
+class SimulacionEnMemoria:
+    def __init__(self, seguimiento: SeguimientoEnMemoria) -> None:
+        self._seguimiento = seguimiento
+        self.rodamientos_asegurados: list[Any] = []
+
+    async def busetas_activas(self) -> list[dict[str, Any]]:
+        return [
+            {"buseta_id": BUSETA_1544, "numero_lateral": "1544", "empresa_id": EMPRESA_SIDERAL, "empresa_nombre": "Sideral"},
+            {"buseta_id": BUSETA_2683, "numero_lateral": "2683", "empresa_id": EMPRESA_SERVITURISMO,
+             "empresa_nombre": "Serviturismo"},
+        ]
+
+    async def trazado_de_ruta(self, ruta_id: UUID) -> list[list[float]] | None:
+        return CUADRADO if ruta_id == RUTA_ENEA else None
+
+    async def asegurar_rodamientos_demo(self, hoy: Any) -> list[str]:
+        self.rodamientos_asegurados.append(hoy)
+        return ["Rodamiento publicado de Sideral: ya existía"]
+
+    async def limpiar_posiciones(self) -> None:
+        await self._seguimiento.limpiar_posiciones()
+
+
+
 def repositorios_en_memoria() -> Repositorios:
+    seguimiento = SeguimientoEnMemoria()
     return Repositorios(
         rutas=RutasEnMemoria(), horarios=HorariosEnMemoria(), busqueda=BusquedaEnMemoria(),
         avisos=AvisosEnMemoria(), eventos_uso=EventosEnMemoria(), parametros=ParametrosEnMemoria(),
-        seguimiento=SeguimientoEnMemoria(), fuentes_gps=FuentesGpsEnMemoria(),
+        seguimiento=seguimiento, fuentes_gps=FuentesGpsEnMemoria(), usuarios=UsuariosEnMemoria(),
+        autenticacion=AutenticacionFalsa(), simulacion=SimulacionEnMemoria(seguimiento),
     )
