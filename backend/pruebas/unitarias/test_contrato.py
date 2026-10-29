@@ -1,4 +1,4 @@
-"""B0: el contrato queda completo (todos los endpoints de docs/03 declarados) y responde 501 sin lógica."""
+"""El contrato está completo: todos los endpoints de docs/03 están declarados y ninguno responde 501."""
 
 from __future__ import annotations
 
@@ -8,6 +8,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from composicion import construir_contenedor
+from nucleo.configuracion import Configuracion
+from pruebas.dobles import repositorios_en_memoria
 from servidor import crear_app
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -42,7 +45,10 @@ ENDPOINTS_CONTRATO = [
 
 @pytest.fixture(scope="module")
 def cliente() -> TestClient:
-    return TestClient(crear_app(), raise_server_exceptions=False)
+    return TestClient(
+        crear_app(construir_contenedor(Configuracion(_env_file=None), repositorios_en_memoria())),
+        raise_server_exceptions=False,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -69,12 +75,6 @@ def test_salud_no_toca_la_bd(cliente: TestClient) -> None:
     assert r.headers["X-Id-Peticion"]
 
 
-def test_endpoint_publico_sin_logica_responde_501(cliente: TestClient) -> None:
-    r = cliente.get("/api/v1/rutas")
-    assert r.status_code == 501
-    assert r.json()["error"]["codigo"] == "PENDIENTE"
-
-
 def test_endpoint_protegido_sin_token_responde_401(cliente: TestClient) -> None:
     r = cliente.get("/api/v1/favoritos")
     assert r.status_code == 401
@@ -96,7 +96,8 @@ def test_validacion_usa_el_formato_de_error(cliente: TestClient) -> None:
 
 def test_cercanas_no_se_confunde_con_detalle(cliente: TestClient) -> None:
     r = cliente.get("/api/v1/rutas/cercanas", params={"lat": 5.07, "lng": -75.51})
-    assert r.status_code == 501
+    assert r.status_code == 200
+    assert "rutas" in r.json()
 
 
 def test_ws_responde_pong(cliente: TestClient) -> None:
@@ -109,3 +110,9 @@ def test_openapi_json_publicado_esta_al_dia(esquema: dict) -> None:
     publicado = json.loads((RAIZ / "contrato" / "openapi.json").read_text(encoding="utf-8"))
     generado = json.loads(json.dumps(esquema, sort_keys=True))
     assert publicado == generado, "Ejecuta: python scripts/exportar_openapi.py"
+
+
+def test_ningun_endpoint_declara_501(esquema: dict) -> None:
+    for ruta, operaciones in esquema["paths"].items():
+        for metodo, operacion in operaciones.items():
+            assert "501" not in operacion["responses"], f"{metodo} {ruta}"

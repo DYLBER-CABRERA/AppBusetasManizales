@@ -30,7 +30,6 @@ _DESCRIPCIONES = {
     404: "NO_ENCONTRADO",
     409: "CONFLICTO_VERSION o CONFLICTO_NEGOCIO",
     500: "ERROR_INTERNO",
-    501: "PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada",
     503: "SERVICIO_EXTERNO_NO_DISPONIBLE",
 }
 

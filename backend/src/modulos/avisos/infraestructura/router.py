@@ -1,4 +1,4 @@
-"""Router del módulo avisos. B0: 501 PENDIENTE (GET en B2, publicar/retirar en B4)."""
+"""Router del módulo avisos: GET público (B2) y publicar/retirar por rol (B4)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import Field
 
-from nucleo.autorizacion import Rol
-from nucleo.dependencias import pendiente, requiere_rol
+from modulos.avisos.aplicacion.consultar_avisos_vigentes import ConsultarAvisosVigentes
+from modulos.avisos.aplicacion.gestion import PublicarAviso, RetirarAviso
+from nucleo.autorizacion import Identidad, Rol
+from nucleo.dependencias import caso, requiere_rol
 from nucleo.esquemas import EsquemaBase, errores
 
 router = APIRouter(tags=["Avisos"])
@@ -42,23 +44,33 @@ class AvisoCrear(EsquemaBase):
 
 
 @router.get("/avisos", response_model=list[Aviso])
-async def consultar_avisos_vigentes(ruta_id: UUID | None = Query(default=None, alias="rutaId")) -> list[Aviso]:
-    pendiente()
+async def consultar_avisos_vigentes(
+    ruta_id: UUID | None = Query(default=None, alias="rutaId"),
+    caso_uso: ConsultarAvisosVigentes = Depends(caso("consultar_avisos_vigentes")),
+) -> list[dict]:
+    return await caso_uso(ruta_id)
 
 
-@router.post(
-    "/avisos", response_model=Aviso, status_code=201,
-    dependencies=[Depends(requiere_rol(Rol.JEFE_OPERACIONES, Rol.SECRETARIA_MOVILIDAD, Rol.ADMINISTRADOR))],
-    responses=errores(400, 401, 403),
-)
-async def publicar_aviso(cuerpo: AvisoCrear) -> Aviso:
-    pendiente()
+_publicadores = requiere_rol(Rol.JEFE_OPERACIONES, Rol.SECRETARIA_MOVILIDAD, Rol.ADMINISTRADOR)
 
 
-@router.delete(
-    "/avisos/{aviso_id}", status_code=204,
-    dependencies=[Depends(requiere_rol(Rol.JEFE_OPERACIONES, Rol.SECRETARIA_MOVILIDAD, Rol.ADMINISTRADOR))],
-    responses=errores(401, 403, 404),
-)
-async def retirar_aviso(aviso_id: UUID) -> Response:
-    pendiente()
+@router.post("/avisos", response_model=Aviso, status_code=201, responses=errores(400, 401, 403, 404))
+async def publicar_aviso(
+    cuerpo: AvisoCrear,
+    identidad: Identidad = Depends(_publicadores),
+    caso_uso: PublicarAviso = Depends(caso("publicar_aviso")),
+) -> dict:
+    return await caso_uso(
+        identidad, cuerpo.titulo, cuerpo.cuerpo, cuerpo.tipo_cambio, cuerpo.ruta_ids, cuerpo.paradero_ids,
+        cuerpo.desde, cuerpo.hasta,
+    )
+
+
+@router.delete("/avisos/{aviso_id}", status_code=204, responses=errores(401, 403, 404))
+async def retirar_aviso(
+    aviso_id: UUID,
+    identidad: Identidad = Depends(_publicadores),
+    caso_uso: RetirarAviso = Depends(caso("retirar_aviso")),
+) -> Response:
+    await caso_uso(identidad, aviso_id)
+    return Response(status_code=204)
