@@ -1,0 +1,5 @@
+import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+
+export default function Page() {
+  return <PantallaPendiente titulo="Cambios de movilidad" bloque="W3" />;
+}

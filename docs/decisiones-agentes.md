@@ -100,3 +100,25 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 
 - **Se eliminó el código `PENDIENTE` / `501`** (`ErrorPendiente`, `pendiente()` y la respuesta 501 en OpenAPI): resuelve la desviación de la lista de códigos de CLAUDE.md §6 anotada en B0.
 - **Pruebas de integración ampliadas** (`pruebas/integracion/test_flujos_bd.py`): 401/403/404, ETA con simulador, flujo de rodamiento con aislamiento entre jefes, eliminar ruta con confirmación, favoritos y planificación. **Escriben en la BD** (ver docstring). No se ejecutaron.
+## 2026-10-28 · web-admin-dev · W0
+
+- **Versiones fijadas** (`web-admin/package.json`, todas gratuitas/código abierto): next 16.4.3, react 19.3.1, tailwindcss 4.3.3, @supabase/supabase-js 2.118.0, @supabase/ssr 0.12.7, @tanstack/react-query 5.105.0, openapi-typescript 7.13.0, openapi-fetch 0.17.0, react-hook-form 7.91.0, zod 4.6.7, leaflet 1.9.4, react-leaflet 5.0.0, recharts 3.10.1, eslint 9.39.5.
+- **TypeScript 5.9.3, no 7.x:** `openapi-typescript` 7.13 declara `peer typescript@^5` y `npm install` falla con 7.0.2.
+- **Dependencias fuera de la lista de `web-admin/CLAUDE.md` §2** (necesarias, licencia MIT): `@hookform/resolvers` 6.0.2 (conecta `zod` con `react-hook-form`); `@tailwindcss/postcss` 4.3.3 y `postcss` 8.5.32 (Tailwind 4 con Next); `eslint-config-next` 16.4.3; tipos de desarrollo `@types/node` 20, `@types/react`, `@types/react-dom`, `@types/leaflet`.
+- **`src/proxy.ts` en vez de `src/middleware.ts`:** Next 16 renombró el archivo. Solo exige que exista sesión (cookie de Supabase); el rol lo decide el backend vía `GET /yo` y lo aplica el layout `(panel)`.
+- **Modo de ejemplo (PENDIENTE, quitar al integrar):** con `NEXT_PUBLIC_USAR_MOCKS=true` el cliente de API devuelve datos de `src/lib/mocks.ts` (doc 01 §2 y §5) cuando el backend responde 501 o no hay red; sin variables de Supabase el login acepta las cuentas del doc 01 §5 sin verificar contraseña (cookie `busetas_sesion_ejemplo`, solo en el navegador; el backend nunca la reconoce).
+- **Tipos:** `src/lib/tipos-api.d.ts` se genera con `npm run tipos` desde `contrato/openapi.json`; no se edita a mano.
+
+## 2026-10-28 · web-admin-dev · W1
+
+- **Selector de empresa del administrador** en `/jefe/*` (`src/app/(panel)/jefe/layout.tsx`): solo visible para el rol `administrador` (el rol sale de `GET /yo`). Agrega `empresaId` como parámetro de consulta a `/mis-servicios`, `/busetas`, `/conductores` y `/rodamientos`. Vive en memoria y se borra al cerrar sesión; el jefe nunca lo envía. `PENDIENTE`: aún no está en `contrato/openapi.json`.
+- **Servidor de ejemplo del jefe** (`src/lib/mocks-jefe.ts`, `PENDIENTE`, quitar al integrar): replica versión, reemplazo, solapamientos y publicar mientras el backend responda 501; usa localStorage para probar el 409 con dos pestañas.
+- **Asignar:** Fin estimado es obligatorio en el formulario (la API lo admite vacío) para que se puedan detectar solapamientos. Un turno con la misma ruta y hora de salida se reemplaza, no se duplica.
+- **Rodamiento publicado:** se muestra de solo lectura. Anular y editar uno publicado quedan `PENDIENTE(decisión)`.
+
+## 2026-10-28 · web-admin-dev · W2
+
+- **Panel de demo con el backend real** (sin datos de ejemplo): `GET /demo/estado` cada 3 s y `POST /demo/escenarios` para las siete acciones. El ítem del menú aparece solo si `/demo/estado` responde 200; con 404 la página explica que falta `MODO_DEMO=true`.
+- **Mapa en vivo:** `BusetaDemo` no trae `empresaId`, ruta ni coordenadas, así que el panel usa `GET /empresas` (nombre → id para los escenarios por empresa) y, por cada ruta de `GET /rutas`, el WebSocket `/ws/rutas/{id}` con reconexión (1, 2, 4, 8 s, máx. 15 s) y respaldo `GET /rutas/{id}/busetas` cada 5 s cuando el WebSocket no entrega datos en 8 s. Etiqueta de cada buseta con su número y, si no tiene señal, la palabra «sin señal» (borde rojo ladrillo, círculo vacío).
+- **Parámetros y fuentes GPS (PENDIENTE, datos de ejemplo hasta B5):** `src/lib/mocks-admin.ts`. Los mínimos y máximos de ejemplo son inventados salvo «50 a 2000» de la distancia de aviso; los reales los manda el backend (`minimo`/`maximo`). La clave de una fuente nunca se guarda: vive en memoria mientras el modal está abierto (sin Esc para cerrarlo por accidente) y se borra de la caché de la mutación.
+- **`Modal`** admite `sinEscape`.
