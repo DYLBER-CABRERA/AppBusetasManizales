@@ -139,3 +139,13 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Chips de Buscar:** Catedral, El Cable, Carrera 23, Fundadores y Terminal (docs/01 §2.3). Cada chip busca el hito por nombre en `/busqueda/hitos` y lista `/hitos/{id}/rutas`.
 - **«N en servicio» en la hoja del mapa** usa `unidadesEnServicio` de `GET /rutas/{id}/busetas` (REST). El WebSocket y la animación llegan en M2.
 - **Riverpod 3:** se desactivan los reintentos automáticos (`retry: (_, _) => null`); cada pantalla ofrece **Reintentar**.
+
+## 2026-10-30 · mobile-dev · M2
+
+- **Dependencia de desarrollo nueva:** `stream_channel` 2.1.4 (dart-lang, licencia BSD-3, gratuita; ya estaba en el árbol de `web_socket_channel`). Solo la usan las pruebas, para un `WebSocketChannel` falso (`test/ayudas/canal_falso.dart`). No entra en el APK.
+- **Tiempo real (`/ws/rutas/{id}`, sin el prefijo `/api/v1`):** el seguimiento de cada ruta vive mientras la pantalla está a la vista (`TickerMode`) y se cierra al salir o al pasar la app a segundo plano. Reconexión 1, 2, 4, 8 y 15 s; mientras no hay socket se consulta `GET /rutas/{id}/busetas` cada 5 s (`intervalo_refresco_cliente_s`; un pasajero no puede leer el parámetro, se usa su valor por defecto). Con socket, REST concilia cada 30 s porque cada mensaje `posiciones` trae solo las busetas que reportaron en ese ciclo (la app las mezcla por `busetaId`).
+- **Desactualizado:** más de 3 intervalos sin datos **y** con busetas o seguimiento disponible. Una ruta sin GPS (Serviturismo) nunca se marca desactualizada, porque no hay nada que actualizar.
+- **`senal_perdida`:** la app lo maneja si llega, pero el backend no lo emite (docs/03 §16); lo normal es `estado: sin_senal`.
+- **«Ya cerró» / «aún no inicia»:** se calcula en el cliente con los horarios de hoy y la hora de Bogotá (UTC−5): primera salida más temprana y cierre más tardío entre las empresas con dato; sin dato de hoy no se dice nada.
+- **ETA:** se recalcula cada 10 s mientras la pantalla está abierta; con un fallo se conserva el último valor y aparece **Reintentar**. El botón «Avisarme cuando esté a 300 m» llega en M3 (exige sesión).
+- **Aviso de «datos desactualizados» y de «Estimación por horario»** usan un ámbar propio (no el amarillo `#F6C500`, reservado a las busetas), siempre con ícono y texto.

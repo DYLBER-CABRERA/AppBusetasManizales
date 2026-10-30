@@ -135,7 +135,6 @@ class _Resultados extends ConsumerWidget {
               for (final ruta in rutas)
                 FilaRuta(
                   ruta: ruta,
-                  mostrarServicio: false,
                   onTap: () => context.push('/ruta/${ruta.id}'),
                 ),
             ],
@@ -170,7 +169,6 @@ class _Resultados extends ConsumerWidget {
               for (final ruta in resultado.rutas)
                 FilaRuta(
                   ruta: ruta,
-                  mostrarServicio: false,
                   onTap: () => context.push('/ruta/${ruta.id}'),
                 ),
           ],

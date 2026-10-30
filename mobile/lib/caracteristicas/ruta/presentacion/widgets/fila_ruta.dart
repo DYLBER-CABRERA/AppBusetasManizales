@@ -6,19 +6,19 @@ import '../../dominio/ruta.dart';
 import '../ruta_providers.dart';
 import 'sello_ruta.dart';
 
-/// Fila de lista de ruta (COM-04): sello, nombre, empresas, distancia y «N en servicio».
+/// Fila de lista de ruta (COM-04): sello, nombre, empresas, distancia y, si se conoce,
+/// «N en servicio» ([unidades] viene del seguimiento en vivo; `null` = no se muestra).
 class FilaRuta extends ConsumerWidget {
-  const FilaRuta({super.key, required this.ruta, required this.onTap, this.mostrarServicio = true});
+  const FilaRuta({super.key, required this.ruta, required this.onTap, this.unidades});
 
   final RutaResumen ruta;
   final VoidCallback onTap;
-  final bool mostrarServicio;
+  final int? unidades;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color = colorDeRuta(ref, ruta.id);
     final texto = Theme.of(context).textTheme;
-    final unidades = mostrarServicio ? ref.watch(unidadesEnServicioProvider(ruta.id)).value : null;
 
     final detalles = <String>[
       ruta.empresas,

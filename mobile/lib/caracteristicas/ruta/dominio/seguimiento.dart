@@ -46,6 +46,22 @@ class BusetaEnVivo {
   final String? mensaje;
 
   bool get sinSenal => estado == 'sin_senal';
+
+  /// Para el mensaje `senal_perdida` del WebSocket (el contrato lo declara aunque el
+  /// backend hoy no lo emite; lo normal es recibir `estado: sin_senal` por REST).
+  BusetaEnVivo conSenalPerdida() => BusetaEnVivo(
+        busetaId: busetaId,
+        numeroLateral: numeroLateral,
+        empresa: empresa,
+        servicioId: servicioId,
+        estado: 'sin_senal',
+        lat: lat,
+        lng: lng,
+        reportadaEn: reportadaEn,
+        velocidadKmh: velocidadKmh,
+        rumbo: rumbo,
+        mensaje: 'Ubicación no disponible. Última señal hace más de 60 s.',
+      );
 }
 
 class BusetasEnVivo {

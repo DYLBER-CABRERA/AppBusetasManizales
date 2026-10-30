@@ -10,7 +10,12 @@ import '../../../app/widgets/esqueleto.dart';
 import '../../../nucleo/errores.dart';
 import '../../mapa/presentacion/mapa_providers.dart';
 import '../dominio/ruta.dart';
+import '../dominio/seguimiento.dart';
+import 'pestana_en_vivo.dart';
 import 'pestanas_ruta.dart';
+import 'seguimiento_provider.dart';
+import 'widgets/banner_desactualizado.dart';
+import 'widgets/marcadores_busetas.dart';
 import 'ruta_providers.dart';
 import 'widgets/fila_ruta.dart';
 import 'widgets/sello_ruta.dart';
@@ -55,15 +60,20 @@ class PantallaRuta extends ConsumerWidget {
   }
 }
 
-class _FichaCompleta extends StatelessWidget {
+class _FichaCompleta extends ConsumerWidget {
   const _FichaCompleta({required this.detalle, required this.color});
 
   final RutaDetalle detalle;
   final Color color;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final texto = Theme.of(context).textTheme;
+    // El socket vive solo mientras la ficha está a la vista: si otra pantalla se
+    // apila encima (p. ej. el ETA) se deja de escuchar y el proveedor lo cierra.
+    final visible = TickerMode.valuesOf(context).enabled;
+    final seguimiento =
+        visible ? ref.watch(seguimientoProvider(detalle.id)) : seguimientoEnPausa;
     return DefaultTabController(
       length: 4,
       child: Column(
@@ -98,7 +108,15 @@ class _FichaCompleta extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(height: 170, child: _MiniMapa(detalle: detalle, color: color)),
+          if (seguimiento.desactualizado)
+            BannerDesactualizado(
+              segundos: seguimiento.segundosSinDatos,
+              onActualizar: () => ref.read(seguimientoProvider(detalle.id).notifier).actualizar(),
+            ),
+          SizedBox(
+            height: 170,
+            child: _MiniMapa(detalle: detalle, color: color, busetas: seguimiento.busetas),
+          ),
           const TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -112,11 +130,14 @@ class _FichaCompleta extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: [
-                PestanaRecorrido(detalle: detalle, color: color),
+                PestanaRecorrido(
+                  detalle: detalle,
+                  color: color,
+                  onParadero: (p) => context.push('/ruta/${detalle.id}/paradero/${p.paraderoId}'),
+                ),
                 PestanaHorarios(rutaId: detalle.id),
                 PestanaFrecuencia(rutaId: detalle.id),
-                // PENDIENTE(M2): lista de busetas en vivo (WebSocket + respaldo REST).
-                const Center(child: Text('Las busetas en vivo llegan en el bloque M2.')),
+                PestanaEnVivo(rutaId: detalle.id, estado: seguimiento),
               ],
             ),
           ),
@@ -127,10 +148,11 @@ class _FichaCompleta extends StatelessWidget {
 }
 
 class _MiniMapa extends StatelessWidget {
-  const _MiniMapa({required this.detalle, required this.color});
+  const _MiniMapa({required this.detalle, required this.color, required this.busetas});
 
   final RutaDetalle detalle;
   final Color color;
+  final List<BusetaEnVivo> busetas;
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +186,7 @@ class _MiniMapa extends StatelessWidget {
                 ),
               ),
           ]),
+          MarcadoresBusetas(busetas: busetas),
         ],
       ),
     );

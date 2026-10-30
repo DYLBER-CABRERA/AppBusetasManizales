@@ -125,3 +125,58 @@ Map<String, dynamic> hitoCatedral() => {
       'lat': 5.0674,
       'lng': -75.5173,
     };
+
+Map<String, dynamic> busetaJson(
+  String id,
+  String numero, {
+  double lat = 5.06,
+  double lng = -75.51,
+  String estado = 'activa',
+  String empresa = 'Sideral',
+  String reportadaEn = '2026-10-29T10:00:00-05:00',
+}) =>
+    {
+      'busetaId': id,
+      'numeroLateral': numero,
+      'empresa': empresa,
+      'servicioId': 's1',
+      'estado': estado,
+      'lat': lat,
+      'lng': lng,
+      'velocidadKmh': 33.2,
+      'rumbo': 91,
+      'reportadaEn': reportadaEn,
+      'mensaje': estado == 'sin_senal' ? 'Ubicación no disponible. Última señal hace más de 60 s.' : null,
+    };
+
+Map<String, dynamic> busetasJson(List<Map<String, dynamic>> busetas, {int? unidades}) => {
+      'seguimientoDisponible': busetas.isNotEmpty,
+      'unidadesEnServicio': unidades ?? busetas.length,
+      'calculadoEn': '2026-10-29T10:00:00-05:00',
+      'busetas': busetas,
+    };
+
+Map<String, dynamic> resultadoEtaJson({
+  String fuente = 'gps',
+  int? etaSegundos = 240,
+  int? maxSegundos,
+  String? mensaje,
+}) =>
+    {
+      'servicioId': 's1',
+      'empresa': 'Sideral',
+      'codigoPublico': '39',
+      'fuente': fuente,
+      'etaSegundos': etaSegundos,
+      'rango': maxSegundos == null ? null : {'minSegundos': 0, 'maxSegundos': maxSegundos},
+      'busetaNumeroLateral': fuente == 'gps' ? '1544' : null,
+      'ultimaSenalHaceS': fuente == 'gps' ? 3 : null,
+      'mensaje': mensaje,
+    };
+
+Map<String, dynamic> etaJson(List<Map<String, dynamic>> resultados) => {
+      'paraderoId': 'p2',
+      'rutaId': idCable,
+      'calculadoEn': '2026-10-29T10:00:00-05:00',
+      'resultados': resultados,
+    };

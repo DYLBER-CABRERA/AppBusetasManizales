@@ -24,12 +24,6 @@ final frecuenciasRutaProvider = FutureProvider.autoDispose.family<FrecuenciasRut
   (ref, rutaId) => ref.watch(rutasRepositorioProvider).frecuencias(rutaId),
 );
 
-/// Busetas con turno vigente en la ruta (para «N en servicio»).
-final unidadesEnServicioProvider = FutureProvider.autoDispose.family<int, String>(
-  (ref, rutaId) async =>
-      (await ref.watch(rutasRepositorioProvider).busetas(rutaId)).unidadesEnServicio,
-);
-
 /// Colores de ruta con buen contraste con texto blanco. El amarillo se reserva
 /// para las busetas y el rojo ladrillo para los errores.
 const paletaRutas = [

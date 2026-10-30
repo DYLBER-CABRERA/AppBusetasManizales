@@ -11,7 +11,10 @@ import '../../../nucleo/formato.dart';
 import '../../../nucleo/ubicacion.dart';
 import '../../ruta/dominio/ruta.dart';
 import '../../ruta/presentacion/ruta_providers.dart';
+import '../../ruta/dominio/seguimiento.dart';
+import '../../ruta/presentacion/seguimiento_provider.dart';
 import '../../ruta/presentacion/widgets/fila_ruta.dart';
+import '../../ruta/presentacion/widgets/marcadores_busetas.dart';
 import 'mapa_providers.dart';
 
 class PantallaMapa extends ConsumerStatefulWidget {
@@ -53,6 +56,19 @@ class _PantallaMapaState extends ConsumerState<PantallaMapa> {
       ));
     }
 
+    // Busetas de las rutas cercanas en tiempo real; con el mapa fuera de vista (otra
+    // pestaña o pantalla encima) no se escucha y se cierran los sockets.
+    final visible = TickerMode.valuesOf(context).enabled;
+    final busetas = <BusetaEnVivo>[];
+    final unidades = <String, int>{};
+    if (visible) {
+      for (final id in idsCercanas) {
+        final seguimiento = ref.watch(seguimientoProvider(id));
+        busetas.addAll(seguimiento.busetas);
+        if (seguimiento.unidadesEnServicio != null) unidades[id] = seguimiento.unidadesEnServicio!;
+      }
+    }
+
     final punto = ubicacion.value;
     final paradero = cercanas.value?.paraderoMasCercano;
     final sinRutas = cercanas.hasValue && cercanas.requireValue.rutas.isEmpty;
@@ -74,6 +90,7 @@ class _PantallaMapaState extends ConsumerState<PantallaMapa> {
             children: [
               ...capasBaseOsm(),
               PolylineLayer(polylines: polilineas),
+              MarcadoresBusetas(busetas: busetas),
               MarkerLayer(markers: [
                 if (sinRutas && paradero != null)
                   Marker(
@@ -121,6 +138,7 @@ class _PantallaMapaState extends ConsumerState<PantallaMapa> {
           builder: (context, scroll) => _HojaRutas(
             controlador: scroll,
             cercanas: cercanas,
+            unidades: unidades,
             sinUbicacion: !ubicacion.isLoading && punto == null,
             onReintentar: () => ref.invalidate(rutasCercanasProvider),
           ),
@@ -186,12 +204,14 @@ class _HojaRutas extends ConsumerWidget {
   const _HojaRutas({
     required this.controlador,
     required this.cercanas,
+    required this.unidades,
     required this.sinUbicacion,
     required this.onReintentar,
   });
 
   final ScrollController controlador;
   final AsyncValue<ResultadoRutas> cercanas;
+  final Map<String, int> unidades;
   final bool sinUbicacion;
   final VoidCallback onReintentar;
 
@@ -245,7 +265,11 @@ class _HojaRutas extends ConsumerWidget {
                 : Column(
                     children: [
                       for (final ruta in resultado.rutas)
-                        FilaRuta(ruta: ruta, onTap: () => context.push('/ruta/${ruta.id}')),
+                        FilaRuta(
+                          ruta: ruta,
+                          unidades: unidades[ruta.id],
+                          onTap: () => context.push('/ruta/${ruta.id}'),
+                        ),
                     ],
                   ),
           ),

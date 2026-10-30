@@ -1,51 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:busetas_app/app/tema.dart';
 import 'package:busetas_app/caracteristicas/buscar/presentacion/pantalla_buscar.dart';
 import 'package:busetas_app/caracteristicas/mapa/presentacion/pantalla_mapa.dart';
-import 'package:busetas_app/caracteristicas/ruta/presentacion/pantalla_ruta.dart';
 import 'package:busetas_app/caracteristicas/ruta/presentacion/widgets/fila_ruta.dart';
-import 'package:busetas_app/nucleo/cliente_api.dart';
-import 'package:busetas_app/nucleo/configuracion.dart';
-import 'package:busetas_app/nucleo/ubicacion.dart';
 
 import 'ayudas/api_falsa.dart';
 import 'ayudas/datos_ejemplo.dart';
-import 'ayudas/ubicacion_nula.dart';
-
-Future<AdaptadorFalso> _montar(
-  WidgetTester tester, {
-  required Map<String, RespuestaFalsa> respuestas,
-  required Widget Function() pantalla,
-  String inicial = '/',
-}) async {
-  SharedPreferences.setMockInitialValues({});
-  final preferencias = await SharedPreferences.getInstance();
-  final adaptador = AdaptadorFalso(respuestas);
-  final router = GoRouter(initialLocation: inicial, routes: [
-    GoRoute(path: '/', builder: (_, _) => Scaffold(body: pantalla())),
-    GoRoute(path: '/ruta/:id', builder: (_, e) => PantallaRuta(rutaId: e.pathParameters['id']!)),
-    GoRoute(path: '/mapa', builder: (_, _) => const Scaffold(body: Text('mapa'))),
-    GoRoute(path: '/buscar', builder: (_, _) => const Scaffold(body: Text('buscar'))),
-  ]);
-  await tester.pumpWidget(ProviderScope(
-    retry: (_, _) => null,
-    overrides: [
-      preferenciasProvider.overrideWithValue(preferencias),
-      clienteApiProvider.overrideWithValue(crearApiFalsa(adaptador)),
-      ubicacionProvider.overrideWith(UbicacionNula.new),
-    ],
-    child: MaterialApp.router(
-      theme: construirTema(Brightness.light, fuentesWeb: false),
-      routerConfig: router,
-    ),
-  ));
-  return adaptador;
-}
+import 'ayudas/montaje.dart';
 
 void main() {
   group('Buscar', () {
@@ -54,7 +16,7 @@ void main() {
     };
 
     testWidgets('escribir busca rutas y lugares; tocar un resultado abre la ficha', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const PantallaBuscar(),
         respuestas: {
@@ -82,7 +44,7 @@ void main() {
     });
 
     testWidgets('sin coincidencias muestra el texto del documento de UX', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const PantallaBuscar(),
         respuestas: {
@@ -103,7 +65,7 @@ void main() {
     });
 
     testWidgets('el chip de un hito lista las rutas que pasan', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const PantallaBuscar(),
         respuestas: {
@@ -123,7 +85,7 @@ void main() {
     });
 
     testWidgets('hito sin cobertura indica el paradero más cercano', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const PantallaBuscar(),
         respuestas: {
@@ -153,7 +115,7 @@ void main() {
       final respuestas = <String, RespuestaFalsa>{
         '/busqueda/hitos': errorFalso(503, 'SERVICIO_EXTERNO_NO_DISPONIBLE', 'Base de datos no disponible.'),
       };
-      await _montar(tester, pantalla: () => const PantallaBuscar(), respuestas: respuestas);
+      await montar(tester, pantalla: () => const PantallaBuscar(), respuestas: respuestas);
 
       await tester.tap(find.widgetWithText(ActionChip, 'Catedral'));
       await tester.pumpAndSettle();
@@ -177,7 +139,7 @@ void main() {
     };
 
     testWidgets('cabecera con empresas, avisos y paraderos en orden', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const SizedBox(),
         respuestas: respuestas,
@@ -193,7 +155,7 @@ void main() {
     });
 
     testWidgets('Horarios resalta hoy y marca el sábado como pendiente', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const SizedBox(),
         respuestas: respuestas,
@@ -211,7 +173,7 @@ void main() {
     });
 
     testWidgets('Frecuencia muestra el rango y pendiente donde no hay franja', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const SizedBox(),
         respuestas: respuestas,
@@ -227,7 +189,7 @@ void main() {
     });
 
     testWidgets('ruta inexistente ofrece las rutas cercanas', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const SizedBox(),
         respuestas: {
@@ -251,7 +213,7 @@ void main() {
 
   group('Mapa', () {
     testWidgets('lista las rutas cercanas con distancia y unidades en servicio', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const PantallaMapa(),
         respuestas: {
@@ -275,7 +237,7 @@ void main() {
     });
 
     testWidgets('sin rutas a 800 m indica el paradero más cercano', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const PantallaMapa(),
         respuestas: {
@@ -300,7 +262,7 @@ void main() {
     });
 
     testWidgets('error de conexión muestra el banner con Reintentar', (tester) async {
-      await _montar(
+      await montar(
         tester,
         pantalla: () => const PantallaMapa(),
         respuestas: {

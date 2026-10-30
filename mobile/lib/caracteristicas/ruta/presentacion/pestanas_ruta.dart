@@ -11,10 +11,18 @@ const textoPendiente = 'Información pendiente de actualización';
 
 /// Pestaña **Recorrido**: avisos vigentes y paraderos en orden.
 class PestanaRecorrido extends StatelessWidget {
-  const PestanaRecorrido({super.key, required this.detalle, required this.color});
+  const PestanaRecorrido({
+    super.key,
+    required this.detalle,
+    required this.color,
+    required this.onParadero,
+  });
 
   final RutaDetalle detalle;
   final Color color;
+
+  /// Tocar un paradero abre su ETA.
+  final void Function(ParadaEnRuta parada) onParadero;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +43,11 @@ class PestanaRecorrido extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(detalle.descripcion!, style: texto.bodyMedium),
           ),
-        const SizedBox(height: 8),
+        if (paraderos.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text('Toca un paradero para ver cuánto falta.', style: texto.bodyMedium),
+          ),
         if (paraderos.isEmpty)
           const Padding(
             padding: EdgeInsets.all(16),
@@ -45,6 +57,7 @@ class PestanaRecorrido extends StatelessWidget {
           _FilaParadero(
             parada: paraderos[i],
             color: color,
+            onTap: () => onParadero(paraderos[i]),
             primera: i == 0,
             ultima: i == paraderos.length - 1,
           ),
@@ -57,21 +70,26 @@ class _FilaParadero extends StatelessWidget {
   const _FilaParadero({
     required this.parada,
     required this.color,
+    required this.onTap,
     required this.primera,
     required this.ultima,
   });
 
   final ParadaEnRuta parada;
   final Color color;
+  final VoidCallback onTap;
   final bool primera;
   final bool ultima;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Paradero ${parada.orden}: ${parada.nombre}',
+      button: true,
+      label: 'Paradero ${parada.orden}: ${parada.nombre}. Ver cuánto falta',
       excludeSemantics: true,
-      child: IntrinsicHeight(
+      child: InkWell(
+        onTap: onTap,
+        child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -103,8 +121,13 @@ class _FilaParadero extends StatelessWidget {
                 child: Text(parada.nombre, style: Theme.of(context).textTheme.bodyLarge),
               ),
             ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Center(child: Icon(Icons.schedule, size: 20)),
+            ),
           ],
         ),
+      ),
       ),
     );
   }
