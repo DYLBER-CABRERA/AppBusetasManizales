@@ -7,7 +7,8 @@ plugins {
 android {
     namespace = "com.busetasapp.busetas_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // NDK instalado en el equipo de desarrollo (el de Flutter, 28.2.13676358, no está).
+    ndkVersion = "30.0.16248370"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
