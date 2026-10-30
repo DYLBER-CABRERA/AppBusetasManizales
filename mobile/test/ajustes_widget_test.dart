@@ -4,13 +4,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:busetas_app/app/app.dart';
+import 'package:busetas_app/nucleo/cliente_api.dart';
 import 'package:busetas_app/nucleo/configuracion.dart';
+import 'package:busetas_app/nucleo/ubicacion.dart';
+
+import 'ayudas/api_falsa.dart';
+import 'ayudas/ubicacion_nula.dart';
 
 Future<void> _abrirApp(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
   final preferencias = await SharedPreferences.getInstance();
+  final api = crearApiFalsa(AdaptadorFalso({
+    '/rutas/cercanas': const RespuestaFalsa({'rutas': <Object>[]}),
+    '/rutas': const RespuestaFalsa(<Object>[]),
+  }));
   await tester.pumpWidget(ProviderScope(
-    overrides: [preferenciasProvider.overrideWithValue(preferencias)],
+    retry: (_, _) => null,
+    overrides: [
+      preferenciasProvider.overrideWithValue(preferencias),
+      clienteApiProvider.overrideWithValue(api),
+      ubicacionProvider.overrideWith(UbicacionNula.new),
+    ],
     child: const BusetasApp(fuentesWeb: false),
   ));
   await tester.pumpAndSettle();

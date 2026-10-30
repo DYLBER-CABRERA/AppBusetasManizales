@@ -1,0 +1,127 @@
+/// JSON con la forma de `contrato/openapi.json` (valores de ejemplo, no oficiales).
+library;
+
+const idCable = 'ruta-cable';
+const idEnea = 'ruta-enea';
+
+Map<String, dynamic> servicio(String empresa, String? codigo, {String id = 's1'}) => {
+      'servicioId': id,
+      'empresaId': 'e-$empresa',
+      'empresaNombre': empresa,
+      'codigoPublico': codigo,
+    };
+
+Map<String, dynamic> rutaResumen(String id, String nombre, List<Map<String, dynamic>> servicios,
+        {double? distanciaM}) =>
+    {
+      'id': id,
+      'nombre': nombre,
+      'tipoRecorrido': 'circular',
+      'esVariante': false,
+      'distanciaM': distanciaM,
+      'servicios': servicios,
+    };
+
+final resumenCable = rutaResumen(idCable, 'El Cable', [servicio('Sideral', '39')], distanciaM: 220);
+final resumenEnea = rutaResumen(
+  idEnea,
+  'La Enea',
+  [servicio('Socobuses', '18', id: 's2'), servicio('Serviturismo', null, id: 's3')],
+  distanciaM: 410,
+);
+
+Map<String, dynamic> detalleCable() => {
+      ...resumenCable,
+      'descripcion': 'Recorrido de ejemplo (no oficial).',
+      'longitudM': 14424.8,
+      'trazado': {
+        'type': 'LineString',
+        'coordinates': [
+          [-75.506, 5.0495],
+          [-75.51, 5.06],
+          [-75.5173, 5.0674],
+        ],
+      },
+      'paraderos': [
+        {'orden': 2, 'paraderoId': 'p2', 'nombre': 'Carrera 23', 'lat': 5.0672, 'lng': -75.5153},
+        {'orden': 1, 'paraderoId': 'p1', 'nombre': 'Terminal', 'lat': 5.0494, 'lng': -75.5063},
+      ],
+      'avisos': [
+        {
+          'id': 'a1',
+          'origen': 'movilidad',
+          'titulo': 'Cierre por obras en la carrera 23',
+          'cuerpo': 'Desvío temporal.',
+          'empresaNombre': null,
+        },
+      ],
+      'version': 1,
+    };
+
+Map<String, dynamic> horariosCable() => {
+      'tipoDiaHoy': 'lun_vie',
+      'servicios': [
+        {
+          'servicioId': 's1',
+          'empresaId': 'e-Sideral',
+          'empresaNombre': 'Sideral',
+          'codigoPublico': '39',
+          'estado': 'parcial',
+          'horarios': [
+            {
+              'tipoDia': 'lun_vie',
+              'primeraSalida': '04:45',
+              'ultimaSalida': '21:30',
+              'cierre': null,
+              'nota': null,
+            },
+            {
+              'tipoDia': 'dom_festivo',
+              'primeraSalida': '06:00',
+              'ultimaSalida': '21:00',
+              'cierre': null,
+              'nota': null,
+            },
+          ],
+          'tiposDiaPendientes': ['sabado'],
+          'version': 1,
+        },
+      ],
+    };
+
+Map<String, dynamic> frecuenciasCable() => {
+      'servicios': [
+        {
+          'servicioId': 's1',
+          'empresaId': 'e-Sideral',
+          'empresaNombre': 'Sideral',
+          'frecuencias': [
+            {
+              'tipoDia': 'lun_vie',
+              'franjaInicio': '04:45',
+              'franjaFin': '21:30',
+              'minutosMin': 8,
+              'minutosMax': 10,
+              'nota': null,
+            },
+          ],
+          'version': 1,
+        },
+      ],
+    };
+
+Map<String, dynamic> busetasVacio() => {
+      'seguimientoDisponible': false,
+      'unidadesEnServicio': 0,
+      'calculadoEn': '2026-10-29T10:00:00-05:00',
+      'busetas': <Object>[],
+    };
+
+Map<String, dynamic> hitoCatedral() => {
+      'id': 'h1',
+      'nombre': 'Catedral',
+      'tipo': 'hito',
+      'alias': ['catedral', 'la catedral'],
+      'lat': 5.0674,
+      'lng': -75.5173,
+    };

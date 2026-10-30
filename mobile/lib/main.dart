@@ -11,6 +11,8 @@ Future<void> main() async {
   await initializeDateFormatting('es');
   final preferencias = await SharedPreferences.getInstance();
   runApp(ProviderScope(
+    // Sin reintentos automáticos: cada pantalla ofrece su propio «Reintentar».
+    retry: (_, _) => null,
     overrides: [preferenciasProvider.overrideWithValue(preferencias)],
     child: const BusetasApp(),
   ));

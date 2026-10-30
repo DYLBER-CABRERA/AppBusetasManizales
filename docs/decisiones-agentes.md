@@ -130,3 +130,12 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Tráfico en claro:** `android:usesCleartextTraffic="true"` en el manifiesto principal. Una *network security config* no puede limitarse a rangos de IP privados (solo admite dominios), así que se usa el atributo global. Aceptable para el prototipo (backend en el portátil por `http://192.168.x.x:8000`).
 - **`google_fonts` 9 y `TextTheme`:** esta versión devuelve el `TextTheme` de `material_ui`, incompatible con el de Flutter 3.47. El tema solo toma el nombre de la familia (`GoogleFonts.atkinsonHyperlegible().fontFamily`) y arma el `TextTheme` con la API de Flutter.
 - **Sin datos de ejemplo en la app:** el backend ya no devuelve 501, así que no hay *mocks*. Las pantallas de M1 a M4 son marcadores hasta su bloque.
+
+## 2026-10-29 · mobile-dev · M1
+
+- **Sin dependencias nuevas.** Mapa, Buscar y Ficha de ruta consumen el backend real (`/rutas/cercanas`, `/rutas`, `/rutas/{id}`, `/horarios`, `/frecuencias`, `/busetas`, `/busqueda/*`, `/hitos/{id}/rutas`); sin datos de ejemplo en `lib/`.
+- **Color de ruta:** el contrato no trae color. La app reparte una paleta de 6 colores con buen contraste (sin amarillo ni rojo) por orden alfabético del nombre, para que dos rutas no repitan color.
+- **Radio de «sin rutas cerca»:** el texto usa 800 m fijo (valor por defecto de `radio_busqueda_m`); un pasajero no puede leer `/admin/parametros`. `PENDIENTE(decisión)`: exponer el radio vigente en la respuesta de `/rutas/cercanas` si el administrador lo cambia.
+- **Chips de Buscar:** Catedral, El Cable, Carrera 23, Fundadores y Terminal (docs/01 §2.3). Cada chip busca el hito por nombre en `/busqueda/hitos` y lista `/hitos/{id}/rutas`.
+- **«N en servicio» en la hoja del mapa** usa `unidadesEnServicio` de `GET /rutas/{id}/busetas` (REST). El WebSocket y la animación llegan en M2.
+- **Riverpod 3:** se desactivan los reintentos automáticos (`retry: (_, _) => null`); cada pantalla ofrece **Reintentar**.
