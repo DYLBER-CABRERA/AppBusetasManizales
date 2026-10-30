@@ -151,3 +151,8 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - Se agregan límites de error de Next (`error.tsx` global y del panel, `not-found.tsx`) para que un fallo de render no deje la pantalla en blanco. Sin dependencias nuevas.
 - Auditoría: sin `console.*`, sin datos de ejemplo residuales, foco visible global, 401 → /login, estados cargando/vacío/error presentes en todas las pantallas.
 - PENDIENTE (sin cambio): `dias_max_rodamiento_adelante` y `longitud_max_aviso` fijos para el jefe; edición de busetas/conductores; editor de `caja_ciudad`.
+
+## web-admin W5 (cierre)
+- **Resueltos:** editor de `caja_ciudad` (cuatro bordes; valida número, rango de latitud/longitud y orden mín < máx; envía el objeto con `version`); edición de busetas y conductores con `PUT` (número lateral, placa, código, nombre, estado; un campo vacío no se modifica, supuesto del contrato §14; "Dar de baja" los quita de la lista); **Anular rodamiento** (borrador o publicado) con modal de confirmación y manejo del 409 de versión.
+- **Pruebas:** `caja-ciudad.test.ts` (5). Total: 26 pruebas.
+- **Pendientes que NO se pueden resolver desde web-admin** (requieren un cambio de contrato, ya registrados en `docs/solicitudes-entre-agentes.md` como abiertos): lectura por el jefe/Secretaría de `dias_max_rodamiento_adelante` y `longitud_max_aviso` (el panel usa 15 y 500 fijos y el backend valida) y `version` en `RutaResumen`/`ServicioResumen` (se resuelve con llamadas extra). Ninguno bloquea el prototipo.

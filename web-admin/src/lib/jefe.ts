@@ -75,6 +75,14 @@ export const guardarTurnos = (
 export const crearRodamiento = (cuerpo: components["schemas"]["RodamientoCrear"]) =>
   consultar(() => api.POST("/api/v1/rodamientos", { body: cuerpo }));
 
+export const anularRodamiento = (rodamientoId: string, version: number) =>
+  consultar(() =>
+    api.POST("/api/v1/rodamientos/{rodamiento_id}/anular", {
+      params: { path: { rodamiento_id: rodamientoId } },
+      body: { version },
+    }),
+  );
+
 export const publicarRodamiento = (rodamientoId: string, version: number) =>
   consultar(() =>
     api.POST("/api/v1/rodamientos/{rodamiento_id}/publicar", {
@@ -131,6 +139,11 @@ export const guardarFrecuencias = (servicioId: string, cuerpo: Esq["FrecuenciasA
 export const crearBuseta = (cuerpo: Esq["BusetaCrear"]) => consultar(() => api.POST("/api/v1/busetas", { body: cuerpo }));
 export const crearConductor = (cuerpo: Esq["ConductorCrear"]) =>
   consultar(() => api.POST("/api/v1/conductores", { body: cuerpo }));
+
+export const editarBuseta = (id: string, cuerpo: Esq["BusetaEditar"]) =>
+  consultar(() => api.PUT("/api/v1/busetas/{buseta_id}", { params: { path: { buseta_id: id } }, body: cuerpo }));
+export const editarConductor = (id: string, cuerpo: Esq["ConductorEditar"]) =>
+  consultar(() => api.PUT("/api/v1/conductores/{conductor_id}", { params: { path: { conductor_id: id } }, body: cuerpo }));
 
 // ---------- estadísticas de uso (W4) ----------
 export function useEstadisticasUso(desde: string, hasta: string) {

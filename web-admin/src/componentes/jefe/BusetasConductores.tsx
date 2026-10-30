@@ -4,12 +4,17 @@ import { useState } from "react";
 import { BannerError } from "@/componentes/BannerError";
 import { Esqueleto } from "@/componentes/Esqueleto";
 import { useToast } from "@/componentes/Toast";
-import { crearBuseta, crearConductor, useBusetas, useClaveEmpresa, useConductores } from "@/lib/jefe";
+import { ErrorApi } from "@/lib/errores";
+import { crearBuseta, crearConductor, editarBuseta, editarConductor, useBusetas, useClaveEmpresa, useConductores } from "@/lib/jefe";
 
 const campo = "mt-1 min-h-11 w-full rounded border border-tinta/40 bg-white px-3";
 const mensajeError = "mt-1 text-sm text-ladrillo";
 
-/** Alta de busetas y conductores de la empresa (solo `nombre`/`codigo` del conductor, número lateral y placa de la buseta). */
+type BusetaFila = NonNullable<ReturnType<typeof useBusetas>["data"]>[number];
+type ConductorFila = NonNullable<ReturnType<typeof useConductores>["data"]>[number];
+const MSG_VERSION = "Alguien más cambió esto. Recarga para ver los cambios.";
+
+/** Alta y edición de busetas y conductores de la empresa (en los PUT, un campo omitido o null no se modifica). */
 export function BusetasConductores() {
   const cliente = useQueryClient();
   const toast = useToast();
@@ -27,23 +32,44 @@ export function BusetasConductores() {
   const [errNombre, setErrNombre] = useState<string | null>(null);
   const [errConductor, setErrConductor] = useState<string | null>(null);
 
+  const [editB, setEditB] = useState<BusetaFila | null>(null);
+  const [estadoB, setEstadoB] = useState<"activa" | "fuera_servicio" | "baja">("activa");
+  const [editC, setEditC] = useState<ConductorFila | null>(null);
+  const [estadoC, setEstadoC] = useState<"activo" | "baja">("activo");
+
+  const limpiarBuseta = () => { setEditB(null); setLateral(""); setPlaca(""); setErrBuseta(null); setErrLateral(null); };
+  const limpiarConductor = () => { setEditC(null); setNombre(""); setCodigo(""); setErrConductor(null); setErrNombre(null); };
+  const errorDe = (e: Error) => (e instanceof ErrorApi && e.esConflictoVersion ? MSG_VERSION : e.message);
+
   const nuevaBuseta = useMutation({
-    mutationFn: () => crearBuseta({ numeroLateral: lateral.trim(), placa: placa.trim() || null }),
+    mutationFn: () =>
+      editB
+        ? editarBuseta(editB.id, { numeroLateral: lateral.trim(), placa: placa.trim() || null, estado: estadoB, version: editB.version })
+        : crearBuseta({ numeroLateral: lateral.trim(), placa: placa.trim() || null }),
     onSuccess: async () => {
-      setLateral(""); setPlaca(""); setErrBuseta(null);
+      limpiarBuseta();
       await cliente.invalidateQueries({ queryKey: ["jefe", emp, "busetas"] });
       toast("Guardada");
     },
-    onError: (e) => setErrBuseta(e.message),
+    onError: (e) => {
+      setErrBuseta(errorDe(e));
+      if (e instanceof ErrorApi && e.esConflictoVersion) void cliente.invalidateQueries({ queryKey: ["jefe", emp, "busetas"] });
+    },
   });
   const nuevoConductor = useMutation({
-    mutationFn: () => crearConductor({ nombre: nombre.trim(), codigo: codigo.trim() || null }),
+    mutationFn: () =>
+      editC
+        ? editarConductor(editC.id, { nombre: nombre.trim(), codigo: codigo.trim() || null, estado: estadoC, version: editC.version })
+        : crearConductor({ nombre: nombre.trim(), codigo: codigo.trim() || null }),
     onSuccess: async () => {
-      setNombre(""); setCodigo(""); setErrConductor(null);
+      limpiarConductor();
       await cliente.invalidateQueries({ queryKey: ["jefe", emp, "conductores"] });
       toast("Guardado");
     },
-    onError: (e) => setErrConductor(e.message),
+    onError: (e) => {
+      setErrConductor(errorDe(e));
+      if (e instanceof ErrorApi && e.esConflictoVersion) void cliente.invalidateQueries({ queryKey: ["jefe", emp, "conductores"] });
+    },
   });
 
   return (
@@ -54,7 +80,11 @@ export function BusetasConductores() {
         {busetas.isPending ? <Esqueleto filas={3} /> : null}
         <ul className="flex flex-wrap gap-2">
           {busetas.data?.map((b) => (
-            <li key={b.id} className="rounded bg-fondo px-3 py-2">{b.numeroLateral}{b.placa ? ` · ${b.placa}` : ""}</li>
+            <li key={b.id} className="flex items-center gap-2 rounded bg-fondo px-3 py-1">
+              <span>{b.numeroLateral}{b.placa ? ` · ${b.placa}` : ""}{b.estado === "fuera_servicio" ? " · fuera de servicio" : ""}</span>
+              <button type="button" aria-label={`Editar la buseta ${b.numeroLateral}`} className="min-h-11 rounded px-2 font-semibold text-verde underline"
+                onClick={() => { setEditB(b); setLateral(b.numeroLateral); setPlaca(b.placa ?? ""); setEstadoB(b.estado); setErrBuseta(null); setErrLateral(null); }}>Editar</button>
+            </li>
           ))}
           {busetas.data?.length === 0 ? <li className="text-sm">Todavía no hay busetas. Agrega la primera.</li> : null}
         </ul>
@@ -75,10 +105,21 @@ export function BusetasConductores() {
             <label htmlFor="placa" className="block font-semibold">Placa (opcional)</label>
             <input id="placa" type="text" value={placa} className={campo} onChange={(e) => setPlaca(e.target.value)} />
           </div>
+          {editB ? (
+            <div>
+              <label htmlFor="estado-buseta" className="block font-semibold">Estado</label>
+              <select id="estado-buseta" value={estadoB} className={campo} onChange={(e) => setEstadoB(e.target.value as typeof estadoB)}>
+                <option value="activa">Activa</option>
+                <option value="fuera_servicio">Fuera de servicio</option>
+                <option value="baja">Dar de baja (deja de listarse)</option>
+              </select>
+            </div>
+          ) : null}
           {errBuseta ? <p role="alert" className="rounded bg-ladrillo-claro p-3 text-ladrillo">Error: {errBuseta}</p> : null}
           <button type="submit" disabled={nuevaBuseta.isPending} className="min-h-11 rounded bg-verde px-5 font-semibold text-white hover:bg-verde-oscuro disabled:opacity-60">
-            {nuevaBuseta.isPending ? "Guardando…" : "Guardar buseta"}
+            {nuevaBuseta.isPending ? "Guardando…" : editB ? "Guardar cambios de la buseta" : "Guardar buseta"}
           </button>
+          {editB ? <button type="button" onClick={limpiarBuseta} className="ml-3 min-h-11 rounded border border-tinta px-5 font-semibold">Cancelar</button> : null}
         </form>
       </section>
 
@@ -88,7 +129,11 @@ export function BusetasConductores() {
         {conductores.isPending ? <Esqueleto filas={3} /> : null}
         <ul className="flex flex-wrap gap-2">
           {conductores.data?.map((c) => (
-            <li key={c.id} className="rounded bg-fondo px-3 py-2">{c.nombre}{c.codigo ? ` · ${c.codigo}` : ""}</li>
+            <li key={c.id} className="flex items-center gap-2 rounded bg-fondo px-3 py-1">
+              <span>{c.nombre}{c.codigo ? ` · ${c.codigo}` : ""}</span>
+              <button type="button" aria-label={`Editar al conductor ${c.nombre}`} className="min-h-11 rounded px-2 font-semibold text-verde underline"
+                onClick={() => { setEditC(c); setNombre(c.nombre); setCodigo(c.codigo ?? ""); setEstadoC(c.estado); setErrConductor(null); setErrNombre(null); }}>Editar</button>
+            </li>
           ))}
           {conductores.data?.length === 0 ? <li className="text-sm">Todavía no hay conductores. Agrega el primero.</li> : null}
         </ul>
@@ -96,7 +141,7 @@ export function BusetasConductores() {
           ev.preventDefault();
           setErrConductor(null);
           const v = nombre.trim();
-          const msg = !v ? "Escribe el nombre." : v.length > 120 ? "El nombre admite hasta 120 caracteres." : codigo.trim().length > 20 ? "El código admite hasta 20 caracteres." : null;
+          const msg = !v ? "Escribe el nombre." : v.length < 2 ? "El nombre necesita al menos 2 caracteres." : v.length > 120 ? "El nombre admite hasta 120 caracteres." : codigo.trim().length > 20 ? "El código admite hasta 20 caracteres." : null;
           setErrNombre(msg);
           if (!msg) nuevoConductor.mutate();
         }}>
@@ -109,10 +154,20 @@ export function BusetasConductores() {
             <label htmlFor="codigo-conductor" className="block font-semibold">Código (opcional)</label>
             <input id="codigo-conductor" type="text" value={codigo} className={campo} onChange={(e) => setCodigo(e.target.value)} />
           </div>
+          {editC ? (
+            <div>
+              <label htmlFor="estado-conductor" className="block font-semibold">Estado</label>
+              <select id="estado-conductor" value={estadoC} className={campo} onChange={(e) => setEstadoC(e.target.value as typeof estadoC)}>
+                <option value="activo">Activo</option>
+                <option value="baja">Dar de baja (deja de listarse)</option>
+              </select>
+            </div>
+          ) : null}
           {errConductor ? <p role="alert" className="rounded bg-ladrillo-claro p-3 text-ladrillo">Error: {errConductor}</p> : null}
           <button type="submit" disabled={nuevoConductor.isPending} className="min-h-11 rounded bg-verde px-5 font-semibold text-white hover:bg-verde-oscuro disabled:opacity-60">
-            {nuevoConductor.isPending ? "Guardando…" : "Guardar conductor"}
+            {nuevoConductor.isPending ? "Guardando…" : editC ? "Guardar cambios del conductor" : "Guardar conductor"}
           </button>
+          {editC ? <button type="button" onClick={limpiarConductor} className="ml-3 min-h-11 rounded border border-tinta px-5 font-semibold">Cancelar</button> : null}
         </form>
       </section>
     </div>
