@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../app/widgets/async_vista.dart';
 import '../../../app/widgets/capas_osm.dart';
+import '../../../app/widgets/punto_usuario.dart';
 import '../../../app/widgets/vacio_con_accion.dart';
 import '../../../nucleo/formato.dart';
 import '../../../nucleo/ubicacion.dart';
@@ -107,7 +108,7 @@ class _PantallaMapaState extends ConsumerState<PantallaMapa> {
                     point: punto,
                     width: 28,
                     height: 28,
-                    child: Semantics(label: 'Tu ubicación', child: const _PuntoUsuario()),
+                    child: Semantics(label: 'Tu ubicación', child: const PuntoUsuario()),
                   ),
               ]),
             ],
@@ -184,20 +185,6 @@ class _BarraBusqueda extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PuntoUsuario extends StatelessWidget {
-  const _PuntoUsuario();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF1F5FA8),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 3),
-          boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black38)],
-        ),
-      );
 }
 
 class _HojaRutas extends ConsumerWidget {

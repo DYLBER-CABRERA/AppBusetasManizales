@@ -7,7 +7,9 @@ import '../../../app/banner_ejemplo.dart';
 import '../../../app/widgets/banner_error.dart';
 import '../../../app/widgets/capas_osm.dart';
 import '../../../app/widgets/esqueleto.dart';
+import '../../../app/widgets/punto_usuario.dart';
 import '../../../nucleo/errores.dart';
+import '../../../nucleo/ubicacion.dart';
 import '../../mapa/presentacion/mapa_providers.dart';
 import '../dominio/ruta.dart';
 import '../dominio/seguimiento.dart';
@@ -149,7 +151,7 @@ class _FichaCompleta extends ConsumerWidget {
   }
 }
 
-class _MiniMapa extends StatelessWidget {
+class _MiniMapa extends ConsumerWidget {
   const _MiniMapa({required this.detalle, required this.color, required this.busetas});
 
   final RutaDetalle detalle;
@@ -157,8 +159,9 @@ class _MiniMapa extends StatelessWidget {
   final List<BusetaEnVivo> busetas;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final puntos = detalle.trazado;
+    final ubicacion = ref.watch(ubicacionProvider).value;
     return Semantics(
       label: 'Mapa del recorrido de ${detalle.nombre}',
       child: FlutterMap(
@@ -188,6 +191,7 @@ class _MiniMapa extends StatelessWidget {
                 ),
               ),
           ]),
+          CapaUbicacionUsuario(punto: ubicacion),
           MarcadoresBusetas(busetas: busetas),
         ],
       ),
