@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 from uuid import UUID
 
-from modulos.planificacion.dominio.calculo import calcular_tiempos
+from modulos.planificacion.dominio.calculo import calcular_tiempos, mejor_recorrido_m
 from modulos.planificacion.dominio.puertos import (
     ProveedorHito,
     ProveedorHorarios,
@@ -83,14 +83,24 @@ class PlanificarViaje:
     ) -> list[dict[str, Any]]:
         en_ruta_o = [p for p in cerca_o if ruta_id in rutas_de.get(p["paradero_id"], ())]
         en_ruta_d = [p for p in cerca_d if ruta_id in rutas_de.get(p["paradero_id"], ())]
-        pares = [(o, d) for o in en_ruta_o for d in en_ruta_d if o["paradero_id"] != d["paradero_id"]]
-        if not pares:
+        progresos = await self._progreso.progresos_de_ruta(ruta_id)
+        if not progresos:
             return []
-        po, pd = min(pares, key=lambda par: par[0]["distancia_m"] + par[1]["distancia_m"])
-        prog_o = await self._progreso.progreso_paradero(ruta_id, po["paradero_id"])
-        prog_d = await self._progreso.progreso_paradero(ruta_id, pd["paradero_id"])
-        if prog_o is None or prog_d is None:
+        longitud = progresos[0]["longitud_m"]
+        pasos: dict[UUID, list[float]] = {}
+        for fila in progresos:
+            pasos.setdefault(fila["paradero_id"], []).append(fila["progreso_m"])
+        validos = []
+        for o in en_ruta_o:
+            for d in en_ruta_d:
+                if o["paradero_id"] == d["paradero_id"] or o["paradero_id"] not in pasos or d["paradero_id"] not in pasos:
+                    continue
+                recorrido = mejor_recorrido_m(pasos[o["paradero_id"]], pasos[d["paradero_id"]], longitud)
+                if recorrido is not None:
+                    validos.append((o, d, recorrido))
+        if not validos:
             return []
+        po, pd, recorrido = min(validos, key=lambda par: par[0]["distancia_m"] + par[1]["distancia_m"])
         servicios = [s for s in await self._progreso.servicios_para_eta(ruta_id) if s["estado"] == "activo"]
         ids = [s["servicio_id"] for s in servicios]
         horarios = {h["servicio_id"]: h for h in await self._horarios.horarios_de(ids) if h["tipo_dia"] == tipo_dia}
@@ -108,10 +118,7 @@ class PlanificarViaje:
             horario = HorarioDia(h["primera_salida"], h["ultima_salida"], h["cierre"])
             if motivo_fuera_de_horario(horario, s["duracion_estandar_min"], ahora):
                 continue
-            t = calcular_tiempos(
-                po["distancia_m"], pd["distancia_m"], prog_o["progreso_m"], prog_d["progreso_m"], prog_o["longitud_m"],
-                velocidad, franja["minutos_max"],
-            )
+            t = calcular_tiempos(po["distancia_m"], pd["distancia_m"], recorrido, velocidad, franja["minutos_max"])
             opciones.append(
                 {
                     "tipo": "directa", "ruta_id": ruta_id, "servicio_id": s["servicio_id"], "paradero_origen": po,

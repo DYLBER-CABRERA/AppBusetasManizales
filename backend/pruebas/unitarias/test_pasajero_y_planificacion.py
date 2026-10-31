@@ -11,7 +11,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from composicion import Repositorios, construir_contenedor
 from modulos.pasajero.dominio.evaluador_alertas import EvaluadorAlertas, distancia_restante_m
-from modulos.planificacion.dominio.calculo import calcular_tiempos
+from modulos.planificacion.dominio.calculo import calcular_tiempos, mejor_recorrido_m
 from nucleo.configuracion import Configuracion
 from nucleo.reloj import RelojSimulado
 from pruebas import dobles
@@ -74,14 +74,14 @@ def test_un_desvio_en_curso_no_estima_llegada() -> None:
 
 
 def test_tiempos_de_viaje_directo() -> None:
-    t = calcular_tiempos(120, 200, 500, 3000, LONGITUD, 20, 10)
+    t = calcular_tiempos(120, 200, 2500, 20, 10)
     assert t.caminata_min == 4.0 and t.espera_min == 5.0 and t.bus_min == pytest.approx(7.5)
     assert t.total_min == pytest.approx(16.5)
 
 
 def test_el_sentido_es_circular_si_el_destino_quedo_atras() -> None:
-    adelante = calcular_tiempos(0, 0, 500, 3000, LONGITUD, 20, 10)
-    atras = calcular_tiempos(0, 0, 3000, 500, LONGITUD, 20, 10)
+    adelante = calcular_tiempos(0, 0, mejor_recorrido_m([500], [3000], LONGITUD), 20, 10)
+    atras = calcular_tiempos(0, 0, mejor_recorrido_m([3000], [500], LONGITUD), 20, 10)
     assert atras.bus_min == pytest.approx(22.5) and atras.bus_min > adelante.bus_min
 
 

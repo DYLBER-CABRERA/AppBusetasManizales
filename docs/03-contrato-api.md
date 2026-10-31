@@ -315,3 +315,7 @@ El registro correo+contraseña lo hace la app móvil **directamente contra Supab
 - **Requiere la migración `0006_perfil_pasajero.sql`** (agrega `apellido` y `celular` a `perfil_usuario`, con `celular` restringido a `^3[0-9]{9}$`). Sin ella, `POST /yo` responde `500`.
 
 **Actualización:** `GET /yo` devuelve ahora la misma forma que `POST /yo`: además de `usuarioId, correo, rol, empresaId, empresaNombre` trae `nombre`, `apellido` y `celular` (`null` en cuentas demo o sin datos). `empresaId` y `empresaNombre` siguen viniendo solo para el jefe. Requiere la migración 0006 (ya aplicada en la BD de desarrollo).
+
+## 18. Planificación: tiempo en bus con el avance secuencial (corrección)
+
+`busMin` de `POST /viajes/planificar` sale del **avance secuencial** de cada parada (función SQL `progresos_paraderos_ruta`, la misma regla de `progreso_paradero`): recorrido = `(avance destino − avance origen) mod longitud del circuito`, dividido por `velocidad_default_kmh`. Si la ruta pasa **dos veces** por un paradero (ida y vuelta por la misma vía, como Villamaría) se prueban todos los pases y se toma el de menor recorrido; dos paraderos distintos nunca dan un viaje de ~0 m (se descartan recorridos < 1 m). Sin cambios en el esquema de la respuesta.

@@ -361,6 +361,12 @@ class SeguimientoEnMemoria:
         progreso = self.progreso_paradero_m if paradero_id == PARADERO_A else 3000.0
         return {"progreso_m": progreso, "longitud_m": self.longitud}
 
+    async def progresos_de_ruta(self, ruta_id: UUID) -> list[dict[str, Any]]:
+        if ruta_id != RUTA_ENEA:
+            return []
+        return [{"orden": 1, "paradero_id": PARADERO_A, "progreso_m": self.progreso_paradero_m, "longitud_m": self.longitud},
+                {"orden": 2, "paradero_id": PARADERO_B, "progreso_m": 3000.0, "longitud_m": self.longitud}]
+
     async def servicios_para_eta(self, ruta_id: UUID) -> list[dict[str, Any]]:
         return [
             {"servicio_id": SERVICIO_SIDERAL_ENEA, "empresa_nombre": "Sideral", "codigo_publico": "39", "estado": "activo",

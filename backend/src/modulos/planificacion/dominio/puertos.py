@@ -22,7 +22,10 @@ class ProveedorHito(Protocol):
 
 
 class ProveedorProgreso(Protocol):
-    async def progreso_paradero(self, ruta_id: UUID, paradero_id: UUID) -> dict[str, Any] | None: ...
+    async def progresos_de_ruta(self, ruta_id: UUID) -> list[dict[str, Any]]:
+        """Avance secuencial de cada parada de la ruta circular (SQL `progresos_paraderos_ruta`), ordenado por `orden`:
+        orden, paradero_id, progreso_m, longitud_m. Un paradero que la ruta visita dos veces aparece dos veces."""
+        ...
     async def servicios_para_eta(self, ruta_id: UUID) -> list[dict[str, Any]]: ...
 
 

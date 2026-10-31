@@ -137,3 +137,10 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 ## 2026-10-31 · backend-dev · GET /yo con nombre, apellido y celular
 
 - Con la migración 0006 aplicada, `GET /yo` usa `perfil_completo` y devuelve `nombre`, `apellido` y `celular` (la misma forma de `POST /yo`). La autenticación de cada petición sigue usando `perfil()` sin las columnas nuevas.
+
+## 2026-10-31 · backend-dev · planificación: busMin con el avance secuencial de cada pase
+
+- **Reproducción con las semillas** (`pruebas/unitarias/test_planificacion_semillas.py`, sin BD): con los GeoJSON, la proyección de un paradero por cercanía se equivoca en «Paradero Villamaría 4» (orden 6, está en la vuelta, pero se proyecta en la ida: 2 200 m en vez de 3 895 m). Antes: «Paradero Villamaría 4 → Villamaría» daba 2,5 min (debía ser 21,3) y «Villamaría → Paradero Villamaría 4» daba 21,3 min (debía ser 2,5). El caso «Paradero La Enea 2 → La Enea» (La Enea no repite tramos) da 6 536 m = **19,6 min** con el avance secuencial de las semillas; un valor de 2,8 min no sale de esos datos, así que si aparece en la app apunta a una BD con funciones SQL viejas (ver abajo).
+- **Cambio:** el planificador ya no pide el avance de un paradero suelto (`progreso_paradero`, que cae en proyección por cercanía si no encuentra el paradero y solo devuelve el primer pase) sino la secuencia completa (`progresos_paraderos_ruta` vía `RepositorioSeguimientoSql.progresos_de_ruta`) y toma el menor recorrido entre todos los pases del origen y del destino (`mejor_recorrido_m`). `calcular_tiempos` recibe el recorrido en metros. No cambia el SQL ni el esquema.
+- **Si la app sigue mostrando tiempos subestimados:** la BD puede tener la versión anterior de las funciones de 0003. Comparar (solo lectura): `.venv\Scripts\python.exe scripts\actualizar_bd.py --comparar`; aplicar (requiere autorización del usuario): `.venv\Scripts\python.exe scripts\actualizar_bd.py --aplicar`.
+- **Pendiente:** el avance de la BUSETA (ETA, alertas) sigue proyectándose por cercanía (`progreso_en_ruta`), ambiguo en tramos repetidos; no se tocó.
