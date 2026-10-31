@@ -180,3 +180,8 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Cada opción** ofrece «Ver ruta» y «¿Cuándo llega?» (ETA del paradero de origen de esa ruta).
 - `PENDIENTE(decisión)`: el backend a veces devuelve `busMin: 0.0` (visto con origen y destino a menos de un paradero de distancia entre sí en el circuito); la app lo muestra tal cual. Si es un error del cálculo, corresponde al backend.
 - Se eliminó `pantalla_pendiente.dart`: ya no queda ninguna pestaña por construir.
+
+## 2026-10-31 · mobile-dev · Viajar sin viaje directo
+
+- **Causa de «no encuentra ruta» cerca de una ruta activa:** la planificación va de paradero a paradero (≤ `radio_caminata_m`, 500 m). En la Avenida Santander los paraderos de La Enea están a 653 y 809 m, así que el único paradero cercano es de otra ruta y el backend responde «No hay una ruta directa entre esos paraderos». La app enviaba bien la ubicación; el comportamiento es del backend (ver solicitud abierta).
+- **Cambio en la app (sin contrato nuevo):** si no hay opciones y el origen tiene coordenadas (Mi ubicación, punto del mapa o hito), «Viajar» consulta `GET /rutas/cercanas` y `GET /paraderos/cercanos?rutaId` y muestra «Rutas que pasan cerca de tu origen» con la distancia a la ruta, su paradero más cercano, **Ver ruta** y **¿Cuándo llega?**. Es una sugerencia opcional: si falla, solo se ve la respuesta principal. Añade aviso «solo se sube y se baja en paraderos».

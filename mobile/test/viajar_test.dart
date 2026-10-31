@@ -166,6 +166,67 @@ void main() {
       expect(find.textContaining('El paradero más cercano es Paradero Lejano, a 1,5 km.'), findsOneWidget);
     });
 
+    testWidgets('sin viaje directo sugiere las rutas que pasan junto al origen y su paradero', (tester) async {
+      final adaptador = await montar(
+        tester,
+        pantalla: () => const PantallaViajar(),
+        ubicacion: _manizales,
+        respuestas: _base({
+          'POST /viajes/planificar': const RespuestaFalsa({
+            'opciones': <Object>[],
+            'motivo': 'No hay una ruta directa entre esos paraderos en este horario.',
+            'paraderoMasCercano': null,
+          }),
+          '/rutas/cercanas': RespuestaFalsa({
+            'rutas': [rutaResumen(idCable, 'El Cable', [servicio('Sideral', '39')], distanciaM: 27)],
+            'paraderoMasCercano': null,
+          }),
+          '/paraderos/cercanos': RespuestaFalsa([_paradero('p7', 'Paradero El Cable 2', 653)]),
+        }),
+      );
+      await tester.pumpAndSettle();
+      await _elegirMiUbicacion(tester, 'Elige el origen');
+      await _elegirAtajo(tester, 'Elige el destino', 'Catedral');
+      await tester.tap(find.widgetWithText(FilledButton, 'Buscar rutas'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('No hay una ruta directa entre esos paraderos'), findsOneWidget);
+      expect(find.textContaining('solo se sube y se baja en paraderos'), findsOneWidget);
+      expect(find.text('Rutas que pasan cerca de tu origen'), findsOneWidget);
+      expect(
+        find.text('Pasa a 27 m de ti. Su paradero más cercano es Paradero El Cable 2, a 653 m.'),
+        findsOneWidget,
+      );
+      expect(find.text('¿Cuándo llega?'), findsOneWidget);
+      final consulta = adaptador.peticiones.firstWhere((u) => u.path.endsWith('/paraderos/cercanos'));
+      expect(consulta.queryParameters['rutaId'], idCable);
+      expect(consulta.queryParameters['lat'], '5.0689');
+    });
+
+    testWidgets('si la sugerencia falla, igual se muestra la respuesta principal', (tester) async {
+      await montar(
+        tester,
+        pantalla: () => const PantallaViajar(),
+        ubicacion: _manizales,
+        respuestas: _base({
+          'POST /viajes/planificar': const RespuestaFalsa({
+            'opciones': <Object>[],
+            'motivo': 'No hay una ruta directa entre esos paraderos en este horario.',
+            'paraderoMasCercano': null,
+          }),
+          '/rutas/cercanas': errorFalso(503, 'SERVICIO_EXTERNO_NO_DISPONIBLE', 'Sin base de datos.'),
+        }),
+      );
+      await tester.pumpAndSettle();
+      await _elegirMiUbicacion(tester, 'Elige el origen');
+      await _elegirAtajo(tester, 'Elige el destino', 'Catedral');
+      await tester.tap(find.widgetWithText(FilledButton, 'Buscar rutas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No encontramos una ruta directa'), findsOneWidget);
+      expect(find.text('Rutas que pasan cerca de tu origen'), findsNothing);
+    });
+
     testWidgets('error de conexión: banner con Reintentar que se recupera', (tester) async {
       final respuestas = _base({
         'POST /viajes/planificar':

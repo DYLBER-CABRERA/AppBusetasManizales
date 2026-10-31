@@ -81,7 +81,7 @@ class _HojaLugarState extends ConsumerState<_HojaLugar> {
   }
 
   void _elegirHito(Hito h) =>
-      Navigator.of(context).pop(LugarViaje.hito(id: h.id, nombre: h.nombre));
+      Navigator.of(context).pop(LugarViaje.hito(id: h.id, nombre: h.nombre, punto: LatLng(h.lat, h.lng)));
 
   /// Chip de atajo: busca el hito por su nombre y lo elige.
   Future<void> _atajo(String nombre) async {

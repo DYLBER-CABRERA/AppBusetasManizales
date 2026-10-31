@@ -97,9 +97,11 @@ class PantallaViajar extends ConsumerWidget {
         if (resultado != null) ...[
           const SizedBox(height: 16),
           if (resultado.opciones.isEmpty)
-            _SinOpciones(respuesta: resultado)
+            _SinOpciones(respuesta: resultado, hayCercanas: estado.cercanasAlOrigen.isNotEmpty)
           else
             for (final opcion in resultado.opciones) _TarjetaOpcion(opcion: opcion),
+          if (resultado.opciones.isEmpty && estado.cercanasAlOrigen.isNotEmpty)
+            _CercanasAlOrigen(rutas: estado.cercanasAlOrigen),
         ],
       ],
     );
@@ -252,9 +254,10 @@ class _Paso extends StatelessWidget {
 }
 
 class _SinOpciones extends StatelessWidget {
-  const _SinOpciones({required this.respuesta});
+  const _SinOpciones({required this.respuesta, required this.hayCercanas});
 
   final RespuestaPlanificacion respuesta;
+  final bool hayCercanas;
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +269,80 @@ class _SinOpciones extends StatelessWidget {
         respuesta.motivo ?? 'No hay una ruta directa entre esos lugares.',
         if (cercano != null)
           'El paradero más cercano es ${cercano.nombre}, a ${formatearDistancia(cercano.distanciaM)}.',
+        if (hayCercanas)
+          'Planificamos de paradero a paradero: solo se sube y se baja en paraderos.',
       ].join(' '),
+    );
+  }
+}
+
+/// Rutas que pasan junto al origen aunque su paradero quede lejos (la planificación
+/// solo ofrece paraderos a la distancia de caminata).
+class _CercanasAlOrigen extends ConsumerWidget {
+  const _CercanasAlOrigen({required this.rutas});
+
+  final List<RutaCercanaAlOrigen> rutas;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final texto = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Rutas que pasan cerca de tu origen', style: texto.titleMedium),
+        const SizedBox(height: 8),
+        for (final cercana in rutas)
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      SelloRuta(codigo: cercana.ruta.codigoSello, color: colorDeRuta(ref, cercana.ruta.id)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(cercana.ruta.nombre, style: texto.titleMedium),
+                            Text(
+                              [
+                                if (cercana.ruta.distanciaM != null)
+                                  'Pasa a ${formatearDistancia(cercana.ruta.distanciaM!)} de ti.',
+                                if (cercana.paradero != null)
+                                  'Su paradero más cercano es ${cercana.paradero!.nombre}, '
+                                      'a ${formatearDistancia(cercana.paradero!.distanciaM)}.',
+                              ].join(' '),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => context.push('/ruta/${cercana.ruta.id}'),
+                        child: const Text('Ver ruta'),
+                      ),
+                      if (cercana.paradero != null)
+                        OutlinedButton(
+                          onPressed: () => context
+                              .push('/ruta/${cercana.ruta.id}/paradero/${cercana.paradero!.paraderoId}'),
+                          child: const Text('¿Cuándo llega?'),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

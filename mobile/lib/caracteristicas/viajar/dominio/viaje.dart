@@ -13,8 +13,9 @@ class LugarViaje {
   /// La ubicación del pasajero solo viaja en la consulta puntual; no se guarda.
   const LugarViaje.miUbicacion(LatLng punto) : this._('Mi ubicación', TipoLugar.ubicacion, punto: punto);
 
-  const LugarViaje.hito({required String id, required String nombre})
-      : this._(nombre, TipoLugar.hito, hitoId: id);
+  /// [punto] solo sirve para sugerir rutas cercanas; al backend se manda el `hitoId`.
+  const LugarViaje.hito({required String id, required String nombre, LatLng? punto})
+      : this._(nombre, TipoLugar.hito, hitoId: id, punto: punto);
 
   const LugarViaje.enMapa(LatLng punto) : this._('Punto en el mapa', TipoLugar.mapa, punto: punto);
 
@@ -27,9 +28,14 @@ class LugarViaje {
   Map<String, Object> aJson() =>
       hitoId != null ? {'hitoId': hitoId!} : {'lat': punto!.latitude, 'lng': punto!.longitude};
 
+  /// Coordenadas del lugar, si se conocen (Mi ubicación, punto del mapa o hito).
+  LatLng? get coordenadas => punto;
+
   /// Dos lugares son «el mismo» si apuntan al mismo hito o al mismo punto.
   bool mismoQue(LugarViaje otro) =>
-      (hitoId != null && hitoId == otro.hitoId) || (punto != null && punto == otro.punto);
+      hitoId != null || otro.hitoId != null
+          ? hitoId == otro.hitoId
+          : punto != null && punto == otro.punto;
 }
 
 enum TipoLugar { ubicacion, hito, mapa }
@@ -84,6 +90,15 @@ class RespuestaPlanificacion {
   final List<OpcionViaje> opciones;
   final String? motivo;
   final ParaderoCercano? paraderoMasCercano;
+}
+
+/// Una ruta que pasa cerca del origen aunque la planificación no encontró viaje directo,
+/// con su paradero más cercano (la planificación va de paradero a paradero).
+class RutaCercanaAlOrigen {
+  const RutaCercanaAlOrigen({required this.ruta, this.paradero});
+
+  final RutaResumen ruta;
+  final ParaderoCercano? paradero;
 }
 
 /// «4 min», «1 min»; los minutos del backend llevan un decimal y se muestran enteros
