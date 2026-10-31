@@ -122,3 +122,14 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Mapa en vivo:** `BusetaDemo` no trae `empresaId`, ruta ni coordenadas, así que el panel usa `GET /empresas` (nombre → id para los escenarios por empresa) y, por cada ruta de `GET /rutas`, el WebSocket `/ws/rutas/{id}` con reconexión (1, 2, 4, 8 s, máx. 15 s) y respaldo `GET /rutas/{id}/busetas` cada 5 s cuando el WebSocket no entrega datos en 8 s. Etiqueta de cada buseta con su número y, si no tiene señal, la palabra «sin señal» (borde rojo ladrillo, círculo vacío).
 - **Parámetros y fuentes GPS (PENDIENTE, datos de ejemplo hasta B5):** `src/lib/mocks-admin.ts`. Los mínimos y máximos de ejemplo son inventados salvo «50 a 2000» de la distancia de aviso; los reales los manda el backend (`minimo`/`maximo`). La clave de una fuente nunca se guarda: vive en memoria mientras el modal está abierto (sin Esc para cerrarlo por accidente) y se borra de la caché de la mutación.
 - **`Modal`** admite `sinEscape`.
+
+## 2026-10-31 · backend-dev · registro de pasajeros con perfil completo
+
+- **Decisión (resuelve la pregunta de `docs/solicitudes-entre-agentes.md`):** el registro en Supabase Auth lo hace la app móvil; el backend solo expone `POST /yo` para crear el perfil de pasajero. Se eligió `POST /yo` (mismo recurso que `GET /yo`) en vez de un endpoint nuevo.
+- **Autenticación sin perfil:** `PuertoAutenticacion.verificar_sesion` (nuevo) valida el token con `GET /auth/v1/user` y devuelve id y correo SIN exigir perfil (`verificar_token` sigue exigiéndolo y sin cambios, así el resto de la API no cambia). El correo sale del token, nunca del cuerpo.
+- **Esquema:** `perfil_usuario` solo tenía `nombre`; no tenía apellido ni celular. Se agrega la migración `0006_perfil_pasajero.sql` (NO aplicada): `apellido text`, `celular text` y `ck_perfil_celular`. `nombre` guarda el nombre; no se duplicó información.
+- **Comando para aplicarla** (desde `backend/`; simulacro sin `--aplicar`): `.venv\Scripts\python.exe scripts\aplicar_migracion.py 0006_perfil_pasajero.sql --aplicar`. Es idempotente. `verificar_bd.py --aplicar-migraciones` (BD limpia) también la aplica porque toma todos los `0*.sql`.
+- **`perfil()` no cambia** (lo usa cada petición autenticada): las columnas nuevas solo se leen en `perfil_completo`, que usa `POST /yo`. Así, un backend nuevo con la migración pendiente no rompe el login de nadie; solo falla `POST /yo`.
+- **Idempotencia:** `insert … on conflict (id) do nothing`; si ya existe, 200 con el existente. Un correo ya usado por otro perfil da 409 (índice único de correo).
+- **Celular:** móvil colombiano de 10 dígitos que empieza por 3, se guarda normalizado. No se aceptan teléfonos fijos ni otros países. Sin registros de correo, celular ni token en logs (hay prueba).
+- **`GET /yo` no devuelve aún nombre, apellido ni celular** (para no depender de la migración en cada inicio de sesión); si el equipo lo quiere, es un cambio pequeño tras aplicar 0006.

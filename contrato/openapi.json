@@ -2212,6 +2212,121 @@
         "title": "Perfil",
         "type": "object"
       },
+      "PerfilPasajero": {
+        "properties": {
+          "apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apellido"
+          },
+          "celular": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "10 dígitos, móvil colombiano normalizado (ej. 3001234567)",
+            "title": "Celular"
+          },
+          "correo": {
+            "title": "Correo",
+            "type": "string"
+          },
+          "empresaId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresaid"
+          },
+          "empresaNombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresanombre"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null en cuentas anteriores al registro con perfil completo (demo)",
+            "title": "Nombre"
+          },
+          "rol": {
+            "enum": [
+              "pasajero",
+              "jefe_operaciones",
+              "secretaria_movilidad",
+              "administrador"
+            ],
+            "title": "Rol",
+            "type": "string"
+          },
+          "usuarioId": {
+            "format": "uuid",
+            "title": "Usuarioid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "usuarioId",
+          "correo",
+          "rol"
+        ],
+        "title": "PerfilPasajero",
+        "type": "object"
+      },
+      "PerfilPasajeroCrear": {
+        "description": "El rol NO se acepta: siempre es `pasajero`. Campos desconocidos (incluido `rol`) se ignoran.",
+        "properties": {
+          "apellido": {
+            "description": "Se recortan espacios; obligatorio, máx. 60",
+            "title": "Apellido",
+            "type": "string"
+          },
+          "celular": {
+            "description": "Móvil colombiano; admite +57, espacios, guiones y paréntesis",
+            "title": "Celular",
+            "type": "string"
+          },
+          "nombre": {
+            "description": "Se recortan espacios; obligatorio, máx. 60",
+            "title": "Nombre",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nombre",
+          "apellido",
+          "celular"
+        ],
+        "title": "PerfilPasajeroCrear",
+        "type": "object"
+      },
       "PlanificarEntrada": {
         "properties": {
           "destino": {
@@ -9640,6 +9755,101 @@
           }
         ],
         "summary": "Obtener Perfil",
+        "tags": [
+          "Administración"
+        ]
+      },
+      "post": {
+        "description": "Completa el perfil de un pasajero recién registrado en Supabase Auth (el registro correo+contraseña lo hace la app).",
+        "operationId": "completar_perfil_pasajero",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerfilPasajeroCrear"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilPasajero"
+                }
+              }
+            },
+            "description": "El perfil ya existía (idempotente)"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilPasajero"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "VALIDACION"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTENTICADO"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "CONFLICTO_VERSION o CONFLICTO_NEGOCIO"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "ERROR_INTERNO"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Completar Perfil Pasajero",
         "tags": [
           "Administración"
         ]

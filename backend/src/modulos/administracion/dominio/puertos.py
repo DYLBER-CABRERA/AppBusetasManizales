@@ -11,6 +11,17 @@ class RepositorioUsuarios(Protocol):
         """usuario_id, correo, rol, empresa_id, empresa_nombre, activo; None si no hay perfil."""
         ...
 
+    async def perfil_completo(self, usuario_id: UUID) -> dict[str, Any] | None:
+        """Como `perfil` más nombre, apellido y celular (requiere la migración 0006)."""
+        ...
+
+    async def crear_pasajero(
+        self, usuario_id: UUID, correo: str, nombre: str, apellido: str, celular: str
+    ) -> dict[str, Any] | None:
+        """Inserta el perfil de pasajero; None si ya existía un perfil con ese id (no sobrescribe).
+        ErrorConflictoNegocio si el correo ya pertenece a otro perfil."""
+        ...
+
 
 class PuertoSimulador(Protocol):
     """Lo que el panel de demo necesita del simulador de GPS (herramientas/simulador_gps.py)."""

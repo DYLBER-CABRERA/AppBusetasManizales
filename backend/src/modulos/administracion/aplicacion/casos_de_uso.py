@@ -7,6 +7,8 @@ from typing import Any
 from uuid import UUID
 
 from modulos.administracion.dominio.puertos import PuertoSimulador, RepositorioUsuarios
+from modulos.administracion.dominio.validacion_pasajero import limpiar_nombre, normalizar_celular
+from nucleo.autenticacion import SesionAuth
 from nucleo.autorizacion import Identidad, Rol, exigir_identidad, exigir_rol
 from nucleo.errores import ErrorNoAutenticado, ErrorNoEncontrado, ErrorValidacion
 
@@ -24,6 +26,30 @@ class ObtenerPerfil:
         if perfil["rol"] != Rol.JEFE_OPERACIONES.value:  # empresa solo para el jefe (docs/03 §2.1.1)
             perfil["empresa_id"] = perfil["empresa_nombre"] = None
         return perfil
+
+
+class CompletarPerfilPasajero:
+    """Crea el perfil de un pasajero recién registrado en Supabase Auth. El rol siempre es `pasajero`.
+    Idempotente: si ya hay perfil, lo devuelve sin duplicar ni sobrescribir."""
+
+    def __init__(self, usuarios: RepositorioUsuarios) -> None:
+        self._usuarios = usuarios
+
+    async def __call__(
+        self, sesion: SesionAuth, nombre: str | None, apellido: str | None, celular: str | None
+    ) -> tuple[dict[str, Any], bool]:
+        existente = await self._usuarios.perfil_completo(sesion.usuario_id)
+        if existente is not None:
+            if not existente["activo"]:
+                raise ErrorNoAutenticado("Usuario inactivo.")
+            if existente["rol"] != Rol.JEFE_OPERACIONES.value:
+                existente = {**existente, "empresa_id": None, "empresa_nombre": None}
+            return existente, False
+        datos = (limpiar_nombre(nombre, "nombre"), limpiar_nombre(apellido, "apellido"), normalizar_celular(celular))
+        creado = await self._usuarios.crear_pasajero(sesion.usuario_id, sesion.correo, *datos)
+        if creado is None:  # otra petición lo creó entre medias: se devuelve ese
+            return await self._usuarios.perfil_completo(sesion.usuario_id), False  # type: ignore[return-value]
+        return creado, True
 
 
 class _PanelDemo:

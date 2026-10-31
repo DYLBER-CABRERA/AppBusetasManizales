@@ -289,3 +289,27 @@ El bot no agrega endpoints REST: es un adaptador que llama a los mismos casos de
 - **Estado final:** todos los endpoints de §2 y los WebSockets de §4 tienen lógica; no queda ningún `501`. `contrato/openapi.json` se regenera con `backend/scripts/exportar_openapi.py` y una prueba falla si se desactualiza.
 - **Códigos de error vigentes:** `VALIDACION` 400, `NO_AUTENTICADO` 401, `NO_AUTORIZADO` 403, `NO_ENCONTRADO` 404, `CONFLICTO_VERSION` 409, `CONFLICTO_NEGOCIO` 409, `SERVICIO_EXTERNO_NO_DISPONIBLE` 503, `ERROR_INTERNO` 500 (`CONFLICTO_NEGOCIO` lleva la lista en `detalles`: `turnosAfectados`, `advertencias`, `turnosFuturos` o `rutas`; `CONFLICTO_VERSION` lleva `versionActual`).
 - **Limitaciones conocidas del prototipo:** una sola instancia del servidor (WebSockets, episodios de desvío, estado del bot y del simulador viven en memoria); el avance de una buseta sobre tramos que el circuito recorre dos veces es ambiguo; `senal_perdida` por WebSocket no se emite (usar `sin_senal` de `GET /rutas/{id}/busetas`); el bot no se probó contra la red de Telegram.
+
+## 17. Registro de pasajeros: `POST /yo`
+
+El registro correo+contraseña lo hace la app móvil **directamente contra Supabase Auth** (con la `anon key`). Después llama a este endpoint, con el `access_token` de la cuenta recién creada, para crear su perfil de pasajero.
+
+`POST /api/v1/yo` · `Authorization: Bearer <access_token de Supabase>` · `Content-Type: application/json`
+
+```json
+{ "nombre": "Ana María", "apellido": "Pérez", "celular": "+57 300-123 4567" }
+```
+
+- **201** perfil creado; **200** el perfil ya existía (se devuelve el existente, sin duplicar ni sobrescribir; el cuerpo enviado se ignora). Misma forma en ambos:
+
+```json
+{ "usuarioId": "…", "correo": "ana@correo.example", "rol": "pasajero", "empresaId": null, "empresaNombre": null,
+  "nombre": "Ana María", "apellido": "Pérez", "celular": "3001234567" }
+```
+  `nombre`, `apellido` y `celular` pueden ser `null` en cuentas anteriores a esta función (las de demo).
+- **400 `VALIDACION`**: `nombre` o `apellido` vacíos o de más de 60 caracteres; `celular` que no sea un móvil colombiano de 10 dígitos que empiece por 3. El campo con problema viene en `detalles` (`[{campo, motivo}]`).
+- **401 `NO_AUTENTICADO`**: sin token, token inválido o vencido, o perfil existente desactivado.
+- **409 `CONFLICTO_NEGOCIO`**: el correo ya pertenece a otro perfil con distinto id (caso raro).
+- **Reglas:** nombre y apellido se recortan y colapsan los espacios; el celular admite `+57`, `57`, espacios, guiones, puntos y paréntesis y se **normaliza a 10 dígitos** (`+57 300-123 4567` → `3001234567`). El correo sale del token (no se envía). **El rol siempre es `pasajero`**: cualquier `rol` o `empresaId` del cuerpo se ignora.
+- **Por qué `POST /yo` y no un endpoint nuevo:** `/yo` es "el perfil de quien está logueado"; `GET` lo lee y `POST` lo crea la primera vez, sin inventar rutas. `GET /yo` sigue exigiendo que el perfil exista (si no, `401`), por eso la app debe llamar a `POST /yo` justo después de registrarse o iniciar sesión por primera vez. `GET /yo` no devuelve nombre, apellido ni celular todavía.
+- **Requiere la migración `0006_perfil_pasajero.sql`** (agrega `apellido` y `celular` a `perfil_usuario`, con `celular` restringido a `^3[0-9]{9}$`). Sin ella, `POST /yo` responde `500`.

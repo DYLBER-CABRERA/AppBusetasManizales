@@ -11,6 +11,7 @@ from uuid import UUID
 import httpx
 
 from modulos.administracion.dominio.puertos import RepositorioUsuarios
+from nucleo.autenticacion import SesionAuth
 from nucleo.autorizacion import Identidad, Rol
 from nucleo.errores import ErrorConflictoNegocio, ErrorNoAutenticado, ErrorServicioExterno
 
@@ -35,14 +36,9 @@ class AutenticacionSupabase:
         self._monotonico = monotonico
         self._cache: dict[str, tuple[float, Identidad]] = {}
 
-    async def verificar_token(self, jwt: str) -> Identidad:
+    async def _usuario_supabase(self, jwt: str) -> dict:
         if not self._url or not self._clave:
             raise ErrorServicioExterno("La autenticación no está configurada (SUPABASE_URL y SUPABASE_ANON_KEY).")
-        llave = hashlib.sha256(jwt.encode("utf-8")).hexdigest()
-        ahora = self._monotonico()
-        en_cache = self._cache.get(llave)
-        if en_cache and en_cache[0] > ahora:
-            return en_cache[1]
         try:
             respuesta = await self._cliente.get(
                 f"{self._url}/auth/v1/user", headers={"Authorization": f"Bearer {jwt}", "apikey": self._clave}
@@ -53,8 +49,24 @@ class AutenticacionSupabase:
             raise ErrorNoAutenticado("Sesión inválida o vencida.")
         if respuesta.status_code != 200:
             raise ErrorServicioExterno("El servicio de autenticación no está disponible.")
+        return respuesta.json()
+
+    async def verificar_sesion(self, jwt: str) -> SesionAuth:
+        datos = await self._usuario_supabase(jwt)
         try:
-            usuario_id = UUID(str(respuesta.json()["id"]))
+            return SesionAuth(UUID(str(datos["id"])), str(datos["email"]).strip().lower())
+        except (KeyError, ValueError, TypeError) as exc:
+            raise ErrorNoAutenticado("Sesión inválida o vencida.") from exc
+
+    async def verificar_token(self, jwt: str) -> Identidad:
+        llave = hashlib.sha256(jwt.encode("utf-8")).hexdigest()
+        ahora = self._monotonico()
+        en_cache = self._cache.get(llave)
+        if en_cache and en_cache[0] > ahora:
+            return en_cache[1]
+        datos = await self._usuario_supabase(jwt)
+        try:
+            usuario_id = UUID(str(datos["id"]))
         except (KeyError, ValueError) as exc:
             raise ErrorNoAutenticado("Sesión inválida o vencida.") from exc
         perfil = await self._usuarios.perfil(usuario_id)

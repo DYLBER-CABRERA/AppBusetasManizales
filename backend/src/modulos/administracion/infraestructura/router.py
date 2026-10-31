@@ -13,7 +13,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import Field
 
-from modulos.administracion.aplicacion.casos_de_uso import ConsultarEstadoDemo, EjecutarEscenarioDemo, ObtenerPerfil
+from modulos.administracion.aplicacion.casos_de_uso import (
+    CompletarPerfilPasajero,
+    ConsultarEstadoDemo,
+    EjecutarEscenarioDemo,
+    ObtenerPerfil,
+)
 from modulos.administracion.aplicacion.gestion import (
     ConfigurarParametro,
     CrearCredencialGps,
@@ -28,8 +33,9 @@ from modulos.administracion.aplicacion.gestion import (
     ListarUsuarios,
     RevocarCredencialGps,
 )
+from nucleo.autenticacion import SesionAuth
 from nucleo.autorizacion import Identidad, Rol
-from nucleo.dependencias import caso, requiere_rol
+from nucleo.dependencias import caso, requiere_rol, sesion_auth
 from nucleo.esquemas import EsquemaBase, errores
 
 router = APIRouter(tags=["Administración"])
@@ -44,6 +50,20 @@ class Perfil(EsquemaBase):
     rol: RolTexto
     empresa_id: UUID | None = None
     empresa_nombre: str | None = None
+
+
+class PerfilPasajero(Perfil):
+    nombre: str | None = Field(default=None, description="null en cuentas anteriores al registro con perfil completo (demo)")
+    apellido: str | None = None
+    celular: str | None = Field(default=None, description="10 dígitos, móvil colombiano normalizado (ej. 3001234567)")
+
+
+class PerfilPasajeroCrear(EsquemaBase):
+    """El rol NO se acepta: siempre es `pasajero`. Campos desconocidos (incluido `rol`) se ignoran."""
+
+    nombre: str = Field(description="Se recortan espacios; obligatorio, máx. 60")
+    apellido: str = Field(description="Se recortan espacios; obligatorio, máx. 60")
+    celular: str = Field(description="Móvil colombiano; admite +57, espacios, guiones y paréntesis")
 
 
 class Usuario(EsquemaBase):
@@ -155,6 +175,23 @@ async def obtener_perfil(
     caso_uso: ObtenerPerfil = Depends(caso("obtener_perfil")),
 ) -> dict:
     return await caso_uso(identidad)
+
+
+@router.post(
+    "/yo", response_model=PerfilPasajero, status_code=201,
+    responses={200: {"model": PerfilPasajero, "description": "El perfil ya existía (idempotente)"}, **errores(400, 401, 409)},
+)
+async def completar_perfil_pasajero(
+    cuerpo: PerfilPasajeroCrear,
+    respuesta: Response,
+    sesion: SesionAuth = Depends(sesion_auth),
+    caso_uso: CompletarPerfilPasajero = Depends(caso("completar_perfil_pasajero")),
+) -> dict:
+    """Completa el perfil de un pasajero recién registrado en Supabase Auth (el registro correo+contraseña lo hace la app)."""
+    perfil, creado = await caso_uso(sesion, cuerpo.nombre, cuerpo.apellido, cuerpo.celular)
+    if not creado:
+        respuesta.status_code = 200
+    return perfil
 
 
 @router.get("/admin/usuarios", response_model=list[Usuario], responses=errores(401, 403))
