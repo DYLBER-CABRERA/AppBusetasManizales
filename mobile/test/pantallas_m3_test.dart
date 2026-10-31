@@ -151,7 +151,7 @@ void main() {
       expect(find.text('Te avisamos cuando esté a 300 m'), findsOneWidget);
     });
 
-    testWidgets('una cuenta sin perfil se rechaza con un mensaje claro y no queda sesión', (tester) async {
+    testWidgets('una cuenta sin perfil pasa a «Completa tu perfil» y conserva la sesión', (tester) async {
       final auth = AuthFalso();
       await montar(
         tester,
@@ -168,8 +168,9 @@ void main() {
 
       await _entrar(tester);
 
-      expect(find.text('Tu cuenta todavía no tiene perfil de pasajero en BusetasApp.'), findsOneWidget);
-      expect(auth.token, isNull, reason: 'se cerró la sesión');
+      expect(find.text('Completa tu perfil'), findsOneWidget);
+      expect(find.text('Guardar y continuar'), findsOneWidget);
+      expect(auth.token, isNotNull, reason: 'hace falta el token para POST /yo');
     });
 
     testWidgets('una cuenta de gestión se rechaza: la app es para pasajeros', (tester) async {

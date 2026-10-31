@@ -5,7 +5,12 @@ import 'package:busetas_app/nucleo/notificacion_local.dart';
 
 /// Autenticación de prueba: no toca Supabase. La contraseña correcta es [contrasenaValida].
 class AuthFalso implements PuertoAuth {
-  AuthFalso({this.disponible = true, String? correoInicial, this.contrasenaValida = 'secreto'}) {
+  AuthFalso({
+    this.disponible = true,
+    String? correoInicial,
+    this.contrasenaValida = 'secreto',
+    this.correosRegistrados = const {},
+  }) {
     if (correoInicial != null) {
       _correo = correoInicial;
       _token = 'token-falso';
@@ -18,6 +23,10 @@ class AuthFalso implements PuertoAuth {
   @override
   final bool disponible;
   final String contrasenaValida;
+
+  /// Correos que ya tienen cuenta: `registrar` lanza [ErrorCuentaExistente].
+  final Set<String> correosRegistrados;
+  final registros = <String>[];
   String? _correo;
   String? _token;
   final _cambios = StreamController<void>.broadcast();
@@ -37,6 +46,19 @@ class AuthFalso implements PuertoAuth {
     intentos.add(correo);
     if (!disponible) throw const ErrorAuth('El inicio de sesión no está disponible en esta instalación.');
     if (contrasena != contrasenaValida) throw const ErrorAuth('Correo o contraseña incorrectos.');
+    _correo = correo;
+    _token = 'token-falso';
+    _cambios.add(null);
+  }
+
+  @override
+  Future<void> registrar(String correo, String contrasena) async {
+    registros.add(correo);
+    if (!disponible) throw const ErrorAuth('El registro no está disponible en esta instalación.');
+    if (correosRegistrados.contains(correo)) throw const ErrorCuentaExistente();
+    if (contrasena.length < 6) {
+      throw const ErrorAuth('La contraseña es muy débil. Usa al menos 6 caracteres, mejor con letras y números.');
+    }
     _correo = correo;
     _token = 'token-falso';
     _cambios.add(null);

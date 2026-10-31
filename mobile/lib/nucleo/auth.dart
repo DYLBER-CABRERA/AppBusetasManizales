@@ -14,6 +14,12 @@ class ErrorAuth implements Exception {
   String toString() => 'ErrorAuth($mensaje)';
 }
 
+/// El correo ya tiene cuenta en Supabase Auth.
+class ErrorCuentaExistente extends ErrorAuth {
+  const ErrorCuentaExistente()
+      : super('Ya existe una cuenta con ese correo. Entra con tu contraseña.');
+}
+
 /// Puerto de autenticación. Supabase Auth se usa **solo** para esto: los datos van
 /// por la API del backend (nunca se consultan tablas de Supabase desde la app).
 abstract class PuertoAuth {
@@ -28,6 +34,10 @@ abstract class PuertoAuth {
   Stream<void> get cambios;
 
   Future<void> iniciarSesion(String correo, String contrasena);
+
+  /// Crea la cuenta (correo y contraseña) y deja la sesión abierta. Lanza
+  /// [ErrorCuentaExistente] si el correo ya está registrado.
+  Future<void> registrar(String correo, String contrasena);
   Future<void> cerrarSesion();
 }
 
@@ -57,6 +67,53 @@ class AuthSupabase implements PuertoAuth {
     } catch (_) {
       throw const ErrorAuth(mensajeSinConexion);
     }
+  }
+
+  @override
+  Future<void> registrar(String correo, String contrasena) async {
+    try {
+      final respuesta = await _auth.signUp(email: correo.trim(), password: contrasena);
+      // Con confirmación por correo activa, Supabase no avisa si el correo ya existe:
+      // devuelve un usuario sin identidades.
+      if (respuesta.user != null && (respuesta.user!.identities ?? []).isEmpty) {
+        throw const ErrorCuentaExistente();
+      }
+      if (respuesta.session == null) {
+        throw const ErrorAuth(
+          'Te enviamos un correo para confirmar la cuenta. Confírmalo y luego inicia sesión.',
+        );
+      }
+    } on ErrorAuth {
+      rethrow;
+    } on AuthRetryableFetchException {
+      throw const ErrorAuth(mensajeSinConexion);
+    } on AuthException catch (e) {
+      throw _traducirRegistro(e);
+    } catch (_) {
+      throw const ErrorAuth(mensajeSinConexion);
+    }
+  }
+
+  static ErrorAuth _traducirRegistro(AuthException e) {
+    final texto = '${e.code ?? ''} ${e.message}'.toLowerCase();
+    if (texto.contains('user_already_exists') || texto.contains('already registered')) {
+      return const ErrorCuentaExistente();
+    }
+    if (texto.contains('weak_password') || texto.contains('password should')) {
+      return const ErrorAuth(
+        'La contraseña es muy débil. Usa al menos 6 caracteres, mejor con letras y números.',
+      );
+    }
+    if (texto.contains('email_address_invalid') || texto.contains('invalid email')) {
+      return const ErrorAuth('Ese correo no es válido. Revísalo.');
+    }
+    if (texto.contains('signup_disabled')) {
+      return const ErrorAuth('El registro de cuentas está desactivado en este momento.');
+    }
+    if (texto.contains('rate') && texto.contains('limit')) {
+      return const ErrorAuth('Demasiados intentos. Espera un momento y vuelve a probar.');
+    }
+    return const ErrorAuth('No pudimos crear la cuenta. Intenta de nuevo.');
   }
 
   @override
@@ -101,6 +158,11 @@ class AuthNoDisponible implements PuertoAuth {
   @override
   Future<void> iniciarSesion(String correo, String contrasena) async => throw const ErrorAuth(
         'El inicio de sesión no está disponible en esta instalación. Puedes seguir usando la app sin cuenta.',
+      );
+
+  @override
+  Future<void> registrar(String correo, String contrasena) async => throw const ErrorAuth(
+        'El registro no está disponible en esta instalación. Puedes seguir usando la app sin cuenta.',
       );
 
   @override
