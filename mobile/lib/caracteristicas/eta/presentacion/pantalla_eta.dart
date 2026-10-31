@@ -32,7 +32,7 @@ class PantallaEta extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(nombre == null ? 'Paradero' : 'Paradero $nombre'),
+        title: Text(tituloParadero(nombre)),
         leading: BackButton(
           onPressed: () => context.canPop() ? context.pop() : context.go('/ruta/$rutaId'),
         ),

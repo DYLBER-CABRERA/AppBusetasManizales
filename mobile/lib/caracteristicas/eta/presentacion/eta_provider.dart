@@ -8,10 +8,10 @@ import '../dominio/eta.dart';
 
 typedef ParadaDeRuta = ({String rutaId, String paraderoId});
 
-/// ETA de una parada. Se recalcula sola cada 2 intervalos de refresco (10 s) mientras
+/// ETA de una parada. Se recalcula sola en cada intervalo de refresco (5 s) mientras
 /// la pantalla está abierta; si un refresco falla se conserva el último resultado.
 final etaProvider = FutureProvider.autoDispose.family<RespuestaEta, ParadaDeRuta>((ref, parada) {
-  final cada = ref.read(tiemposTiempoRealProvider).intervaloRefresco * 2;
+  final cada = ref.read(tiemposTiempoRealProvider).intervaloRefresco;
   final reloj = Timer.periodic(cada, (_) => ref.invalidateSelf());
   ref.onDispose(reloj.cancel);
   return ref

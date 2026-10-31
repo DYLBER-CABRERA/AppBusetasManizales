@@ -15,6 +15,14 @@ enum FuenteEta {
       FuenteEta.values.firstWhere((f) => f.valor == valor, orElse: () => FuenteEta.noDisponible);
 }
 
+/// Título de la pantalla de ETA. Muchos paraderos ya se llaman «Paradero El Cable 1»:
+/// la palabra solo se antepone cuando el nombre no la trae («Terminal» → «Paradero Terminal»).
+String tituloParadero(String? nombre) {
+  if (nombre == null || nombre.trim().isEmpty) return 'Paradero';
+  final limpio = nombre.trim();
+  return limpio.toLowerCase().startsWith('paradero') ? limpio : 'Paradero $limpio';
+}
+
 /// «4 min» o «Menos de 1 min».
 String textoMinutos(int segundos) =>
     segundos < 60 ? 'Menos de 1 min' : '${(segundos / 60).round()} min';

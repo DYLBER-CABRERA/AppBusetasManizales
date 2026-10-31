@@ -334,6 +334,13 @@ void main() {
       expect(r.titulo, 'Sideral · 39');
     });
 
+    test('tituloParadero no repite la palabra «Paradero»', () {
+      expect(tituloParadero('Terminal'), 'Paradero Terminal');
+      expect(tituloParadero('Paradero Villamaría 2'), 'Paradero Villamaría 2');
+      expect(tituloParadero('paradero el cable 1'), 'paradero el cable 1');
+      expect(tituloParadero(null), 'Paradero');
+    });
+
     test('gps con menos de un minuto', () {
       expect(textoMinutos(45), 'Menos de 1 min');
       expect(textoMinutos(60), '1 min');

@@ -145,6 +145,25 @@ void main() {
       expect(find.text('Fuente: GPS · hace 3 s'), findsOneWidget);
     });
 
+    testWidgets('si el nombre ya empieza por «Paradero» no se repite en el título', (tester) async {
+      final detalle = detalleCable();
+      (detalle['paraderos'] as List)[0]['nombre'] = 'Paradero Villamaría 2';
+      await montar(
+        tester,
+        pantalla: () => const SizedBox(),
+        respuestas: {
+          ..._ficha(busetasJson([])),
+          '/rutas/$idCable': RespuestaFalsa(detalle),
+          '/paraderos/p2/eta': RespuestaFalsa(etaJson([resultadoEtaJson()])),
+        },
+        inicial: '/ruta/$idCable/paradero/p2',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Paradero Villamaría 2'), findsOneWidget);
+      expect(find.text('Paradero Paradero Villamaría 2'), findsNothing);
+    });
+
     testWidgets('por horario: «Hasta N min» con el aviso de estimación', (tester) async {
       const aviso =
           'Sin ubicación de busetas. Estimación por horario: cada 4 min. Esté pendiente de la siguiente buseta.';

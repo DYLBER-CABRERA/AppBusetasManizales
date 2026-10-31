@@ -147,5 +147,5 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Desactualizado:** más de 3 intervalos sin datos **y** con busetas o seguimiento disponible. Una ruta sin GPS (Serviturismo) nunca se marca desactualizada, porque no hay nada que actualizar.
 - **`senal_perdida`:** la app lo maneja si llega, pero el backend no lo emite (docs/03 §16); lo normal es `estado: sin_senal`.
 - **«Ya cerró» / «aún no inicia»:** se calcula en el cliente con los horarios de hoy y la hora de Bogotá (UTC−5): primera salida más temprana y cierre más tardío entre las empresas con dato; sin dato de hoy no se dice nada.
-- **ETA:** se recalcula cada 10 s mientras la pantalla está abierta; con un fallo se conserva el último valor y aparece **Reintentar**. El botón «Avisarme cuando esté a 300 m» llega en M3 (exige sesión).
+- **ETA:** se recalcula cada 5 s (un intervalo de refresco; antes 10 s) mientras la pantalla está abierta; con un fallo se conserva el último valor y aparece **Reintentar**. El botón «Avisarme cuando esté a 300 m» llega en M3 (exige sesión).
 - **Aviso de «datos desactualizados» y de «Estimación por horario»** usan un ámbar propio (no el amarillo `#F6C500`, reservado a las busetas), siempre con ícono y texto.
