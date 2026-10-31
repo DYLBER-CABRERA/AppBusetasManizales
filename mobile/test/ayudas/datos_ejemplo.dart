@@ -180,3 +180,52 @@ Map<String, dynamic> etaJson(List<Map<String, dynamic>> resultados) => {
       'calculadoEn': '2026-10-29T10:00:00-05:00',
       'resultados': resultados,
     };
+
+Map<String, dynamic> avisoJson(
+  String id,
+  String origen,
+  String titulo, {
+  String? empresa,
+  String? tipoCambio,
+  String? hasta,
+}) =>
+    {
+      'id': id,
+      'origen': origen,
+      'titulo': titulo,
+      'cuerpo': 'Detalle de $titulo.',
+      'desde': '2026-10-29T00:00:00-05:00',
+      'hasta': hasta,
+      'empresaId': null,
+      'empresaNombre': empresa,
+      'paraderoIds': <Object>[],
+      'rutaIds': <Object>[],
+      'tipoCambio': tipoCambio,
+    };
+
+Map<String, dynamic> perfilJson({String rol = 'pasajero'}) => {
+      'usuarioId': 'u1',
+      'correo': 'pasajera@correo.example',
+      'rol': rol,
+      'empresaId': null,
+      'empresaNombre': null,
+    };
+
+Map<String, dynamic> favoritoJson(String id, {String? rutaId = idCable, String nombre = 'El Cable', bool disponible = true}) => {
+      'id': id,
+      'tipo': 'ruta',
+      'nombre': nombre,
+      'rutaId': rutaId,
+      'paraderoId': null,
+      'disponible': disponible,
+    };
+
+Map<String, dynamic> alertaJson(String id, {String estado = 'activa', String rutaId = idCable, String paraderoId = 'p2'}) => {
+      'id': id,
+      'rutaId': rutaId,
+      'paraderoId': paraderoId,
+      'distanciaAvisoM': 300,
+      'estado': estado,
+      'ultimaNotificacionEn': null,
+      'version': 1,
+    };

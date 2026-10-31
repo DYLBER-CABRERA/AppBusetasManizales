@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'auth.dart';
 import 'configuracion.dart';
 import 'errores.dart';
 
@@ -64,6 +65,6 @@ class ClienteApi {
 
 final clienteApiProvider = Provider<ClienteApi>((ref) {
   final servidor = ref.watch(servidorProvider);
-  // PENDIENTE(M3): tokenActual saldrá de la sesión de Supabase Auth.
-  return ClienteApi(servidor: servidor);
+  // El token se lee en cada llamada: Supabase lo renueva solo y no hay que rehacer el cliente.
+  return ClienteApi(servidor: servidor, tokenActual: () => ref.read(authProvider).token);
 });

@@ -52,14 +52,15 @@ enum EstadoWs { conectando, conectado, desconectado }
 /// `Map`; `"pong"` se ignora. No registra la URL (puede llevar un token).
 class ConexionWs {
   ConexionWs({
-    required this.url,
+    required this.construirUrl,
     required this.fabrica,
     required this.alMensaje,
     required this.alCambiarEstado,
     this.tiempos = const TiemposTiempoReal(),
   });
 
-  final Uri url;
+  /// Se evalúa en cada intento de conexión (así un token renovado se usa al reconectar).
+  final Uri Function() construirUrl;
   final FabricaCanal fabrica;
   final void Function(Map<String, dynamic> mensaje) alMensaje;
   final void Function(EstadoWs estado) alCambiarEstado;
@@ -111,7 +112,7 @@ class ConexionWs {
     alCambiarEstado(EstadoWs.conectando);
     final WebSocketChannel canal;
     try {
-      canal = fabrica(url);
+      canal = fabrica(construirUrl());
       _canal = canal;
       await canal.ready;
     } catch (_) {

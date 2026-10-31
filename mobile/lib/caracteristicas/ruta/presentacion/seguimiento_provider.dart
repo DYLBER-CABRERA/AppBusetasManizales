@@ -87,7 +87,7 @@ class SeguimientoNotifier extends Notifier<EstadoSeguimiento> with WidgetsBindin
     _tiempos = ref.read(tiemposTiempoRealProvider);
     final servidor = ref.watch(servidorProvider);
     _ws = ConexionWs(
-      url: urlWebSocket(servidor, '/ws/rutas/$rutaId'),
+      construirUrl: () => urlWebSocket(servidor, '/ws/rutas/$rutaId'),
       fabrica: ref.read(fabricaCanalProvider),
       alMensaje: _alMensaje,
       alCambiarEstado: _alEstadoWs,

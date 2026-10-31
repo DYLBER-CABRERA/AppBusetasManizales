@@ -52,7 +52,7 @@ void main() {
     late List<Map<String, dynamic>> mensajes;
 
     ConexionWs crear(FabricaCanalesFalsa fabrica) => ConexionWs(
-          url: Uri.parse('ws://prueba/ws/rutas/r1'),
+          construirUrl: () => Uri.parse('ws://prueba/ws/rutas/r1'),
           fabrica: fabrica.crear,
           alMensaje: mensajes.add,
           alCambiarEstado: estados.add,

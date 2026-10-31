@@ -8,6 +8,8 @@ class AvisoTarjeta extends StatelessWidget {
     required this.titulo,
     required this.cuerpo,
     this.empresaNombre,
+    this.etiquetaExtra,
+    this.pie,
   });
 
   /// `empresa` | `movilidad` | `aplicativo`.
@@ -15,6 +17,12 @@ class AvisoTarjeta extends StatelessWidget {
   final String titulo;
   final String cuerpo;
   final String? empresaNombre;
+
+  /// Segunda insignia (p. ej. el tipo de cambio de Movilidad: «Cierre», «Obra»).
+  final String? etiquetaExtra;
+
+  /// Línea pequeña al final (p. ej. «Hasta el 5 nov»).
+  final String? pie;
 
   static String etiquetaOrigen(String origen, {String? empresaNombre}) => switch (origen) {
         'movilidad' => 'Movilidad',
@@ -39,22 +47,43 @@ class AvisoTarjeta extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: esquema.primary.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(etiquetaOrigen(origen, empresaNombre: empresaNombre),
-                  style: texto.labelMedium),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                _Insignia(
+                  etiquetaOrigen(origen, empresaNombre: empresaNombre),
+                  esquema.primary.withValues(alpha: 0.16),
+                ),
+                if (etiquetaExtra != null)
+                  _Insignia(etiquetaExtra!, esquema.onSurface.withValues(alpha: 0.1)),
+              ],
             ),
             const SizedBox(height: 6),
             Text(titulo, style: texto.titleMedium),
             const SizedBox(height: 2),
             Text(cuerpo, style: texto.bodyMedium),
+            if (pie != null) ...[
+              const SizedBox(height: 6),
+              Text(pie!, style: texto.bodySmall),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+class _Insignia extends StatelessWidget {
+  const _Insignia(this.texto, this.fondo);
+
+  final String texto;
+  final Color fondo;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(8)),
+        child: Text(texto, style: Theme.of(context).textTheme.labelMedium),
+      );
 }

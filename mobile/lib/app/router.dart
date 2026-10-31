@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../caracteristicas/ajustes/presentacion/pantalla_ajustes.dart';
+import '../caracteristicas/avisos/presentacion/pantalla_avisos.dart';
 import '../caracteristicas/buscar/presentacion/pantalla_buscar.dart';
 import '../caracteristicas/eta/presentacion/pantalla_eta.dart';
+import '../caracteristicas/guardados/presentacion/pantalla_guardados.dart';
 import '../caracteristicas/mapa/presentacion/pantalla_mapa.dart';
 import '../caracteristicas/ruta/presentacion/pantalla_ruta.dart';
 import 'pantalla_pendiente.dart';
@@ -28,8 +30,8 @@ GoRouter construirRouter() {
           rama('/mapa', const PantallaMapa()),
           rama('/buscar', const PantallaBuscar()),
           ramaPendiente('/viajar', 'Viajar', 'M4'),
-          ramaPendiente('/guardados', 'Guardados', 'M3'),
-          ramaPendiente('/avisos', 'Avisos', 'M3'),
+          rama('/guardados', const PantallaGuardados()),
+          rama('/avisos', const PantallaAvisos()),
         ],
       ),
       GoRoute(

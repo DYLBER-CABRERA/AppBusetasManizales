@@ -4,16 +4,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:busetas_app/app/raiz_alertas.dart';
 import 'package:busetas_app/app/tema.dart';
 import 'package:busetas_app/caracteristicas/eta/presentacion/pantalla_eta.dart';
 import 'package:busetas_app/caracteristicas/ruta/presentacion/pantalla_ruta.dart';
+import 'package:busetas_app/nucleo/auth.dart';
 import 'package:busetas_app/nucleo/cliente_api.dart';
 import 'package:busetas_app/nucleo/configuracion.dart';
 import 'package:busetas_app/nucleo/conexion_ws.dart';
+import 'package:busetas_app/nucleo/notificacion_local.dart';
 import 'package:busetas_app/nucleo/reloj.dart';
 import 'package:busetas_app/nucleo/ubicacion.dart';
 
 import 'api_falsa.dart';
+import 'auth_falso.dart';
 import 'canal_falso.dart';
 import 'ubicacion_nula.dart';
 
@@ -33,6 +37,8 @@ Future<AdaptadorFalso> montar(
   String inicial = '/',
   FabricaCanalesFalsa? fabrica,
   DateTime Function()? reloj,
+  AuthFalso? auth,
+  NotificacionLocalFalsa? locales,
 }) async {
   // Pantalla alta: la ficha lleva cabecera, mini mapa y pestañas antes de la lista.
   tester.view.physicalSize = const Size(800, 1600);
@@ -43,6 +49,7 @@ Future<AdaptadorFalso> montar(
   final preferencias = await SharedPreferences.getInstance();
   final adaptador = AdaptadorFalso(respuestas);
   final canales = fabrica ?? FabricaCanalesFalsa();
+  final autenticacion = auth ?? AuthFalso();
   final router = GoRouter(initialLocation: inicial, routes: [
     GoRoute(path: '/', builder: (_, _) => Scaffold(body: pantalla())),
     GoRoute(path: '/ruta/:id', builder: (_, e) => PantallaRuta(rutaId: e.pathParameters['id']!)),
@@ -60,7 +67,11 @@ Future<AdaptadorFalso> montar(
     retry: (_, _) => null,
     overrides: [
       preferenciasProvider.overrideWithValue(preferencias),
-      clienteApiProvider.overrideWithValue(crearApiFalsa(adaptador)),
+      authProvider.overrideWithValue(autenticacion),
+      notificacionLocalProvider.overrideWithValue(locales ?? NotificacionLocalFalsa()),
+      clienteApiProvider.overrideWithValue(
+        crearApiFalsa(adaptador, tokenActual: () => autenticacion.token),
+      ),
       ubicacionProvider.overrideWith(UbicacionNula.new),
       fabricaCanalProvider.overrideWithValue(canales.crear),
       tiemposTiempoRealProvider.overrideWithValue(tiemposLargos),
@@ -69,6 +80,7 @@ Future<AdaptadorFalso> montar(
     child: MaterialApp.router(
       theme: construirTema(Brightness.light, fuentesWeb: false),
       routerConfig: router,
+      builder: (context, child) => RaizAlertas(child: child ?? const SizedBox.shrink()),
     ),
   ));
   return adaptador;

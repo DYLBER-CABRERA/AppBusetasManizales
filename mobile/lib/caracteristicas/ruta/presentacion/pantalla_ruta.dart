@@ -15,6 +15,7 @@ import 'pestana_en_vivo.dart';
 import 'pestanas_ruta.dart';
 import 'seguimiento_provider.dart';
 import 'widgets/banner_desactualizado.dart';
+import 'widgets/boton_guardar_ruta.dart';
 import 'widgets/marcadores_busetas.dart';
 import 'ruta_providers.dart';
 import 'widgets/fila_ruta.dart';
@@ -33,6 +34,7 @@ class PantallaRuta extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(detalle.value?.nombre ?? 'Ruta'),
+        actions: [if (detalle.hasValue) BotonGuardarRuta(rutaId: rutaId)],
         leading: BackButton(
           onPressed: () => context.canPop() ? context.pop() : context.go('/mapa'),
         ),

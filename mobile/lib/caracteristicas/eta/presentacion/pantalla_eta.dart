@@ -9,6 +9,7 @@ import '../../ruta/presentacion/ruta_providers.dart';
 import '../../ruta/presentacion/widgets/banner_desactualizado.dart';
 import '../../ruta/presentacion/widgets/sello_ruta.dart';
 import '../dominio/eta.dart';
+import 'boton_avisarme.dart';
 import 'eta_provider.dart';
 
 /// ETA de una parada: una tarjeta por servicio, con su fuente (GPS, horario o sin datos).
@@ -57,6 +58,7 @@ class PantallaEta extends ConsumerWidget {
                   onReintentar: () => ref.invalidate(etaProvider(parada)),
                   datos: (respuesta) => _Resultados(rutaId: rutaId, respuesta: respuesta),
                 ),
+                BotonAvisarme(rutaId: rutaId, paraderoId: paraderoId),
               ],
             ),
           ),
@@ -86,7 +88,6 @@ class _Resultados extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final resultado in respuesta.resultados) TarjetaEta(resultado: resultado, color: color),
-        // PENDIENTE(M3): botón «Avisarme cuando esté a 300 m» (exige sesión, BR-02).
       ],
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 
+import 'raiz_alertas.dart';
 import 'router.dart';
 import 'tema.dart';
 
@@ -40,6 +41,7 @@ class _BusetasAppState extends State<BusetasApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: _router,
+      builder: (context, child) => RaizAlertas(child: child ?? const SizedBox.shrink()),
     );
   }
 }
