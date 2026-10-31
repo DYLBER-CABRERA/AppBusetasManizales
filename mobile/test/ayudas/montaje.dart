@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:busetas_app/app/raiz_alertas.dart';
@@ -39,6 +40,7 @@ Future<AdaptadorFalso> montar(
   DateTime Function()? reloj,
   AuthFalso? auth,
   NotificacionLocalFalsa? locales,
+  LatLng? ubicacion,
 }) async {
   // Pantalla alta: la ficha lleva cabecera, mini mapa y pestañas antes de la lista.
   tester.view.physicalSize = const Size(800, 1600);
@@ -72,7 +74,9 @@ Future<AdaptadorFalso> montar(
       clienteApiProvider.overrideWithValue(
         crearApiFalsa(adaptador, tokenActual: () => autenticacion.token),
       ),
-      ubicacionProvider.overrideWith(UbicacionNula.new),
+      ubicacionProvider.overrideWith(
+        ubicacion == null ? UbicacionNula.new : () => UbicacionFija(ubicacion),
+      ),
       fabricaCanalProvider.overrideWithValue(canales.crear),
       tiemposTiempoRealProvider.overrideWithValue(tiemposLargos),
       if (reloj != null) relojProvider.overrideWithValue(reloj),

@@ -8,7 +8,7 @@ import '../caracteristicas/eta/presentacion/pantalla_eta.dart';
 import '../caracteristicas/guardados/presentacion/pantalla_guardados.dart';
 import '../caracteristicas/mapa/presentacion/pantalla_mapa.dart';
 import '../caracteristicas/ruta/presentacion/pantalla_ruta.dart';
-import 'pantalla_pendiente.dart';
+import '../caracteristicas/viajar/presentacion/pantalla_viajar.dart';
 import 'shell.dart';
 
 GoRouter construirRouter() {
@@ -18,9 +18,6 @@ GoRouter construirRouter() {
     ]);
   }
 
-  StatefulShellBranch ramaPendiente(String ruta, String titulo, String bloque) =>
-      rama(ruta, PantallaPendiente(titulo: titulo, bloque: bloque));
-
   return GoRouter(
     initialLocation: '/mapa',
     routes: [
@@ -29,7 +26,7 @@ GoRouter construirRouter() {
         branches: [
           rama('/mapa', const PantallaMapa()),
           rama('/buscar', const PantallaBuscar()),
-          ramaPendiente('/viajar', 'Viajar', 'M4'),
+          rama('/viajar', const PantallaViajar()),
           rama('/guardados', const PantallaGuardados()),
           rama('/avisos', const PantallaAvisos()),
         ],

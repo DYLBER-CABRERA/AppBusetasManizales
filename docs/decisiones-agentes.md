@@ -168,3 +168,15 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Login de una cuenta sin perfil** (`GET /yo` → `401`): no se puede inventar nombre ni celular, así que la hoja pasa a «Completa tu perfil» y envía `POST /yo`. Registrar con un correo que ya existe intenta entrar con esa contraseña y completar el perfil (el `POST /yo` devuelve `200` si ya existía y no lo sobrescribe).
 - **Errores:** `400 VALIDACION` se muestra por campo (`detalles[].campo`); `409` explica que el correo es de otro perfil y descarta la sesión; los de Supabase se traducen (correo existente, contraseña débil, correo inválido, registro desactivado, límite de intentos). Con confirmación por correo activa en Supabase, el registro pide confirmar y luego iniciar sesión (ahí se completa el perfil).
 - **Validación en el cliente** (el backend vuelve a validar): campos obligatorios, máx. 60 caracteres, celular móvil colombiano (admite `+57`, espacios, guiones, puntos y paréntesis), correo con forma válida, contraseña de 6+ caracteres y confirmación igual.
+
+## 2026-10-31 · mobile-dev · M4 (Viajar)
+
+- **Sin dependencias nuevas.** `POST /viajes/planificar`, solo directas (D-P07). Origen y destino: Mi ubicación, un hito (búsqueda o chips de la pantalla Buscar) o un punto tocado en el mapa (pantalla completa con OpenStreetMap). Texto libre queda fuera (D-P06).
+- **Ubicación:** «Mi ubicación» viaja solo como `{lat, lng}` de la consulta puntual; no se guarda ni se registra. Sin permiso, la opción se muestra desactivada con su explicación. Elegir un punto en el mapa no necesita permiso.
+- **Barra de tramos (COM-08):** proporcional a los minutos de cada tramo (caminata, espera, buseta con el color de la ruta); los tramos de 0 min no se dibujan. La información no depende del color: la leyenda lleva ícono y minutos, y el conjunto tiene una etiqueta de accesibilidad.
+- **Minutos:** el backend los entrega con un decimal; se muestran enteros y nunca «0 min» (mínimo 1).
+- **Sin opciones:** se muestra el `motivo` del backend y, si viene, el `paraderoMasCercano` con su distancia.
+- **Origen igual al destino** se avisa en el cliente y no se llama a la API.
+- **Cada opción** ofrece «Ver ruta» y «¿Cuándo llega?» (ETA del paradero de origen de esa ruta).
+- `PENDIENTE(decisión)`: el backend a veces devuelve `busMin: 0.0` (visto con origen y destino a menos de un paradero de distancia entre sí en el circuito); la app lo muestra tal cual. Si es un error del cálculo, corresponde al backend.
+- Se eliminó `pantalla_pendiente.dart`: ya no queda ninguna pestaña por construir.
