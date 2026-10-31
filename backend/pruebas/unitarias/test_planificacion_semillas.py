@@ -226,3 +226,18 @@ async def test_av_santander_a_villamaria_sugiere_la_ruta_del_cable_y_la_de_villa
     assert por_lado["origen"] == [("El Cable", "Paradero El Cable 2")]
     assert ("Villamaría", "Villamaría") in por_lado["destino"]
     assert r["paradero_mas_cercano"]["nombre"] == "Paradero El Cable 2"
+
+
+def test_el_radio_de_caminata_por_defecto_es_1000_y_los_demas_radios_no_cambian() -> None:
+    from nucleo.parametros import VALORES_POR_DEFECTO
+
+    assert VALORES_POR_DEFECTO["radio_caminata_m"] == 1000
+    assert (VALORES_POR_DEFECTO["radio_busqueda_m"], VALORES_POR_DEFECTO["radio_hito_m"]) == (800, 300)
+    migracion = (SEMILLAS.parent / "migraciones" / "0007_radio_caminata_1000.sql").read_text(encoding="utf-8")
+    assert "where clave = 'radio_caminata_m' and valor = '500'" in migracion  # no pisa un valor editado por el administrador
+
+
+def test_solo_el_planificador_usa_radio_caminata_m() -> None:
+    raiz = Path(__file__).resolve().parents[2] / "src"
+    usos = {p.relative_to(raiz).as_posix() for p in raiz.rglob("*.py") if "radio_caminata_m" in p.read_text(encoding="utf-8")}
+    assert usos == {"modulos/planificacion/aplicacion/planificar_viaje.py", "nucleo/parametros.py"}

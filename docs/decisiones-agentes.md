@@ -149,3 +149,10 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 
 - **Problema:** con paraderos cerca del origen pero de rutas que no llegan al destino, el motivo era «No hay una ruta directa…» sin contexto.
 - **Cambio aditivo y opcional:** `motivoCodigo` (4 valores) y `alternativas[]` (ruta + su paradero más cercano a cada punto, máx. 5 por lado). `paraderoMasCercano` ahora también se llena en `sin_ruta_directa` (el más cercano al origen). Sin cambios para clientes anteriores. Prueba con semillas: Av. Santander → Villamaría (500 m) da El Cable por el origen y Villamaría por el destino.
+
+## 2026-10-31 · backend-dev · radio de caminata del planificador: 500 m → 1000 m
+
+- **Constante/parámetro:** el radio es el parámetro global `radio_caminata_m` (ya existía en `parametro_global` desde B1 y en `VALORES_POR_DEFECTO` de `nucleo/parametros.py`). **Solo lo usa el planificador** (prueba que lo comprueba); no se comparte con otros cálculos. Siguen igual: `radio_busqueda_m` 800 (`/rutas/cercanas` y `/paraderos/cercanos`), `radio_hito_m` 300 (hitos), el radio de 500 m propio del bot, y la distancia de aviso de alertas (`distancia_aviso_llegada_m` 300). El ETA no usa radio.
+- **Cambio:** valor por defecto en código 500 → 1000 y migración `0007_radio_caminata_1000.sql` (NO aplicada) que actualiza la fila de la BD **solo si sigue en 500** (no pisa una edición del administrador). Rango permitido del parámetro: 100 a 2000. También se puede cambiar desde el panel (`PUT /admin/parametros/radio_caminata_m`, caché ≤ 60 s).
+- **Comando para el usuario** (desde `backend/`): `.venv\Scripts\python.exe scripts\aplicar_migracion.py 0007_radio_caminata_1000.sql --aplicar` (sin `--aplicar` solo muestra el SQL).
+- **Prueba con semillas (Av. Santander 5.0638, -75.4949 → hito La Enea):** a 500 m solo hay «Paradero El Cable 2» (205 m) cerca del origen → `sin_ruta_directa`, con alternativas El Cable (origen) y La Enea (destino). A 1000 m aparece «Paradero La Enea 1» (652 m) → opción por la ruta La Enea: caminata 8,2 min, espera 5,0, bus 25,2, total 38,4 min.

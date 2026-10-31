@@ -33,6 +33,7 @@ def test_migraciones_en_orden() -> None:
     assert nombres == [
         "0001_extensiones_y_tipos.sql", "0002_tablas.sql", "0003_indices_y_funciones.sql",
         "0004_seguridad.sql", "0005_parametros.sql", "0006_perfil_pasajero.sql",
+        "0007_radio_caminata_1000.sql",
     ]
 
 

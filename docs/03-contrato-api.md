@@ -176,7 +176,7 @@ El cliente reconecta con espera creciente (1, 2, 4, 8 s, máx. 15 s) y, mientras
 
 ## 6. Parámetros globales usados (tabla `parametro_global`)
 
-`radio_busqueda_m` (800), `radio_caminata_m` (500), `radio_hito_m` (300), `velocidad_default_kmh` (20), `umbral_posicion_obsoleta_s` (60), `intervalo_refresco_cliente_s` (5), `distancia_aviso_llegada_m` (300), `enfriamiento_alerta_min` (10), `umbral_desvio_m` (100), `longitud_max_aviso` (500), `max_opciones_viaje` (3), `dias_max_rodamiento_adelante` (15), `rango_max_estadisticas_dias` (365), `caja_ciudad` (provisional, validar con el mapa). Se eliminan `max_filas_excel`, `tamano_max_excel_mb`, `radio_transbordo_m` y `retencion_eventos_dias` (se descartan con el recorte de BD).
+`radio_busqueda_m` (800), `radio_caminata_m` (1000; antes 500), `radio_hito_m` (300), `velocidad_default_kmh` (20), `umbral_posicion_obsoleta_s` (60), `intervalo_refresco_cliente_s` (5), `distancia_aviso_llegada_m` (300), `enfriamiento_alerta_min` (10), `umbral_desvio_m` (100), `longitud_max_aviso` (500), `max_opciones_viaje` (3), `dias_max_rodamiento_adelante` (15), `rango_max_estadisticas_dias` (365), `caja_ciudad` (provisional, validar con el mapa). Se eliminan `max_filas_excel`, `tamano_max_excel_mb`, `radio_transbordo_m` y `retencion_eventos_dias` (se descartan con el recorte de BD).
 
 ## 7. Precisiones del esqueleto (B0)
 
