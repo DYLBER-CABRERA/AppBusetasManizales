@@ -169,7 +169,7 @@ class EstadoDemo(EsquemaBase):
     busetas: list[BusetaDemo]
 
 
-@router.get("/yo", response_model=Perfil, responses=errores(401))
+@router.get("/yo", response_model=PerfilPasajero, responses=errores(401))
 async def obtener_perfil(
     identidad: Identidad = Depends(requiere_rol(*Rol)),
     caso_uso: ObtenerPerfil = Depends(caso("obtener_perfil")),

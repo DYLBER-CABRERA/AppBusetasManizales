@@ -133,3 +133,7 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Idempotencia:** `insert … on conflict (id) do nothing`; si ya existe, 200 con el existente. Un correo ya usado por otro perfil da 409 (índice único de correo).
 - **Celular:** móvil colombiano de 10 dígitos que empieza por 3, se guarda normalizado. No se aceptan teléfonos fijos ni otros países. Sin registros de correo, celular ni token en logs (hay prueba).
 - **`GET /yo` no devuelve aún nombre, apellido ni celular** (para no depender de la migración en cada inicio de sesión); si el equipo lo quiere, es un cambio pequeño tras aplicar 0006.
+
+## 2026-10-31 · backend-dev · GET /yo con nombre, apellido y celular
+
+- Con la migración 0006 aplicada, `GET /yo` usa `perfil_completo` y devuelve `nombre`, `apellido` y `celular` (la misma forma de `POST /yo`). La autenticación de cada petición sigue usando `perfil()` sin las columnas nuevas.

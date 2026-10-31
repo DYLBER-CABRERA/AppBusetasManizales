@@ -19,7 +19,7 @@ class ObtenerPerfil:
 
     async def __call__(self, identidad: Identidad | None) -> dict[str, Any]:
         actual = exigir_identidad(identidad)
-        perfil = await self._usuarios.perfil(UUID(actual.usuario_id))
+        perfil = await self._usuarios.perfil_completo(UUID(actual.usuario_id))
         if perfil is None or not perfil["activo"]:
             raise ErrorNoAutenticado("Usuario inactivo o sin perfil.")
         perfil = dict(perfil)

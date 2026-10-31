@@ -2159,59 +2159,6 @@
         "title": "ParametroActualizar",
         "type": "object"
       },
-      "Perfil": {
-        "properties": {
-          "correo": {
-            "title": "Correo",
-            "type": "string"
-          },
-          "empresaId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Empresaid"
-          },
-          "empresaNombre": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Empresanombre"
-          },
-          "rol": {
-            "enum": [
-              "pasajero",
-              "jefe_operaciones",
-              "secretaria_movilidad",
-              "administrador"
-            ],
-            "title": "Rol",
-            "type": "string"
-          },
-          "usuarioId": {
-            "format": "uuid",
-            "title": "Usuarioid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "usuarioId",
-          "correo",
-          "rol"
-        ],
-        "title": "Perfil",
-        "type": "object"
-      },
       "PerfilPasajero": {
         "properties": {
           "apellido": {
@@ -9722,7 +9669,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Perfil"
+                  "$ref": "#/components/schemas/PerfilPasajero"
                 }
               }
             },
