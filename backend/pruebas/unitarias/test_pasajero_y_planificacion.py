@@ -319,3 +319,33 @@ def test_planificar_valida_el_lugar(cliente: TestClient) -> None:
 def test_planificar_registra_evento_de_uso(cliente: TestClient, repos: Repositorios) -> None:
     cliente.post("/api/v1/viajes/planificar", json=_plan(ORIGEN, DESTINO))
     assert ("planificacion", None) in repos.eventos_uso.eventos
+
+
+def test_motivos_con_codigo_para_cada_caso(cliente: TestClient, reloj: RelojFijo) -> None:
+    sin_origen = cliente.post("/api/v1/viajes/planificar", json=_plan({"lat": 7.0, "lng": -75.51}, DESTINO)).json()
+    assert sin_origen["motivoCodigo"] == "sin_paraderos_origen" and sin_origen["alternativas"] == []
+    sin_destino = cliente.post("/api/v1/viajes/planificar", json=_plan(ORIGEN, {"lat": 7.0, "lng": -75.51})).json()
+    assert sin_destino["motivoCodigo"] == "sin_paraderos_destino"
+    reloj.fijar(LUNES_MEDIODIA.replace(hour=23, minute=30))
+    fuera = cliente.post("/api/v1/viajes/planificar", json=_plan(ORIGEN, DESTINO)).json()
+    assert fuera["motivoCodigo"] == "sin_servicio_en_horario" and fuera["alternativas"] == []
+    reloj.fijar(LUNES_MEDIODIA)
+    ok = cliente.post("/api/v1/viajes/planificar", json=_plan(ORIGEN, DESTINO)).json()
+    assert ok["motivoCodigo"] is None and ok["alternativas"] == [] and ok["opciones"]
+
+
+def test_hay_paraderos_cerca_pero_ninguna_ruta_conecta_sugiere_alternativas(cliente: TestClient, repos: Repositorios) -> None:
+    async def rutas_distintas(ids):
+        return {dobles.PARADERO_A: {dobles.RUTA_ENEA}, dobles.PARADERO_B: {dobles.RUTA_VILLAMARIA}}
+
+    repos.planificacion.rutas_de_paraderos = rutas_distintas
+    repos.parametros.valores["radio_caminata_m"] = 300  # el paradero B (480 m) no cuenta como cercano al origen
+    r = cliente.post("/api/v1/viajes/planificar", json=_plan(ORIGEN, DESTINO))
+    cuerpo = r.json()
+    assert r.status_code == 200 and cuerpo["opciones"] == []
+    assert cuerpo["motivoCodigo"] == "sin_ruta_directa"
+    assert cuerpo["motivo"] == "Hay paraderos cerca del origen y del destino, pero ninguna ruta los conecta directamente."
+    assert cuerpo["paraderoMasCercano"]["nombre"] == "Parada A"  # el más cercano al origen
+    resumen = [(a["lado"], a["rutaNombre"], a["paradero"]["nombre"], a["paradero"]["distanciaM"]) for a in cuerpo["alternativas"]]
+    assert resumen == [("origen", "La Enea", "Parada A", 120.0), ("destino", "Villamaría", "Parada B", 200.0)]
+    assert cuerpo["alternativas"][0]["rutaId"] == RUTA and set(cuerpo["alternativas"][0]["paradero"]) >= {"paraderoId", "lat", "lng"}

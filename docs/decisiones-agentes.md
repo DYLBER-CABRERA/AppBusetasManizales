@@ -144,3 +144,8 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Cambio:** el planificador ya no pide el avance de un paradero suelto (`progreso_paradero`, que cae en proyección por cercanía si no encuentra el paradero y solo devuelve el primer pase) sino la secuencia completa (`progresos_paraderos_ruta` vía `RepositorioSeguimientoSql.progresos_de_ruta`) y toma el menor recorrido entre todos los pases del origen y del destino (`mejor_recorrido_m`). `calcular_tiempos` recibe el recorrido en metros. No cambia el SQL ni el esquema.
 - **Si la app sigue mostrando tiempos subestimados:** la BD puede tener la versión anterior de las funciones de 0003. Comparar (solo lectura): `.venv\Scripts\python.exe scripts\actualizar_bd.py --comparar`; aplicar (requiere autorización del usuario): `.venv\Scripts\python.exe scripts\actualizar_bd.py --aplicar`.
 - **Pendiente:** el avance de la BUSETA (ETA, alertas) sigue proyectándose por cercanía (`progreso_en_ruta`), ambiguo en tramos repetidos; no se tocó.
+
+## 2026-10-31 · backend-dev · planificación: motivo con código y alternativas cercanas
+
+- **Problema:** con paraderos cerca del origen pero de rutas que no llegan al destino, el motivo era «No hay una ruta directa…» sin contexto.
+- **Cambio aditivo y opcional:** `motivoCodigo` (4 valores) y `alternativas[]` (ruta + su paradero más cercano a cada punto, máx. 5 por lado). `paraderoMasCercano` ahora también se llena en `sin_ruta_directa` (el más cercano al origen). Sin cambios para clientes anteriores. Prueba con semillas: Av. Santander → Villamaría (500 m) da El Cable por el origen y Villamaría por el destino.

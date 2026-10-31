@@ -213,3 +213,16 @@ async def test_la_enea_2_a_la_enea_de_punta_a_punta(mundo: _Mundo) -> None:
     [opcion] = [x for x in r["opciones"] if x["ruta_id"] == _id("ruta-la-enea")]
     assert opcion["paradero_origen"]["nombre"] == "Paradero La Enea 2" and opcion["paradero_destino"]["nombre"] == "La Enea"
     assert opcion["bus_min"] == pytest.approx(19.6, abs=0.1)
+
+
+async def test_av_santander_a_villamaria_sugiere_la_ruta_del_cable_y_la_de_villamaria(mundo: _Mundo) -> None:
+    """Hay paraderos cerca de ambos puntos pero de rutas que no se conectan: se devuelven las rutas junto a cada punto."""
+    mundo.parametros.valores["radio_caminata_m"] = 500
+    r = await mundo.planificador()({"lat": 5.0638, "lng": -75.4949}, {"hito_id": mundo.hito("Villamaría")})
+    assert r["opciones"] == [] and r["motivo_codigo"] == "sin_ruta_directa"
+    por_lado = {}
+    for a in r["alternativas"]:
+        por_lado.setdefault(a["lado"], []).append((a["ruta_nombre"], a["paradero"]["nombre"]))
+    assert por_lado["origen"] == [("El Cable", "Paradero El Cable 2")]
+    assert ("Villamaría", "Villamaría") in por_lado["destino"]
+    assert r["paradero_mas_cercano"]["nombre"] == "Paradero El Cable 2"

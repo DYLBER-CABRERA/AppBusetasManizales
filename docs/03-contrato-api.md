@@ -319,3 +319,24 @@ El registro correo+contraseña lo hace la app móvil **directamente contra Supab
 ## 18. Planificación: tiempo en bus con el avance secuencial (corrección)
 
 `busMin` de `POST /viajes/planificar` sale del **avance secuencial** de cada parada (función SQL `progresos_paraderos_ruta`, la misma regla de `progreso_paradero`): recorrido = `(avance destino − avance origen) mod longitud del circuito`, dividido por `velocidad_default_kmh`. Si la ruta pasa **dos veces** por un paradero (ida y vuelta por la misma vía, como Villamaría) se prueban todos los pases y se toma el de menor recorrido; dos paraderos distintos nunca dan un viaje de ~0 m (se descartan recorridos < 1 m). Sin cambios en el esquema de la respuesta.
+
+## 19. Planificación: motivo con código y alternativas (aditivo)
+
+`POST /viajes/planificar` agrega dos campos **opcionales** a la respuesta (los clientes anteriores los ignoran sin problema); `motivo` y `paraderoMasCercano` siguen igual.
+
+- `motivoCodigo` (`null` si hay opciones): `sin_paraderos_origen` · `sin_paraderos_destino` · `sin_ruta_directa` · `sin_servicio_en_horario`.
+  - `sin_paraderos_origen` / `sin_paraderos_destino`: ningún paradero a ≤ `radio_caminata_m` de ese punto; `paraderoMasCercano` es el más cercano a ese punto.
+  - `sin_ruta_directa`: hay paraderos cerca del origen y del destino, pero **ninguna ruta pasa por ambos**. `paraderoMasCercano` es el paradero más cercano al origen y `alternativas` lista las rutas que sí pasan cerca de cada punto.
+  - `sin_servicio_en_horario`: hay rutas que conectan, pero ningún servicio activo opera ahora (horario o frecuencia). `alternativas: []`.
+- `alternativas`: `[ { "lado": "origen"|"destino", "rutaId": "…", "rutaNombre": "El Cable", "paradero": { "paraderoId", "nombre", "lat", "lng", "distanciaM" } } ]` — una por ruta y lado, con el paradero de esa ruta más cercano al punto; ordenadas por `distanciaM` y máximo 5 por lado. Solo viene con `sin_ruta_directa`.
+
+Ejemplo (sin ruta directa):
+```json
+{ "opciones": [], "motivoCodigo": "sin_ruta_directa",
+  "motivo": "Hay paraderos cerca del origen y del destino, pero ninguna ruta los conecta directamente.",
+  "paraderoMasCercano": { "paraderoId": "…", "nombre": "Paradero El Cable 2", "lat": 5.0632, "lng": -75.4966, "distanciaM": 205.0 },
+  "alternativas": [
+    { "lado": "origen",  "rutaId": "…", "rutaNombre": "El Cable",   "paradero": { "paraderoId": "…", "nombre": "Paradero El Cable 2", "lat": 5.0632, "lng": -75.4966, "distanciaM": 205.0 } },
+    { "lado": "destino", "rutaId": "…", "rutaNombre": "Villamaría", "paradero": { "paraderoId": "…", "nombre": "Villamaría", "lat": 5.045, "lng": -75.5151, "distanciaM": 90.0 } } ] }
+```
+El texto de `motivo` no debe usarse para decidir lógica: usar `motivoCodigo`.
