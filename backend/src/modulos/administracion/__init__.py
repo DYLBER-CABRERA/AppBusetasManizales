@@ -1,6 +1,11 @@
 """API pública del módulo administración."""
 
-from modulos.administracion.aplicacion.casos_de_uso import ConsultarEstadoDemo, EjecutarEscenarioDemo, ObtenerPerfil
+from modulos.administracion.aplicacion.casos_de_uso import (
+    CompletarPerfilPasajero,
+    ConsultarEstadoDemo,
+    EjecutarEscenarioDemo,
+    ObtenerPerfil,
+)
 from modulos.administracion.aplicacion.gestion import (
     ConfigurarParametro,
     CrearCredencialGps,
@@ -23,6 +28,7 @@ from modulos.administracion.infraestructura.repositorio_usuarios_sql import Repo
 from modulos.administracion.infraestructura.router import router
 
 __all__ = [
+    "CompletarPerfilPasajero",
     "AutenticacionSupabase", "ConfigurarParametro", "ConsultarEstadoDemo", "CrearCredencialGps", "CrearEmpresa", "CrearUsuario",
     "EditarEmpresa", "EditarUsuario", "EjecutarEscenarioDemo", "ListarCredencialesGps", "ListarEmpresasAdmin",
     "ListarParametros", "ListarRoles", "ListarUsuarios", "ObtenerPerfil", "ParametrosSql", "RepositorioAdminSql",

@@ -110,6 +110,13 @@ class RepositorioSeguimientoSql:
         )
         return filas[0] if filas else None
 
+    async def progresos_de_ruta(self, ruta_id: UUID) -> list[dict[str, Any]]:
+        return await self._consultar(
+            """select orden, paradero_id, progreso_m, longitud_m
+               from progresos_paraderos_ruta(%s::uuid, 'circular') order by orden""",
+            (ruta_id,),
+        )
+
     async def servicios_para_eta(self, ruta_id: UUID) -> list[dict[str, Any]]:
         return await self._consultar(
             """select s.id as servicio_id, e.nombre as empresa_nombre, s.codigo_publico, s.estado::text as estado,

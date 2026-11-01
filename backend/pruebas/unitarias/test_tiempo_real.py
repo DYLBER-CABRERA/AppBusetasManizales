@@ -395,3 +395,12 @@ async def test_difusor_agrupa_posiciones_del_mismo_ciclo() -> None:
     await difusor.al_aceptar_posicion({"ruta_id": None})  # sin ruta: se ignora
     await asyncio.sleep(0.1)
     assert len(enviados) == 1
+
+
+def test_yo_incluye_nombre_apellido_y_celular(cliente: TestClient, repos: Repositorios) -> None:
+    demo = cliente.get("/api/v1/yo", headers=_con("tok-pasajera")).json()
+    assert (demo["nombre"], demo["apellido"], demo["celular"]) == (None, None, None)  # cuenta demo
+    repos.usuarios.perfiles[dobles.USUARIO_PASAJERA].update(nombre="Ana", apellido="Pérez", celular="3001234567")
+    completo = cliente.get("/api/v1/yo", headers=_con("tok-pasajera")).json()
+    assert (completo["nombre"], completo["apellido"], completo["celular"]) == ("Ana", "Pérez", "3001234567")
+    assert completo["rol"] == "pasajero" and completo["empresaId"] is None

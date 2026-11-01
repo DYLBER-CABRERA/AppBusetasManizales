@@ -13,6 +13,7 @@ from uuid import UUID
 from fastapi import BackgroundTasks, Query, Request, Security
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
+from nucleo.autenticacion import SesionAuth
 from nucleo.autorizacion import Identidad, Rol
 from nucleo.errores import ErrorNoAutenticado, ErrorNoAutorizado, ErrorServicioExterno, ErrorValidacion
 from nucleo.eventos_uso import TipoEventoUso
@@ -26,6 +27,15 @@ def _servicios(request: Request) -> Any:
     if servicios is None:
         raise ErrorServicioExterno("La base de datos no está configurada (DATABASE_URL).")
     return servicios
+
+
+async def sesion_auth(
+    request: Request, credenciales: HTTPAuthorizationCredentials | None = Security(esquema_bearer)
+) -> SesionAuth:
+    """Token válido de Supabase Auth, aunque el usuario aún no tenga perfil (solo para completar el perfil)."""
+    if credenciales is None:
+        raise ErrorNoAutenticado("Inicia sesión para continuar.")
+    return await _servicios(request).autenticacion.verificar_sesion(credenciales.credentials)
 
 
 async def identidad_opcional(
