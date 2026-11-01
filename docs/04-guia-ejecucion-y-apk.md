@@ -96,6 +96,8 @@ flutter build apk --release --dart-define=API_BASE_URL=http://192.168.0.10:8000 
 # Resultado: build/app/outputs/flutter-apk/app-release.apk
 ```
 
+Alternativa (verificada): copia `mobile/.env.example` a `mobile/.env`, rellénalo y usa `flutter build apk --release --dart-define-from-file=.env`; con el celular por cable, `flutter run --dart-define-from-file=.env`. Windows: `$env:Path += ";C:\srclutterin"` si `flutter` no se reconoce.
+
 - Para un archivo más liviano: `--split-per-abi` (genera uno por arquitectura; el celular moderno usa `arm64-v8a`).
 - Sin configuración de firma propia, Flutter firma el release con la clave de depuración. **Sirve para la demo**; no sirve para Google Play.
 - Instalar: copiar `app-release.apk` al celular (cable, Drive, Telegram), abrirlo y aceptar "instalar apps desconocidas". Con cable y depuración USB: `adb install -r app-release.apk`.
