@@ -30,6 +30,10 @@ class CapaPuntosElegidos extends ConsumerWidget {
   }
 }
 
+/// Origen morado y destino rojo, ambos con contraste suficiente para el texto blanco.
+const _colorOrigen = Color(0xFF6A1B9A);
+const _colorDestino = Color(0xFFC62828);
+
 class _PinElegido extends StatelessWidget {
   const _PinElegido({required this.etiqueta});
 
@@ -37,7 +41,7 @@ class _PinElegido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tinta = Theme.of(context).colorScheme.onSurface;
+    final tinta = etiqueta == 'Origen' ? _colorOrigen : _colorDestino;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
