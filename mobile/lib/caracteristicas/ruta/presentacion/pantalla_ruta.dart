@@ -11,6 +11,7 @@ import '../../../app/widgets/punto_usuario.dart';
 import '../../../nucleo/errores.dart';
 import '../../../nucleo/ubicacion.dart';
 import '../../mapa/presentacion/mapa_providers.dart';
+import '../../viajar/presentacion/capa_puntos_elegidos.dart';
 import '../dominio/ruta.dart';
 import '../dominio/seguimiento.dart';
 import 'pestana_en_vivo.dart';
@@ -151,7 +152,10 @@ class _FichaCompleta extends ConsumerWidget {
   }
 }
 
-class _MiniMapa extends ConsumerWidget {
+/// Con este zoom o más cerca, cada paradero muestra su nombre.
+const _zoomEtiquetasParaderos = 15.5;
+
+class _MiniMapa extends ConsumerStatefulWidget {
   const _MiniMapa({required this.detalle, required this.color, required this.busetas});
 
   final RutaDetalle detalle;
@@ -159,7 +163,21 @@ class _MiniMapa extends ConsumerWidget {
   final List<BusetaEnVivo> busetas;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MiniMapa> createState() => _MiniMapaState();
+}
+
+class _MiniMapaState extends ConsumerState<_MiniMapa> {
+  bool _verNombres = false;
+
+  void _alMover(MapCamera camara, bool _) {
+    final ver = camara.zoom >= _zoomEtiquetasParaderos;
+    if (ver != _verNombres) setState(() => _verNombres = ver);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detalle = widget.detalle;
+    final color = widget.color;
     final puntos = detalle.trazado;
     final ubicacion = ref.watch(ubicacionProvider).value;
     return Semantics(
@@ -169,6 +187,7 @@ class _MiniMapa extends ConsumerWidget {
           initialCameraFit: puntos.length >= 2
               ? CameraFit.coordinates(coordinates: puntos, padding: const EdgeInsets.all(28))
               : null,
+          onPositionChanged: _alMover,
           interactionOptions: const InteractionOptions(
             flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
           ),
@@ -180,21 +199,62 @@ class _MiniMapa extends ConsumerWidget {
             for (final p in detalle.paraderos)
               Marker(
                 point: p.punto,
-                width: 16,
-                height: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: color, width: 3),
-                  ),
+                width: _verNombres ? 120 : 16,
+                height: _verNombres ? 40 : 16,
+                alignment: _verNombres ? Alignment.topCenter : Alignment.center,
+                child: Semantics(
+                  label: 'Paradero ${p.nombre}',
+                  child: _MarcaParadero(nombre: p.nombre, color: color, verNombre: _verNombres),
                 ),
               ),
           ]),
+          const CapaPuntosElegidos(),
           CapaUbicacionUsuario(punto: ubicacion),
-          MarcadoresBusetas(busetas: busetas),
+          MarcadoresBusetas(busetas: widget.busetas),
         ],
       ),
+    );
+  }
+}
+
+class _MarcaParadero extends StatelessWidget {
+  const _MarcaParadero({required this.nombre, required this.color, required this.verNombre});
+
+  final String nombre;
+  final Color color;
+  final bool verNombre;
+
+  @override
+  Widget build(BuildContext context) {
+    final punto = Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: color, width: 3),
+      ),
+    );
+    if (!verNombre) return punto;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        punto,
+        const SizedBox(height: 2),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            nombre,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF13271E), fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }

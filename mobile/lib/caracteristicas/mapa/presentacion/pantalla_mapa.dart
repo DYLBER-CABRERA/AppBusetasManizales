@@ -16,6 +16,7 @@ import '../../ruta/dominio/seguimiento.dart';
 import '../../ruta/presentacion/seguimiento_provider.dart';
 import '../../ruta/presentacion/widgets/fila_ruta.dart';
 import '../../ruta/presentacion/widgets/marcadores_busetas.dart';
+import '../../viajar/presentacion/capa_puntos_elegidos.dart';
 import 'mapa_providers.dart';
 
 class PantallaMapa extends ConsumerStatefulWidget {
@@ -111,6 +112,7 @@ class _PantallaMapaState extends ConsumerState<PantallaMapa> {
                     child: Semantics(label: 'Tu ubicación', child: const PuntoUsuario()),
                   ),
               ]),
+              const CapaPuntosElegidos(),
             ],
           ),
         ),
