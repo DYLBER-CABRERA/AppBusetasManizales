@@ -123,6 +123,39 @@
         "title": "AlertaLlegada",
         "type": "object"
       },
+      "AlternativaCercana": {
+        "description": "Ruta que pasa cerca del origen o del destino, con su paradero más cercano a ese punto (sugerencia de alternativa).",
+        "properties": {
+          "lado": {
+            "enum": [
+              "origen",
+              "destino"
+            ],
+            "title": "Lado",
+            "type": "string"
+          },
+          "paradero": {
+            "$ref": "#/components/schemas/ParaderoCercano"
+          },
+          "rutaId": {
+            "format": "uuid",
+            "title": "Rutaid",
+            "type": "string"
+          },
+          "rutaNombre": {
+            "title": "Rutanombre",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lado",
+          "rutaId",
+          "rutaNombre",
+          "paradero"
+        ],
+        "title": "AlternativaCercana",
+        "type": "object"
+      },
       "Aviso": {
         "properties": {
           "cuerpo": {
@@ -2159,8 +2192,31 @@
         "title": "ParametroActualizar",
         "type": "object"
       },
-      "Perfil": {
+      "PerfilPasajero": {
         "properties": {
+          "apellido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apellido"
+          },
+          "celular": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "10 dígitos, móvil colombiano normalizado (ej. 3001234567)",
+            "title": "Celular"
+          },
           "correo": {
             "title": "Correo",
             "type": "string"
@@ -2188,6 +2244,18 @@
             ],
             "title": "Empresanombre"
           },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null en cuentas anteriores al registro con perfil completo (demo)",
+            "title": "Nombre"
+          },
           "rol": {
             "enum": [
               "pasajero",
@@ -2209,7 +2277,34 @@
           "correo",
           "rol"
         ],
-        "title": "Perfil",
+        "title": "PerfilPasajero",
+        "type": "object"
+      },
+      "PerfilPasajeroCrear": {
+        "description": "El rol NO se acepta: siempre es `pasajero`. Campos desconocidos (incluido `rol`) se ignoran.",
+        "properties": {
+          "apellido": {
+            "description": "Se recortan espacios; obligatorio, máx. 60",
+            "title": "Apellido",
+            "type": "string"
+          },
+          "celular": {
+            "description": "Móvil colombiano; admite +57, espacios, guiones y paréntesis",
+            "title": "Celular",
+            "type": "string"
+          },
+          "nombre": {
+            "description": "Se recortan espacios; obligatorio, máx. 60",
+            "title": "Nombre",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nombre",
+          "apellido",
+          "celular"
+        ],
+        "title": "PerfilPasajeroCrear",
         "type": "object"
       },
       "PlanificarEntrada": {
@@ -2377,6 +2472,14 @@
       },
       "RespuestaPlanificacion": {
         "properties": {
+          "alternativas": {
+            "description": "Solo con motivoCodigo `sin_ruta_directa`: rutas que pasan junto al origen y al destino",
+            "items": {
+              "$ref": "#/components/schemas/AlternativaCercana"
+            },
+            "title": "Alternativas",
+            "type": "array"
+          },
           "motivo": {
             "anyOf": [
               {
@@ -2387,6 +2490,24 @@
               }
             ],
             "title": "Motivo"
+          },
+          "motivoCodigo": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sin_paraderos_origen",
+                  "sin_paraderos_destino",
+                  "sin_ruta_directa",
+                  "sin_servicio_en_horario"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo sin opciones; distingue el motivo",
+            "title": "Motivocodigo"
           },
           "opciones": {
             "items": {
@@ -3478,8 +3599,91 @@
         "title": "Usuario",
         "type": "object"
       },
+      "UsuarioCreado": {
+        "properties": {
+          "activo": {
+            "title": "Activo",
+            "type": "boolean"
+          },
+          "contrasena": {
+            "description": "Se muestra UNA sola vez; no se guarda ni se vuelve a devolver. Compartirla en privado.",
+            "title": "Contrasena",
+            "type": "string"
+          },
+          "correo": {
+            "title": "Correo",
+            "type": "string"
+          },
+          "empresaId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresaid"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "rol": {
+            "enum": [
+              "pasajero",
+              "jefe_operaciones",
+              "secretaria_movilidad",
+              "administrador"
+            ],
+            "title": "Rol",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "correo",
+          "rol",
+          "activo",
+          "version",
+          "contrasena"
+        ],
+        "title": "UsuarioCreado",
+        "type": "object"
+      },
       "UsuarioCrear": {
         "properties": {
+          "contrasena": {
+            "anyOf": [
+              {
+                "maxLength": 72,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opcional. Si no viene, el servidor genera una segura. Se devuelve UNA sola vez en la respuesta.",
+            "title": "Contrasena"
+          },
           "correo": {
             "maxLength": 254,
             "title": "Correo",
@@ -4548,7 +4752,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Usuario"
+                  "$ref": "#/components/schemas/UsuarioCreado"
                 }
               }
             },
@@ -9607,7 +9811,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Perfil"
+                  "$ref": "#/components/schemas/PerfilPasajero"
                 }
               }
             },
@@ -9640,6 +9844,101 @@
           }
         ],
         "summary": "Obtener Perfil",
+        "tags": [
+          "Administración"
+        ]
+      },
+      "post": {
+        "description": "Completa el perfil de un pasajero recién registrado en Supabase Auth (el registro correo+contraseña lo hace la app).",
+        "operationId": "completar_perfil_pasajero",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerfilPasajeroCrear"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilPasajero"
+                }
+              }
+            },
+            "description": "El perfil ya existía (idempotente)"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilPasajero"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "VALIDACION"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTENTICADO"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "CONFLICTO_VERSION o CONFLICTO_NEGOCIO"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "ERROR_INTERNO"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Completar Perfil Pasajero",
         "tags": [
           "Administración"
         ]

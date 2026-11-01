@@ -7,7 +7,7 @@ from typing import Any, Protocol
 # Valores por defecto de docs/03 §6; se usan solo si la fila no existe en la BD.
 VALORES_POR_DEFECTO: dict[str, Any] = {
     "radio_busqueda_m": 800,
-    "radio_caminata_m": 500,
+    "radio_caminata_m": 1000,
     "radio_hito_m": 300,
     "velocidad_default_kmh": 20,
     "umbral_posicion_obsoleta_s": 60,

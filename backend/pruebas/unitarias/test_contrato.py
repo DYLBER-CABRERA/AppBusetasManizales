@@ -21,7 +21,7 @@ ENDPOINTS_CONTRATO = [
     ("get", "/rutas/{x}/horarios"), ("get", "/rutas/{x}/frecuencias"), ("get", "/rutas/{x}/busetas"),
     ("get", "/paraderos/cercanos"), ("get", "/paraderos/{x}/eta"), ("post", "/viajes/planificar"),
     ("get", "/busqueda/rutas"), ("get", "/busqueda/hitos"), ("get", "/hitos/{x}/rutas"),
-    ("get", "/avisos"), ("get", "/empresas"), ("get", "/yo"),
+    ("get", "/avisos"), ("get", "/empresas"), ("get", "/yo"), ("post", "/yo"),
     ("get", "/favoritos"), ("post", "/favoritos"), ("delete", "/favoritos/{x}"),
     ("get", "/alertas-llegada"), ("post", "/alertas-llegada"), ("delete", "/alertas-llegada/{x}"),
     ("get", "/mis-servicios"), ("get", "/busetas"), ("post", "/busetas"), ("put", "/busetas/{x}"),

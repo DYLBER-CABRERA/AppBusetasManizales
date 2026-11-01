@@ -185,3 +185,45 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 
 - **Causa de «no encuentra ruta» cerca de una ruta activa:** la planificación va de paradero a paradero (≤ `radio_caminata_m`, 500 m). En la Avenida Santander los paraderos de La Enea están a 653 y 809 m, así que el único paradero cercano es de otra ruta y el backend responde «No hay una ruta directa entre esos paraderos». La app enviaba bien la ubicación; el comportamiento es del backend (ver solicitud abierta).
 - **Cambio en la app (sin contrato nuevo):** si no hay opciones y el origen tiene coordenadas (Mi ubicación, punto del mapa o hito), «Viajar» consulta `GET /rutas/cercanas` y `GET /paraderos/cercanos?rutaId` y muestra «Rutas que pasan cerca de tu origen» con la distancia a la ruta, su paradero más cercano, **Ver ruta** y **¿Cuándo llega?**. Es una sugerencia opcional: si falla, solo se ve la respuesta principal. Añade aviso «solo se sube y se baja en paraderos».
+
+## 2026-10-31 · backend-dev · registro de pasajeros con perfil completo
+
+- **Decisión (resuelve la pregunta de `docs/solicitudes-entre-agentes.md`):** el registro en Supabase Auth lo hace la app móvil; el backend solo expone `POST /yo` para crear el perfil de pasajero. Se eligió `POST /yo` (mismo recurso que `GET /yo`) en vez de un endpoint nuevo.
+- **Autenticación sin perfil:** `PuertoAutenticacion.verificar_sesion` (nuevo) valida el token con `GET /auth/v1/user` y devuelve id y correo SIN exigir perfil (`verificar_token` sigue exigiéndolo y sin cambios, así el resto de la API no cambia). El correo sale del token, nunca del cuerpo.
+- **Esquema:** `perfil_usuario` solo tenía `nombre`; no tenía apellido ni celular. Se agrega la migración `0006_perfil_pasajero.sql` (NO aplicada): `apellido text`, `celular text` y `ck_perfil_celular`. `nombre` guarda el nombre; no se duplicó información.
+- **Comando para aplicarla** (desde `backend/`; simulacro sin `--aplicar`): `.venv\Scripts\python.exe scripts\aplicar_migracion.py 0006_perfil_pasajero.sql --aplicar`. Es idempotente. `verificar_bd.py --aplicar-migraciones` (BD limpia) también la aplica porque toma todos los `0*.sql`.
+- **`perfil()` no cambia** (lo usa cada petición autenticada): las columnas nuevas solo se leen en `perfil_completo`, que usa `POST /yo`. Así, un backend nuevo con la migración pendiente no rompe el login de nadie; solo falla `POST /yo`.
+- **Idempotencia:** `insert … on conflict (id) do nothing`; si ya existe, 200 con el existente. Un correo ya usado por otro perfil da 409 (índice único de correo).
+- **Celular:** móvil colombiano de 10 dígitos que empieza por 3, se guarda normalizado. No se aceptan teléfonos fijos ni otros países. Sin registros de correo, celular ni token en logs (hay prueba).
+- **`GET /yo` no devuelve aún nombre, apellido ni celular** (para no depender de la migración en cada inicio de sesión); si el equipo lo quiere, es un cambio pequeño tras aplicar 0006.
+
+## 2026-10-31 · backend-dev · GET /yo con nombre, apellido y celular
+
+- Con la migración 0006 aplicada, `GET /yo` usa `perfil_completo` y devuelve `nombre`, `apellido` y `celular` (la misma forma de `POST /yo`). La autenticación de cada petición sigue usando `perfil()` sin las columnas nuevas.
+
+## 2026-10-31 · backend-dev · planificación: busMin con el avance secuencial de cada pase
+
+- **Reproducción con las semillas** (`pruebas/unitarias/test_planificacion_semillas.py`, sin BD): con los GeoJSON, la proyección de un paradero por cercanía se equivoca en «Paradero Villamaría 4» (orden 6, está en la vuelta, pero se proyecta en la ida: 2 200 m en vez de 3 895 m). Antes: «Paradero Villamaría 4 → Villamaría» daba 2,5 min (debía ser 21,3) y «Villamaría → Paradero Villamaría 4» daba 21,3 min (debía ser 2,5). El caso «Paradero La Enea 2 → La Enea» (La Enea no repite tramos) da 6 536 m = **19,6 min** con el avance secuencial de las semillas; un valor de 2,8 min no sale de esos datos, así que si aparece en la app apunta a una BD con funciones SQL viejas (ver abajo).
+- **Cambio:** el planificador ya no pide el avance de un paradero suelto (`progreso_paradero`, que cae en proyección por cercanía si no encuentra el paradero y solo devuelve el primer pase) sino la secuencia completa (`progresos_paraderos_ruta` vía `RepositorioSeguimientoSql.progresos_de_ruta`) y toma el menor recorrido entre todos los pases del origen y del destino (`mejor_recorrido_m`). `calcular_tiempos` recibe el recorrido en metros. No cambia el SQL ni el esquema.
+- **Si la app sigue mostrando tiempos subestimados:** la BD puede tener la versión anterior de las funciones de 0003. Comparar (solo lectura): `.venv\Scripts\python.exe scripts\actualizar_bd.py --comparar`; aplicar (requiere autorización del usuario): `.venv\Scripts\python.exe scripts\actualizar_bd.py --aplicar`.
+- **Pendiente:** el avance de la BUSETA (ETA, alertas) sigue proyectándose por cercanía (`progreso_en_ruta`), ambiguo en tramos repetidos; no se tocó.
+
+## 2026-10-31 · backend-dev · planificación: motivo con código y alternativas cercanas
+
+- **Problema:** con paraderos cerca del origen pero de rutas que no llegan al destino, el motivo era «No hay una ruta directa…» sin contexto.
+- **Cambio aditivo y opcional:** `motivoCodigo` (4 valores) y `alternativas[]` (ruta + su paradero más cercano a cada punto, máx. 5 por lado). `paraderoMasCercano` ahora también se llena en `sin_ruta_directa` (el más cercano al origen). Sin cambios para clientes anteriores. Prueba con semillas: Av. Santander → Villamaría (500 m) da El Cable por el origen y Villamaría por el destino.
+
+## 2026-10-31 · backend-dev · radio de caminata del planificador: 500 m → 1000 m
+
+- **Constante/parámetro:** el radio es el parámetro global `radio_caminata_m` (ya existía en `parametro_global` desde B1 y en `VALORES_POR_DEFECTO` de `nucleo/parametros.py`). **Solo lo usa el planificador** (prueba que lo comprueba); no se comparte con otros cálculos. Siguen igual: `radio_busqueda_m` 800 (`/rutas/cercanas` y `/paraderos/cercanos`), `radio_hito_m` 300 (hitos), el radio de 500 m propio del bot, y la distancia de aviso de alertas (`distancia_aviso_llegada_m` 300). El ETA no usa radio.
+- **Cambio:** valor por defecto en código 500 → 1000 y migración `0007_radio_caminata_1000.sql` (NO aplicada) que actualiza la fila de la BD **solo si sigue en 500** (no pisa una edición del administrador). Rango permitido del parámetro: 100 a 2000. También se puede cambiar desde el panel (`PUT /admin/parametros/radio_caminata_m`, caché ≤ 60 s).
+- **Comando para el usuario** (desde `backend/`): `.venv\Scripts\python.exe scripts\aplicar_migracion.py 0007_radio_caminata_1000.sql --aplicar` (sin `--aplicar` solo muestra el SQL).
+- **Prueba con semillas (Av. Santander 5.0638, -75.4949 → hito La Enea):** a 500 m solo hay «Paradero El Cable 2» (205 m) cerca del origen → `sin_ruta_directa`, con alternativas El Cable (origen) y La Enea (destino). A 1000 m aparece «Paradero La Enea 1» (652 m) → opción por la ruta La Enea: caminata 8,2 min, espera 5,0, bus 25,2, total 38,4 min.
+
+## 2026-10-31 · backend-dev · alta de usuarios con contraseña (reemplaza la invitación)
+
+- **Cambio:** `POST /admin/usuarios` crea la cuenta con `POST /auth/v1/admin/users` (`email_confirm: true`, como `crear_usuarios_demo.py`) en vez de `/auth/v1/invite`, que fallaba por el límite del correo gratuito de Supabase. Reemplaza la decisión de B5 («invitación por correo»).
+- **Contraseña:** opcional en el cuerpo (8 a 72 caracteres); si falta, `secrets.token_urlsafe(12)` (16 caracteres). Se devuelve una sola vez en la respuesta 201 (`contrasena`), igual que la clave de fuentes GPS; no se guarda ni se registra. Compartirla es manual (prototipo).
+- **Limpieza:** si falla `perfil_usuario` tras crear la cuenta en Auth, se borra la cuenta (`DELETE /auth/v1/admin/users/{id}`, de mejor esfuerzo) y se propaga el error.
+- **Errores:** correo ya registrado (`email_exists`, `user_already_exists`, HTTP 409) → `409 CONFLICTO_NEGOCIO`; `weak_password` → `400 VALIDACION` (matiz sobre lo pedido: es un error del dato, no del servicio); cualquier otro fallo de Supabase → `503 SERVICIO_EXTERNO_NO_DISPONIBLE`.
+- **Sin cambios:** validación de rol y empresa, y que solo el administrador pueda llamarlo (el rol `pasajero` sigue permitido como antes).

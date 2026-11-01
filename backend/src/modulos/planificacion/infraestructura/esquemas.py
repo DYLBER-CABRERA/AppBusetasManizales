@@ -44,7 +44,23 @@ class OpcionViaje(EsquemaBase):
     total_min: float
 
 
+MotivoCodigo = Literal["sin_paraderos_origen", "sin_paraderos_destino", "sin_ruta_directa", "sin_servicio_en_horario"]
+
+
+class AlternativaCercana(EsquemaBase):
+    """Ruta que pasa cerca del origen o del destino, con su paradero más cercano a ese punto (sugerencia de alternativa)."""
+
+    lado: Literal["origen", "destino"]
+    ruta_id: UUID
+    ruta_nombre: str
+    paradero: ParaderoCercano
+
+
 class RespuestaPlanificacion(EsquemaBase):
     opciones: list[OpcionViaje]
     motivo: str | None = None
     paradero_mas_cercano: ParaderoCercano | None = None
+    motivo_codigo: MotivoCodigo | None = Field(default=None, description="Solo sin opciones; distingue el motivo")
+    alternativas: list[AlternativaCercana] = Field(
+        default_factory=list, description="Solo con motivoCodigo `sin_ruta_directa`: rutas que pasan junto al origen y al destino"
+    )

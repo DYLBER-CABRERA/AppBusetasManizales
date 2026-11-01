@@ -161,11 +161,12 @@ def test_asignar_y_retirar_servicio(cliente: TestClient, repos: Repositorios) ->
 # ---------- usuarios ----------
 
 
-def test_crear_usuario_jefe_exige_empresa_y_invita(cliente: TestClient, repos: Repositorios) -> None:
+def test_crear_usuario_jefe_exige_empresa_y_se_crea_con_contrasena(cliente: TestClient, repos: Repositorios) -> None:
     cuerpo = {"correo": "Nuevo@Sideral.example", "nombre": "Nuevo", "rol": "jefe_operaciones", "empresaId": SIDERAL}
     r = cliente.post("/api/v1/admin/usuarios", json=cuerpo, headers=ADM)
     assert r.status_code == 201 and r.json()["correo"] == "nuevo@sideral.example" and r.json()["empresaId"] == SIDERAL
-    assert repos.autenticacion.invitados == ["nuevo@sideral.example"]
+    assert [c for c, _ in repos.autenticacion.creados] == ["nuevo@sideral.example"]
+    assert len(r.json()["contrasena"]) >= 8 and repos.autenticacion.creados[0][1] == r.json()["contrasena"]
     assert cliente.post("/api/v1/admin/usuarios", json=cuerpo, headers=ADM).status_code == 409  # correo repetido
     sin_empresa = {**cuerpo, "correo": "a@b.example", "empresaId": None}
     assert cliente.post("/api/v1/admin/usuarios", json=sin_empresa, headers=ADM).status_code == 400

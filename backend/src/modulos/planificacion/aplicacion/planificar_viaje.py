@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 from uuid import UUID
 
-from modulos.planificacion.dominio.calculo import calcular_tiempos
+from modulos.planificacion.dominio.calculo import calcular_tiempos, mejor_recorrido_m
 from modulos.planificacion.dominio.puertos import (
     ProveedorHito,
     ProveedorHorarios,
@@ -17,6 +17,8 @@ from modulos.seguimiento import HorarioDia, motivo_fuera_de_horario
 from nucleo.errores import ErrorNoEncontrado
 from nucleo.parametros import PuertoParametros
 from nucleo.reloj import PuertoReloj
+
+MAX_ALTERNATIVAS_POR_LADO = 5
 
 
 class ProveedorTipoDia(Protocol):
@@ -52,10 +54,10 @@ class PlanificarViaje:
         cerca_d = await self._paraderos.paraderos_cercanos(dlat, dlng, radio, None)
         if not cerca_o:
             cercano = await self._paraderos.paradero_mas_cercano(olat, olng)
-            return self._sin_opciones(f"No hay paraderos a menos de {radio} m del origen.", cercano)
+            return self._sin_opciones("sin_paraderos_origen", f"No hay paraderos a menos de {radio} m del origen.", cercano)
         if not cerca_d:
             cercano = await self._paraderos.paradero_mas_cercano(dlat, dlng)
-            return self._sin_opciones(f"No hay paraderos a menos de {radio} m del destino.", cercano)
+            return self._sin_opciones("sin_paraderos_destino", f"No hay paraderos a menos de {radio} m del destino.", cercano)
 
         rutas_de = await self._plan.rutas_de_paraderos([p["paradero_id"] for p in cerca_o + cerca_d])
         ahora = self._reloj.ahora()
@@ -63,19 +65,48 @@ class PlanificarViaje:
         velocidad = await self._parametros.numero("velocidad_default_kmh")
         maximo = int(await self._parametros.numero("max_opciones_viaje"))
         opciones: list[dict[str, Any]] = []
-        comunes = {r for p in cerca_o for r in rutas_de.get(p["paradero_id"], ())} & {
-            r for p in cerca_d for r in rutas_de.get(p["paradero_id"], ())
-        }
+        por_origen = self._rutas_por_paradero_mas_cercano(cerca_o, rutas_de)
+        por_destino = self._rutas_por_paradero_mas_cercano(cerca_d, rutas_de)
+        comunes = set(por_origen) & set(por_destino)
         for ruta_id in sorted(comunes, key=str):
             opciones += await self._opciones_de_ruta(ruta_id, cerca_o, cerca_d, rutas_de, ahora, tipo_dia, velocidad)
         opciones.sort(key=lambda o: o["total_min"])
         if opciones:
-            return {"opciones": opciones[:maximo], "motivo": None, "paradero_mas_cercano": None}
-        return self._sin_opciones("No hay una ruta directa entre esos paraderos en este horario.", None)
+            return {"opciones": opciones[:maximo], "motivo": None, "paradero_mas_cercano": None, "motivo_codigo": None,
+                    "alternativas": []}
+        if comunes:
+            return self._sin_opciones(
+                "sin_servicio_en_horario", "No hay una ruta directa entre esos paraderos en este horario.", None
+            )
+        # hay paraderos cerca de ambos puntos, pero de rutas distintas: se sugieren las que pasan junto a cada uno
+        nombres = {r["id"]: r["nombre"] for r in await self._paraderos.resumenes(sorted({*por_origen, *por_destino}, key=str))}
+        alternativas = [
+            {"lado": lado, "ruta_id": ruta_id, "ruta_nombre": nombres.get(ruta_id, ""), "paradero": paradero}
+            for lado, mapa in (("origen", por_origen), ("destino", por_destino))
+            for ruta_id, paradero in sorted(mapa.items(), key=lambda par: par[1]["distancia_m"])[:MAX_ALTERNATIVAS_POR_LADO]
+            if ruta_id in nombres
+        ]
+        return self._sin_opciones(
+            "sin_ruta_directa",
+            "Hay paraderos cerca del origen y del destino, pero ninguna ruta los conecta directamente.",
+            cerca_o[0], alternativas,
+        )
 
     @staticmethod
-    def _sin_opciones(motivo: str, paradero: dict[str, Any] | None) -> dict[str, Any]:
-        return {"opciones": [], "motivo": motivo, "paradero_mas_cercano": paradero}
+    def _rutas_por_paradero_mas_cercano(cerca: list[dict], rutas_de: dict[UUID, set[UUID]]) -> dict[UUID, dict]:
+        """ruta → paradero más cercano al punto entre los de `cerca` (que ya vienen de menor a mayor distancia)."""
+        resultado: dict[UUID, dict] = {}
+        for p in sorted(cerca, key=lambda x: x["distancia_m"]):
+            for ruta_id in rutas_de.get(p["paradero_id"], ()):
+                resultado.setdefault(ruta_id, p)
+        return resultado
+
+    @staticmethod
+    def _sin_opciones(
+        codigo: str, motivo: str, paradero: dict[str, Any] | None, alternativas: list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
+        return {"opciones": [], "motivo": motivo, "paradero_mas_cercano": paradero, "motivo_codigo": codigo,
+                "alternativas": alternativas or []}
 
     async def _opciones_de_ruta(
         self, ruta_id: UUID, cerca_o: list[dict], cerca_d: list[dict], rutas_de: dict[UUID, set[UUID]], ahora: Any,
@@ -83,14 +114,24 @@ class PlanificarViaje:
     ) -> list[dict[str, Any]]:
         en_ruta_o = [p for p in cerca_o if ruta_id in rutas_de.get(p["paradero_id"], ())]
         en_ruta_d = [p for p in cerca_d if ruta_id in rutas_de.get(p["paradero_id"], ())]
-        pares = [(o, d) for o in en_ruta_o for d in en_ruta_d if o["paradero_id"] != d["paradero_id"]]
-        if not pares:
+        progresos = await self._progreso.progresos_de_ruta(ruta_id)
+        if not progresos:
             return []
-        po, pd = min(pares, key=lambda par: par[0]["distancia_m"] + par[1]["distancia_m"])
-        prog_o = await self._progreso.progreso_paradero(ruta_id, po["paradero_id"])
-        prog_d = await self._progreso.progreso_paradero(ruta_id, pd["paradero_id"])
-        if prog_o is None or prog_d is None:
+        longitud = progresos[0]["longitud_m"]
+        pasos: dict[UUID, list[float]] = {}
+        for fila in progresos:
+            pasos.setdefault(fila["paradero_id"], []).append(fila["progreso_m"])
+        validos = []
+        for o in en_ruta_o:
+            for d in en_ruta_d:
+                if o["paradero_id"] == d["paradero_id"] or o["paradero_id"] not in pasos or d["paradero_id"] not in pasos:
+                    continue
+                recorrido = mejor_recorrido_m(pasos[o["paradero_id"]], pasos[d["paradero_id"]], longitud)
+                if recorrido is not None:
+                    validos.append((o, d, recorrido))
+        if not validos:
             return []
+        po, pd, recorrido = min(validos, key=lambda par: par[0]["distancia_m"] + par[1]["distancia_m"])
         servicios = [s for s in await self._progreso.servicios_para_eta(ruta_id) if s["estado"] == "activo"]
         ids = [s["servicio_id"] for s in servicios]
         horarios = {h["servicio_id"]: h for h in await self._horarios.horarios_de(ids) if h["tipo_dia"] == tipo_dia}
@@ -108,10 +149,7 @@ class PlanificarViaje:
             horario = HorarioDia(h["primera_salida"], h["ultima_salida"], h["cierre"])
             if motivo_fuera_de_horario(horario, s["duracion_estandar_min"], ahora):
                 continue
-            t = calcular_tiempos(
-                po["distancia_m"], pd["distancia_m"], prog_o["progreso_m"], prog_d["progreso_m"], prog_o["longitud_m"],
-                velocidad, franja["minutos_max"],
-            )
+            t = calcular_tiempos(po["distancia_m"], pd["distancia_m"], recorrido, velocidad, franja["minutos_max"])
             opciones.append(
                 {
                     "tipo": "directa", "ruta_id": ruta_id, "servicio_id": s["servicio_id"], "paradero_origen": po,
