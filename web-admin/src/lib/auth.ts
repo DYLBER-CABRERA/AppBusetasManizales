@@ -3,7 +3,7 @@ import { supabaseConfigurado } from "./entorno";
 import { supabaseNavegador } from "./supabase";
 import type { components } from "./tipos-api";
 
-export type Perfil = components["schemas"]["Perfil"];
+export type Perfil = components["schemas"]["PerfilPasajero"];
 export type Rol = "pasajero" | "jefe_operaciones" | "secretaria_movilidad" | "administrador";
 
 /** Carpeta inicial de cada rol. */

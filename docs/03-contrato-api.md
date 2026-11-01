@@ -176,7 +176,7 @@ El cliente reconecta con espera creciente (1, 2, 4, 8 s, máx. 15 s) y, mientras
 
 ## 6. Parámetros globales usados (tabla `parametro_global`)
 
-`radio_busqueda_m` (800), `radio_caminata_m` (500), `radio_hito_m` (300), `velocidad_default_kmh` (20), `umbral_posicion_obsoleta_s` (60), `intervalo_refresco_cliente_s` (5), `distancia_aviso_llegada_m` (300), `enfriamiento_alerta_min` (10), `umbral_desvio_m` (100), `longitud_max_aviso` (500), `max_opciones_viaje` (3), `dias_max_rodamiento_adelante` (15), `rango_max_estadisticas_dias` (365), `caja_ciudad` (provisional, validar con el mapa). Se eliminan `max_filas_excel`, `tamano_max_excel_mb`, `radio_transbordo_m` y `retencion_eventos_dias` (se descartan con el recorte de BD).
+`radio_busqueda_m` (800), `radio_caminata_m` (1000; antes 500), `radio_hito_m` (300), `velocidad_default_kmh` (20), `umbral_posicion_obsoleta_s` (60), `intervalo_refresco_cliente_s` (5), `distancia_aviso_llegada_m` (300), `enfriamiento_alerta_min` (10), `umbral_desvio_m` (100), `longitud_max_aviso` (500), `max_opciones_viaje` (3), `dias_max_rodamiento_adelante` (15), `rango_max_estadisticas_dias` (365), `caja_ciudad` (provisional, validar con el mapa). Se eliminan `max_filas_excel`, `tamano_max_excel_mb`, `radio_transbordo_m` y `retencion_eventos_dias` (se descartan con el recorte de BD).
 
 ## 7. Precisiones del esqueleto (B0)
 
@@ -257,7 +257,7 @@ Ya responden con lógica real: `POST|PUT|DELETE /rutas`, `POST /rutas/{id}/servi
 - **`DELETE /rutas/{id}?version&confirmar?`:** con turnos futuros programados (rodamientos no anulados de hoy en adelante) y sin `confirmar=true` → `409` con `detalles.turnosFuturos[{turnoId, fecha, horaSalida, buseta}]` (máx. 50); con `confirmar=true`, baja lógica de la ruta y de sus servicios y cancelación de esos turnos (función SQL `dar_de_baja_ruta`).
 - **`POST /rutas/{id}/servicios`:** la empresa ya opera la ruta → `409`; ya la opera otra empresa y no viene `confirmarCompartida=true` → `409`. **`DELETE /servicios/{id}?version&confirmar?`:** igual que la ruta, con sus turnos futuros; el servicio queda en `baja`.
 - **Paraderos:** `GET /paraderos` lista los activos. Duplicado = mismo nombre (sin tildes ni mayúsculas) a menos de 20 m de otro activo → `409` (al crear y al editar). `DELETE /paraderos/{id}?version&confirmar?`: si lo usan rutas activas y no hay `confirmar=true` → `409` con `detalles.rutas[{rutaId, nombre}]`; la baja es lógica y **no quita el paradero de las rutas que ya lo tenían** (supuesto: la Secretaría debe editar esas rutas).
-- **Usuarios:** `POST /admin/usuarios` invita a la cuenta por Supabase Auth (`/auth/v1/invite`, con la clave de servicio, solo en el backend): el usuario recibe un correo para fijar su contraseña (supuesto: el contrato no define contraseñas). El correo se guarda en minúsculas; repetido → `409`; `jefe_operaciones` exige `empresaId` y los demás roles no pueden tenerlo (`400`). `PUT` cambia nombre, rol, empresa y `activo`; **no se puede quitar el rol ni desactivar al último administrador activo** (`409`). `GET /admin/usuarios?correo=` filtra por subcadena. `GET /admin/roles` devuelve los 4 roles con una lista informativa de permisos.
+- **Usuarios:** `POST /admin/usuarios` crea la cuenta directamente en Supabase Auth con contraseña (ver §20; ya no se invita por correo). El correo se guarda en minúsculas; repetido → `409`; `jefe_operaciones` exige `empresaId` y los demás roles no pueden tenerlo (`400`). `PUT` cambia nombre, rol, empresa y `activo`; **no se puede quitar el rol ni desactivar al último administrador activo** (`409`). `GET /admin/usuarios?correo=` filtra por subcadena. `GET /admin/roles` devuelve los 4 roles con una lista informativa de permisos.
 - **Empresas:** nombre único sin importar mayúsculas entre las activas (`409`); `PUT` con `version`.
 - **Credenciales GPS:** la clave (aleatoria, 43 caracteres) solo aparece en la respuesta de creación; en BD queda su SHA-256. `DELETE` revoca (`activa=false`); una clave revocada deja de servir en `POST /ingesta/posiciones`.
 - **Parámetros:** `PUT /admin/parametros/{clave}` exige número entre `minimo` y `maximo` (`400`); `caja_ciudad` exige un objeto con las mismas claves. La caché de lectura (≤ 60 s) puede tardar ese tiempo en reflejar el cambio. Clave desconocida → `404`; versión desfasada → `409`.
@@ -289,3 +289,77 @@ El bot no agrega endpoints REST: es un adaptador que llama a los mismos casos de
 - **Estado final:** todos los endpoints de §2 y los WebSockets de §4 tienen lógica; no queda ningún `501`. `contrato/openapi.json` se regenera con `backend/scripts/exportar_openapi.py` y una prueba falla si se desactualiza.
 - **Códigos de error vigentes:** `VALIDACION` 400, `NO_AUTENTICADO` 401, `NO_AUTORIZADO` 403, `NO_ENCONTRADO` 404, `CONFLICTO_VERSION` 409, `CONFLICTO_NEGOCIO` 409, `SERVICIO_EXTERNO_NO_DISPONIBLE` 503, `ERROR_INTERNO` 500 (`CONFLICTO_NEGOCIO` lleva la lista en `detalles`: `turnosAfectados`, `advertencias`, `turnosFuturos` o `rutas`; `CONFLICTO_VERSION` lleva `versionActual`).
 - **Limitaciones conocidas del prototipo:** una sola instancia del servidor (WebSockets, episodios de desvío, estado del bot y del simulador viven en memoria); el avance de una buseta sobre tramos que el circuito recorre dos veces es ambiguo; `senal_perdida` por WebSocket no se emite (usar `sin_senal` de `GET /rutas/{id}/busetas`); el bot no se probó contra la red de Telegram.
+
+## 17. Registro de pasajeros: `POST /yo`
+
+El registro correo+contraseña lo hace la app móvil **directamente contra Supabase Auth** (con la `anon key`). Después llama a este endpoint, con el `access_token` de la cuenta recién creada, para crear su perfil de pasajero.
+
+`POST /api/v1/yo` · `Authorization: Bearer <access_token de Supabase>` · `Content-Type: application/json`
+
+```json
+{ "nombre": "Ana María", "apellido": "Pérez", "celular": "+57 300-123 4567" }
+```
+
+- **201** perfil creado; **200** el perfil ya existía (se devuelve el existente, sin duplicar ni sobrescribir; el cuerpo enviado se ignora). Misma forma en ambos:
+
+```json
+{ "usuarioId": "…", "correo": "ana@correo.example", "rol": "pasajero", "empresaId": null, "empresaNombre": null,
+  "nombre": "Ana María", "apellido": "Pérez", "celular": "3001234567" }
+```
+  `nombre`, `apellido` y `celular` pueden ser `null` en cuentas anteriores a esta función (las de demo).
+- **400 `VALIDACION`**: `nombre` o `apellido` vacíos o de más de 60 caracteres; `celular` que no sea un móvil colombiano de 10 dígitos que empiece por 3. El campo con problema viene en `detalles` (`[{campo, motivo}]`).
+- **401 `NO_AUTENTICADO`**: sin token, token inválido o vencido, o perfil existente desactivado.
+- **409 `CONFLICTO_NEGOCIO`**: el correo ya pertenece a otro perfil con distinto id (caso raro).
+- **Reglas:** nombre y apellido se recortan y colapsan los espacios; el celular admite `+57`, `57`, espacios, guiones, puntos y paréntesis y se **normaliza a 10 dígitos** (`+57 300-123 4567` → `3001234567`). El correo sale del token (no se envía). **El rol siempre es `pasajero`**: cualquier `rol` o `empresaId` del cuerpo se ignora.
+- **Por qué `POST /yo` y no un endpoint nuevo:** `/yo` es "el perfil de quien está logueado"; `GET` lo lee y `POST` lo crea la primera vez, sin inventar rutas. `GET /yo` sigue exigiendo que el perfil exista (si no, `401`), por eso la app debe llamar a `POST /yo` justo después de registrarse o iniciar sesión por primera vez.
+- **Requiere la migración `0006_perfil_pasajero.sql`** (agrega `apellido` y `celular` a `perfil_usuario`, con `celular` restringido a `^3[0-9]{9}$`). Sin ella, `POST /yo` responde `500`.
+
+**Actualización:** `GET /yo` devuelve ahora la misma forma que `POST /yo`: además de `usuarioId, correo, rol, empresaId, empresaNombre` trae `nombre`, `apellido` y `celular` (`null` en cuentas demo o sin datos). `empresaId` y `empresaNombre` siguen viniendo solo para el jefe. Requiere la migración 0006 (ya aplicada en la BD de desarrollo).
+
+## 18. Planificación: tiempo en bus con el avance secuencial (corrección)
+
+`busMin` de `POST /viajes/planificar` sale del **avance secuencial** de cada parada (función SQL `progresos_paraderos_ruta`, la misma regla de `progreso_paradero`): recorrido = `(avance destino − avance origen) mod longitud del circuito`, dividido por `velocidad_default_kmh`. Si la ruta pasa **dos veces** por un paradero (ida y vuelta por la misma vía, como Villamaría) se prueban todos los pases y se toma el de menor recorrido; dos paraderos distintos nunca dan un viaje de ~0 m (se descartan recorridos < 1 m). Sin cambios en el esquema de la respuesta.
+
+## 19. Planificación: motivo con código y alternativas (aditivo)
+
+`POST /viajes/planificar` agrega dos campos **opcionales** a la respuesta (los clientes anteriores los ignoran sin problema); `motivo` y `paraderoMasCercano` siguen igual.
+
+- `motivoCodigo` (`null` si hay opciones): `sin_paraderos_origen` · `sin_paraderos_destino` · `sin_ruta_directa` · `sin_servicio_en_horario`.
+  - `sin_paraderos_origen` / `sin_paraderos_destino`: ningún paradero a ≤ `radio_caminata_m` de ese punto; `paraderoMasCercano` es el más cercano a ese punto.
+  - `sin_ruta_directa`: hay paraderos cerca del origen y del destino, pero **ninguna ruta pasa por ambos**. `paraderoMasCercano` es el paradero más cercano al origen y `alternativas` lista las rutas que sí pasan cerca de cada punto.
+  - `sin_servicio_en_horario`: hay rutas que conectan, pero ningún servicio activo opera ahora (horario o frecuencia). `alternativas: []`.
+- `alternativas`: `[ { "lado": "origen"|"destino", "rutaId": "…", "rutaNombre": "El Cable", "paradero": { "paraderoId", "nombre", "lat", "lng", "distanciaM" } } ]` — una por ruta y lado, con el paradero de esa ruta más cercano al punto; ordenadas por `distanciaM` y máximo 5 por lado. Solo viene con `sin_ruta_directa`.
+
+Ejemplo (sin ruta directa):
+```json
+{ "opciones": [], "motivoCodigo": "sin_ruta_directa",
+  "motivo": "Hay paraderos cerca del origen y del destino, pero ninguna ruta los conecta directamente.",
+  "paraderoMasCercano": { "paraderoId": "…", "nombre": "Paradero El Cable 2", "lat": 5.0632, "lng": -75.4966, "distanciaM": 205.0 },
+  "alternativas": [
+    { "lado": "origen",  "rutaId": "…", "rutaNombre": "El Cable",   "paradero": { "paraderoId": "…", "nombre": "Paradero El Cable 2", "lat": 5.0632, "lng": -75.4966, "distanciaM": 205.0 } },
+    { "lado": "destino", "rutaId": "…", "rutaNombre": "Villamaría", "paradero": { "paraderoId": "…", "nombre": "Villamaría", "lat": 5.045, "lng": -75.5151, "distanciaM": 90.0 } } ] }
+```
+El texto de `motivo` no debe usarse para decidir lógica: usar `motivoCodigo`.
+
+## 20. Alta de usuarios por el administrador: contraseña (reemplaza la invitación por correo)
+
+`POST /api/v1/admin/usuarios` (solo administrador) ya no usa `/auth/v1/invite` (fallaba con «Email address is invalid» sin SMTP propio). Crea la cuenta con la API Admin de Supabase (`POST {SUPABASE_URL}/auth/v1/admin/users` con `email`, `password` y `email_confirm: true`, con la clave de servicio, solo en el backend) y luego la fila de `perfil_usuario`.
+
+Cuerpo de entrada:
+```json
+{ "correo": "ana@empresa.example", "nombre": "Ana Gómez", "rol": "jefe_operaciones", "empresaId": "…", "contrasena": "Clave-segura-1" }
+```
+- `contrasena` es **opcional**, de 8 a 72 caracteres. Si no viene, el servidor genera una segura de 16 caracteres.
+- El resto no cambia: `rol` ∈ `pasajero|jefe_operaciones|secretaria_movilidad|administrador`; `jefe_operaciones` exige `empresaId` y los demás roles no pueden tenerlo; el correo se guarda en minúsculas.
+
+Respuesta **201** (el `Usuario` de siempre más `contrasena`):
+```json
+{ "id": "…", "correo": "ana@empresa.example", "nombre": "Ana Gómez", "rol": "jefe_operaciones", "empresaId": "…",
+  "activo": true, "version": 1, "contrasena": "Clave-segura-1" }
+```
+- **`contrasena` se devuelve UNA sola vez**, solo en esta respuesta (la escriba el administrador o la genere el servidor). No se guarda en el backend, no se vuelve a devolver (ni `GET /admin/usuarios`, ni `PUT`) y no se registra en logs. El administrador debe compartirla en privado; el panel debe mostrarla con esa advertencia.
+- **400 `VALIDACION`**: correo inválido, rol inválido, empresa faltante o sobrante, contraseña fuera de 8 a 72 caracteres (el mensaje nunca repite la contraseña), o contraseña rechazada por Supabase como débil.
+- **401 / 403**: sin sesión / rol distinto de administrador (nada llega a Supabase).
+- **404 `NO_ENCONTRADO`**: la `empresaId` no existe.
+- **409 `CONFLICTO_NEGOCIO`**: el correo ya está registrado (en perfiles o en Supabase Auth).
+- **503 `SERVICIO_EXTERNO_NO_DISPONIBLE`**: Supabase no responde, rechazó la creación (p. ej. correo inválido para Supabase) o falta `SUPABASE_SERVICE_ROLE_KEY`. Si Supabase creó la cuenta pero falla el perfil, el backend intenta borrar la cuenta recién creada para no dejarla huérfana y responde `500`.

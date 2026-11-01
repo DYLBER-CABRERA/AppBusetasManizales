@@ -156,3 +156,11 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Resueltos:** editor de `caja_ciudad` (cuatro bordes; valida número, rango de latitud/longitud y orden mín < máx; envía el objeto con `version`); edición de busetas y conductores con `PUT` (número lateral, placa, código, nombre, estado; un campo vacío no se modifica, supuesto del contrato §14; "Dar de baja" los quita de la lista); **Anular rodamiento** (borrador o publicado) con modal de confirmación y manejo del 409 de versión.
 - **Pruebas:** `caja-ciudad.test.ts` (5). Total: 26 pruebas.
 - **Pendientes que NO se pueden resolver desde web-admin** (requieren un cambio de contrato, ya registrados en `docs/solicitudes-entre-agentes.md` como abiertos): lectura por el jefe/Secretaría de `dias_max_rodamiento_adelante` y `longitud_max_aviso` (el panel usa 15 y 500 fijos y el backend valida) y `version` en `RutaResumen`/`ServicioResumen` (se resuelve con llamadas extra). Ninguno bloquea el prototipo.
+
+## web-admin: alta de usuarios con contraseña (contrato §20, backend 3026c04)
+- `contrato/openapi.json` y `docs/03-contrato-api.md` se tomaron tal cual de `3026c04` (feat/backend-base) y los tipos se regeneraron con `npm run tipos`. El esquema `Perfil` ahora se llama `PerfilPasajero` (superconjunto); se actualizó `lib/auth.ts`.
+- «Crear cuenta»: ya no invita por correo. Campo **Contraseña (opcional)**, 8–72 caracteres (validado en el cliente solo si se escribe); vacío = la genera el backend.
+- La contraseña devuelta en el 201 se muestra una sola vez en `ModalContrasenaNueva`, con el mismo patrón que la clave GPS (se extrajo `ModalSecretoUnico`: no cierra con Esc, clic fuera ni otras teclas; «Cerrar» tras copiar o confirmar). Vive solo en estado del componente: no entra a la caché de consultas ni al almacenamiento; se llama `guardar.reset()` al recibirla.
+- Errores: 400 con «contraseña» en el mensaje (incluida la débil según Supabase) → error del campo contraseña; 409 → error del campo correo; 404 → «La empresa elegida ya no existe»; 503 → mensaje genérico con **Reintentar**; 403 → mensaje del backend.
+- Supuesto: el backend no distingue con un código el 400 de contraseña, así que se reconoce por la palabra «contrase» en el mensaje.
+- Sin dependencias nuevas. 29 pruebas.
