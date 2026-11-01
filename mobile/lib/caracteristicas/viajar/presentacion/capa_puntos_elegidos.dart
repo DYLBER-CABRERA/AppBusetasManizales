@@ -15,15 +15,21 @@ class CapaPuntosElegidos extends ConsumerWidget {
     final estado = ref.watch(viajarProvider);
     return MarkerLayer(markers: [
       for (final (etiqueta, lugar) in [('Origen', estado.origen), ('Destino', estado.destino)])
-        if (lugar != null && lugar.tipo == TipoLugar.mapa && lugar.punto != null)
+        if (lugar != null && lugar.tipo != TipoLugar.ubicacion && lugar.punto != null)
           Marker(
             point: lugar.punto!,
-            width: 72,
+            width: lugar.tipo == TipoLugar.hito ? 150 : 72,
             height: 72,
             alignment: Alignment.topCenter,
             child: Semantics(
-              label: '$etiqueta elegido en el mapa',
-              child: _PinElegido(etiqueta: etiqueta),
+              label: lugar.tipo == TipoLugar.hito
+                  ? '$etiqueta: ${lugar.nombre}'
+                  : '$etiqueta elegido en el mapa',
+              child: _PinElegido(
+                etiqueta: lugar.tipo == TipoLugar.hito ? '$etiqueta · ${lugar.nombre}' : etiqueta,
+                esOrigen: etiqueta == 'Origen',
+                esHito: lugar.tipo == TipoLugar.hito,
+              ),
             ),
           ),
     ]);
@@ -35,13 +41,15 @@ const _colorOrigen = Color(0xFF6A1B9A);
 const _colorDestino = Color(0xFFC62828);
 
 class _PinElegido extends StatelessWidget {
-  const _PinElegido({required this.etiqueta});
+  const _PinElegido({required this.etiqueta, required this.esOrigen, required this.esHito});
 
   final String etiqueta;
+  final bool esOrigen;
+  final bool esHito;
 
   @override
   Widget build(BuildContext context) {
-    final tinta = etiqueta == 'Origen' ? _colorOrigen : _colorDestino;
+    final tinta = esOrigen ? _colorOrigen : _colorDestino;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -50,10 +58,18 @@ class _PinElegido extends StatelessWidget {
           decoration: BoxDecoration(color: tinta, borderRadius: BorderRadius.circular(8)),
           child: Text(
             etiqueta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
           ),
         ),
-        Icon(Icons.location_on, size: 38, color: tinta, shadows: const [Shadow(blurRadius: 4, color: Colors.black38)]),
+        // Hito conocido: bandera; punto libre del mapa: pin.
+        Icon(
+          esHito ? Icons.flag : Icons.location_on,
+          size: 38,
+          color: tinta,
+          shadows: const [Shadow(blurRadius: 4, color: Colors.black38)],
+        ),
       ],
     );
   }

@@ -57,4 +57,17 @@ void main() {
     expect(find.text('Destino'), findsOneWidget);
     expect(find.byType(PuntoUsuario), findsOneWidget);
   });
+
+  testWidgets('un hito elegido como origen también se marca, con bandera y su nombre', (tester) async {
+    await _abrirFicha(tester, ubicacion: const LatLng(5.0689, -75.5174));
+
+    final contenedor = ProviderScope.containerOf(tester.element(find.byType(CapaPuntosElegidos)));
+    contenedor.read(viajarProvider.notifier).elegirOrigen(
+          const LugarViaje.hito(id: 'h1', nombre: 'Catedral', punto: LatLng(5.0689, -75.5174)),
+        );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Origen · Catedral'), findsOneWidget);
+    expect(find.byIcon(Icons.flag), findsOneWidget);
+  });
 }
