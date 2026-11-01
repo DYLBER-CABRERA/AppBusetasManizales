@@ -70,4 +70,16 @@ void main() {
     expect(find.text('Origen · Catedral'), findsOneWidget);
     expect(find.byIcon(Icons.flag), findsOneWidget);
   });
+
+  testWidgets('al tocar un paradero del mini mapa se muestra su nombre completo', (tester) async {
+    await _abrirFicha(tester);
+    expect(find.text('Paradero 1 · Terminal'), findsNothing);
+
+    await tester.tap(find.byWidgetPredicate(
+      (w) => w is Semantics && w.properties.label == 'Paradero Terminal',
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paradero 1 · Terminal'), findsOneWidget);
+  });
 }

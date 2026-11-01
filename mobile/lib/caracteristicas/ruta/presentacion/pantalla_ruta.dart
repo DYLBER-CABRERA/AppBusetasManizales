@@ -168,6 +168,7 @@ class _MiniMapa extends ConsumerStatefulWidget {
 
 class _MiniMapaState extends ConsumerState<_MiniMapa> {
   bool _verNombres = false;
+  ParadaEnRuta? _seleccionado;
 
   void _alMover(MapCamera camara, bool _) {
     final ver = camara.zoom >= _zoomEtiquetasParaderos;
@@ -188,6 +189,7 @@ class _MiniMapaState extends ConsumerState<_MiniMapa> {
               ? CameraFit.coordinates(coordinates: puntos, padding: const EdgeInsets.all(28))
               : null,
           onPositionChanged: _alMover,
+          onTap: (_, _) => setState(() => _seleccionado = null),
           interactionOptions: const InteractionOptions(
             flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom,
           ),
@@ -199,15 +201,39 @@ class _MiniMapaState extends ConsumerState<_MiniMapa> {
             for (final p in detalle.paraderos)
               Marker(
                 point: p.punto,
-                width: _verNombres ? 120 : 16,
-                height: _verNombres ? 40 : 16,
+                width: _verNombres ? 120 : 44,
+                height: _verNombres ? 44 : 44,
                 alignment: _verNombres ? Alignment.topCenter : Alignment.center,
-                child: Semantics(
-                  label: 'Paradero ${p.nombre}',
-                  child: _MarcaParadero(nombre: p.nombre, color: color, verNombre: _verNombres),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _seleccionado = p),
+                  child: Semantics(
+                    button: true,
+                    label: 'Paradero ${p.nombre}',
+                    child: Align(
+                      alignment: _verNombres ? Alignment.topCenter : Alignment.center,
+                      child: _MarcaParadero(nombre: p.nombre, color: color, verNombre: _verNombres),
+                    ),
+                  ),
                 ),
               ),
           ]),
+          if (_seleccionado != null)
+            MarkerLayer(markers: [
+              Marker(
+                point: _seleccionado!.punto,
+                width: 220,
+                height: 90,
+                alignment: Alignment.topCenter,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _GloboParadero(parada: _seleccionado!),
+                  ),
+                ),
+              ),
+            ]),
           const CapaPuntosElegidos(),
           CapaUbicacionUsuario(punto: ubicacion),
           MarcadoresBusetas(busetas: widget.busetas),
@@ -215,6 +241,32 @@ class _MiniMapaState extends ConsumerState<_MiniMapa> {
       ),
     );
   }
+}
+
+/// Nombre completo del paradero tocado, sin truncar.
+class _GloboParadero extends StatelessWidget {
+  const _GloboParadero({required this.parada});
+
+  final ParadaEnRuta parada;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        liveRegion: true,
+        label: 'Paradero ${parada.orden}: ${parada.nombre}',
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          elevation: 4,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Text(
+              'Paradero ${parada.orden} · ${parada.nombre}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      );
 }
 
 class _MarcaParadero extends StatelessWidget {

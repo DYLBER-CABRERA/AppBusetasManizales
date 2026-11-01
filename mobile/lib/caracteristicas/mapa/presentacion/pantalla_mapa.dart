@@ -99,9 +99,16 @@ class _PantallaMapaState extends ConsumerState<PantallaMapa> {
                     point: LatLng(paradero.lat, paradero.lng),
                     width: 44,
                     height: 44,
-                    child: Semantics(
-                      label: 'Paradero más cercano: ${paradero.nombre}',
-                      child: Icon(Icons.place, size: 36, color: Theme.of(context).colorScheme.primary),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(SnackBar(content: Text('Paradero más cercano: ${paradero.nombre}'))),
+                      child: Semantics(
+                        button: true,
+                        label: 'Paradero más cercano: ${paradero.nombre}',
+                        child: Icon(Icons.place, size: 36, color: Theme.of(context).colorScheme.primary),
+                      ),
                     ),
                   ),
                 if (punto != null)
