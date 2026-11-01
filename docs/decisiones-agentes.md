@@ -123,6 +123,49 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Parámetros y fuentes GPS (PENDIENTE, datos de ejemplo hasta B5):** `src/lib/mocks-admin.ts`. Los mínimos y máximos de ejemplo son inventados salvo «50 a 2000» de la distancia de aviso; los reales los manda el backend (`minimo`/`maximo`). La clave de una fuente nunca se guarda: vive en memoria mientras el modal está abierto (sin Esc para cerrarlo por accidente) y se borra de la caché de la mutación.
 - **`Modal`** admite `sinEscape`.
 
+
+## 2026-10-28 · web-admin-dev · integración con el backend completo (B5 a B8)
+
+- **Datos de ejemplo eliminados:** se borraron `mocks.ts`, `mocks-jefe.ts` y `mocks-admin.ts`, el parámetro `ejemplo` de `consultar`, la sesión de ejemplo (cookie y modo de login) y `NEXT_PUBLIC_USAR_MOCKS`. Ningún endpoint del contrato responde 501. El login exige Supabase configurado.
+- **`empresaId`** ya es parámetro tipado del contrato (§12). El middleware de `src/lib/api.ts` lo agrega solo cuando el administrador eligió empresa y solo a las rutas del jefe y a `PUT /servicios/{id}/horarios|frecuencias`.
+- **Parámetros:** `caja_ciudad` (objeto, sin mínimo ni máximo) se muestra de solo lectura (`PENDIENTE(decisión)`: editor). La pantalla avisa que un cambio tarda hasta 60 s (caché del backend). Fuentes GPS solo lista empresas en estado `activo`.
+
+## 2026-10-28 · web-admin-dev · W3 Secretaría de Movilidad
+
+- **Rutas:** tarjetas desde `GET /rutas`; registrar con paraderos en orden (lista + mapa; tocar un paradero del mapa lo agrega o quita) y empresas con códigos opcionales; editar con `version` (`GET /rutas/{id}`, sin caché para partir siempre de la versión vigente). Más de una empresa sin `confirmarCompartida` → 409 → modal «Ruta compartida». Eliminar: confirmación y, si hay turnos futuros (`detalles.turnosFuturos`), segundo modal con la lista y `confirmar=true`. `RutaResumen` no trae `version`: se pide a `GET /rutas/{id}` al eliminar y, para quitar una empresa, a `GET /rutas/{id}/horarios` (versión del servicio).
+- **Asignar y quitar empresa** por ruta (`POST /rutas/{id}/servicios`, `DELETE /servicios/{id}`): se agregó porque BR-04 asigna rutas a cada empresa. Asignar a una ruta que ya opera otra empresa muestra el modal de ruta compartida.
+- **Paraderos:** mapa para fijar la ubicación y editar tocando un paradero; el duplicado (409) se muestra como «Ya existe un paradero llamado X a menos de 20 m…» (el backend no devuelve la distancia exacta); la baja de uno usado por rutas lista `detalles.rutas` y pide confirmar.
+- **Movilidad:** formulario con tipo, título, mensaje, rutas y paraderos afectados y vigencia (hora de Bogotá, -05:00); lista los avisos `movilidad` vigentes con **Retirar**. El contador de caracteres usa 500 fijo (`PENDIENTE`: la Secretaría no puede leer `longitud_max_aviso`).
+
+## 2026-10-28 · web-admin-dev · modal de la clave GPS y pruebas
+
+- **Defecto corregido:** el modal de la clave nueva se cerraba con el segundo Esc (Chromium cierra un `<dialog>` cuyo `cancel` se canceló sin avisar otra vez). `Modal` tiene ahora la opción `obligatorio` (reemplaza `sinEscape`): cancela `keydown` de Esc, cancela `cancel` y, si el navegador lo cierra igualmente, lo reabre. El clic fuera no lo cierra. `ModalClaveNueva` solo se cierra con el botón «Cerrar», habilitado tras copiar la clave o marcar «Ya guardé la clave en un lugar seguro» (por si el portapapeles falla). El foco va al botón Copiar (`data-foco-inicial`); los ids de título usan `useId`.
+- **Pruebas (dependencias de desarrollo, MIT, fuera de la lista de web-admin/CLAUDE.md §2):** `vitest` 3.2.7 (la 5.x exige Node 22), `jsdom` 26.1.0, `@testing-library/react` 16.3.3, `@testing-library/dom` 10.4.2, `@testing-library/user-event` 14.6.8. `npm test`. `npm audit` avisa de vulnerabilidades solo en el servidor de desarrollo de vitest; `npm audit --omit=dev` da 0. Limitación: jsdom no reproduce el cierre real de Chromium; la prueba simula el segundo Esc con `dialog.close()`. Hay que verificar a mano en el navegador.
+
+## 2026-10-29 · web-admin-dev · W4
+
+- **Jefe:** `/jefe/horarios` (pestañas Horarios, Frecuencias, Busetas y conductores): editor por tipo de día con las validaciones de `src/lib/horarios.ts` (probadas con vitest): primera ≤ última salida, cierre ≥ última salida, fin > inicio, mín ≤ máx, franjas sin solape (`24:00` permitido como fin). Un día sin marcar queda «Información pendiente de actualización». Cada PUT incrementa la `version` del servicio: el editor toma siempre la última cargada y, tras guardar, se vuelven a pedir horarios y frecuencias. Alta de busetas y conductores solamente (no edición). `/jefe/avisos`: el jefe debe elegir al menos una ruta (contrato §11) y ve solo los avisos `empresa` de su empresa; el administrador entrando ahí es dirigido a `/admin/avisos`. `/jefe/uso`: barras por día (recharts, sin SSR, con tabla alternativa), tablas por ruta y por tipo; el administrador pasa la empresa elegida como `empresaId`.
+- **Administrador:** `/admin/usuarios` (búsqueda por correo, crear con invitación por correo, editar rol, empresa —solo jefe—, activo; 409 al quitar el rol al último administrador), `/admin/empresas` (crear, editar nombre y estado con `version`), `/admin/avisos` (origen `aplicativo`, lista todos los avisos vigentes y permite retirar cualquiera; el máximo de caracteres sale de `longitud_max_aviso`).
+- **PENDIENTE(decisión):** el jefe sigue usando 500 caracteres fijos para avisos (no puede leer el parámetro); edición de busetas y conductores; editor de `caja_ciudad`.
+
+## web-admin W5 (pulido)
+- Se agregan límites de error de Next (`error.tsx` global y del panel, `not-found.tsx`) para que un fallo de render no deje la pantalla en blanco. Sin dependencias nuevas.
+- Auditoría: sin `console.*`, sin datos de ejemplo residuales, foco visible global, 401 → /login, estados cargando/vacío/error presentes en todas las pantallas.
+- PENDIENTE (sin cambio): `dias_max_rodamiento_adelante` y `longitud_max_aviso` fijos para el jefe; edición de busetas/conductores; editor de `caja_ciudad`.
+
+## web-admin W5 (cierre)
+- **Resueltos:** editor de `caja_ciudad` (cuatro bordes; valida número, rango de latitud/longitud y orden mín < máx; envía el objeto con `version`); edición de busetas y conductores con `PUT` (número lateral, placa, código, nombre, estado; un campo vacío no se modifica, supuesto del contrato §14; "Dar de baja" los quita de la lista); **Anular rodamiento** (borrador o publicado) con modal de confirmación y manejo del 409 de versión.
+- **Pruebas:** `caja-ciudad.test.ts` (5). Total: 26 pruebas.
+- **Pendientes que NO se pueden resolver desde web-admin** (requieren un cambio de contrato, ya registrados en `docs/solicitudes-entre-agentes.md` como abiertos): lectura por el jefe/Secretaría de `dias_max_rodamiento_adelante` y `longitud_max_aviso` (el panel usa 15 y 500 fijos y el backend valida) y `version` en `RutaResumen`/`ServicioResumen` (se resuelve con llamadas extra). Ninguno bloquea el prototipo.
+
+## web-admin: alta de usuarios con contraseña (contrato §20, backend 3026c04)
+- `contrato/openapi.json` y `docs/03-contrato-api.md` se tomaron tal cual de `3026c04` (feat/backend-base) y los tipos se regeneraron con `npm run tipos`. El esquema `Perfil` ahora se llama `PerfilPasajero` (superconjunto); se actualizó `lib/auth.ts`.
+- «Crear cuenta»: ya no invita por correo. Campo **Contraseña (opcional)**, 8–72 caracteres (validado en el cliente solo si se escribe); vacío = la genera el backend.
+- La contraseña devuelta en el 201 se muestra una sola vez en `ModalContrasenaNueva`, con el mismo patrón que la clave GPS (se extrajo `ModalSecretoUnico`: no cierra con Esc, clic fuera ni otras teclas; «Cerrar» tras copiar o confirmar). Vive solo en estado del componente: no entra a la caché de consultas ni al almacenamiento; se llama `guardar.reset()` al recibirla.
+- Errores: 400 con «contraseña» en el mensaje (incluida la débil según Supabase) → error del campo contraseña; 409 → error del campo correo; 404 → «La empresa elegida ya no existe»; 503 → mensaje genérico con **Reintentar**; 403 → mensaje del backend.
+- Supuesto: el backend no distingue con un código el 400 de contraseña, así que se reconoce por la palabra «contrase» en el mensaje.
+- Sin dependencias nuevas. 29 pruebas.
+=======
 ## 2026-10-29 · mobile-dev · M0
 
 - **Versiones fijadas** (`mobile/pubspec.yaml`, sin `^`; todas gratuitas y de código abierto): Flutter 3.47.9 / Dart 3.13.7, flutter_map 8.3.2, latlong2 0.10.1, geolocator 14.1.2, dio 5.11.1, web_socket_channel 3.0.3, supabase_flutter 2.18.3 (solo Auth), flutter_riverpod 3.4.3, go_router 18.1.2, shared_preferences 2.5.6, google_fonts 9.0.0, intl 0.20.3, flutter_local_notifications 22.3.3. Son las de `mobile/CLAUDE.md` §2; no se agregó ninguna otra. `flutter_localizations` es del SDK (textos de Material en español).

@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaUso } from "@/componentes/jefe/PantallaUso";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Estadísticas de uso" bloque="W4" />;
+  return <PantallaUso />;
 }

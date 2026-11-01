@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaRutas } from "@/componentes/secretaria/PantallaRutas";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Rutas" bloque="W3" />;
+  return <PantallaRutas />;
 }

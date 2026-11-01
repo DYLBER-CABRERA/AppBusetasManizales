@@ -1,5 +1,5 @@
 import createClient, { type Middleware } from "openapi-fetch";
-import { correoSesionEjemplo, obtenerToken } from "./auth";
+import { obtenerToken } from "./auth";
 import { empresaParaApi } from "./contexto-empresa";
 import { entorno } from "./entorno";
 import { ErrorApi, errorDeRed, errorDesdeRespuesta } from "./errores";
@@ -16,15 +16,21 @@ const adjuntarJwt: Middleware = {
   },
 };
 
-// PENDIENTE(decisión): el contrato publicado aún no declara `empresaId` en los endpoints del jefe.
-// Acordado: parámetro opcional, válido solo para el administrador (BR-07). Mientras no esté en
-// contrato/openapi.json se agrega aquí como parámetro de consulta; el jefe nunca lo envía.
-const ENDPOINTS_DEL_JEFE = ["/api/v1/mis-servicios", "/api/v1/busetas", "/api/v1/conductores", "/api/v1/rodamientos"];
+// Contrato §12: la operación del jefe y la edición de horarios/frecuencias aceptan `empresaId` opcional.
+// El jefe lo ignora (usa su token); el administrador debe indicarlo y actúa como jefe de esa empresa.
+// Aquí se agrega a esas rutas solo cuando el administrador eligió una empresa (contexto-empresa.ts).
+const OPERACION_DEL_JEFE = [
+  /^\/api\/v1\/mis-servicios/,
+  /^\/api\/v1\/busetas/,
+  /^\/api\/v1\/conductores/,
+  /^\/api\/v1\/rodamientos/,
+  /^\/api\/v1\/servicios\/\{servicio_id\}\/(horarios|frecuencias)$/,
+];
 
 const adjuntarEmpresa: Middleware = {
   onRequest({ request, schemaPath }) {
     const empresaId = empresaParaApi();
-    if (!empresaId || !ENDPOINTS_DEL_JEFE.some((p) => schemaPath.startsWith(p))) return request;
+    if (!empresaId || !OPERACION_DEL_JEFE.some((r) => r.test(schemaPath))) return request;
     const url = new URL(request.url);
     url.searchParams.set("empresaId", empresaId);
     return new Request(url, request);
@@ -38,26 +44,17 @@ api.use(adjuntarEmpresa);
 
 type Resultado<T> = { data?: T; error?: unknown; response: Response };
 
-/**
- * Convierte la respuesta de openapi-fetch en datos o en `ErrorApi` traducido.
- * PENDIENTE(decisión): con NEXT_PUBLIC_USAR_MOCKS=true, si el backend responde 501/red caída
- * (o 401 con sesión de ejemplo) se devuelve `ejemplo()`. Quitar al integrar con el backend real.
- */
-export async function consultar<T>(llamada: () => Promise<Resultado<T>>, ejemplo?: () => T | Promise<T>): Promise<T> {
+/** Convierte la respuesta de openapi-fetch en datos o en `ErrorApi` traducido (CLAUDE.md §6). */
+export async function consultar<T>(llamada: () => Promise<Resultado<T>>): Promise<T> {
   let r: Resultado<T>;
   try {
     r = await llamada();
   } catch {
-    if (ejemplo && entorno.usarMocks) return ejemplo();
     throw errorDeRed();
   }
   if (r.response.ok && r.data !== undefined) return r.data;
   if (r.response.ok) return undefined as T; // 204 sin cuerpo
-  const estado = r.response.status;
-  const usarEjemplo =
-    ejemplo && entorno.usarMocks && (estado === 501 || (estado === 401 && correoSesionEjemplo() !== null));
-  if (usarEjemplo) return ejemplo();
-  throw errorDesdeRespuesta(estado, r.error);
+  throw errorDesdeRespuesta(r.response.status, r.error);
 }
 
 export { ErrorApi };

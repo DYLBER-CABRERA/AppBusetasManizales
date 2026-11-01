@@ -9,6 +9,7 @@ import { useEmpresaElegida } from "@/lib/contexto-empresa";
 import { DIAS_MAX_RODAMIENTO_ADELANTE, diaSemana, fechaLarga, hoyBogota, sumarDias } from "@/lib/fechas";
 import { useBusetas, useClaveEmpresa, useConductores, useRodamiento, useServicios } from "@/lib/jefe";
 import { usePerfil } from "@/lib/perfil";
+import { AnularRodamiento } from "./AnularRodamiento";
 import { TablaRodamiento } from "./TablaRodamiento";
 
 export function PantallaRodamiento() {
@@ -98,6 +99,10 @@ export function PantallaRodamiento() {
                 Asignar buseta y conductor
               </Link>
             </p>
+          ) : null}
+          {r.estado === "borrador" || r.estado === "publicado" ? (
+            <AnularRodamiento rodamientoId={r.rodamientoId} version={r.version} claveConsulta={["jefe", clave, "rodamiento", fecha]}
+              fechaTexto={fechaLarga(fecha)} onConflicto={() => { setRecarga((n) => n + 1); void rodamiento.refetch(); }} />
           ) : null}
         </>
       ) : null}
