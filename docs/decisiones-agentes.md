@@ -156,3 +156,11 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Cambio:** valor por defecto en código 500 → 1000 y migración `0007_radio_caminata_1000.sql` (NO aplicada) que actualiza la fila de la BD **solo si sigue en 500** (no pisa una edición del administrador). Rango permitido del parámetro: 100 a 2000. También se puede cambiar desde el panel (`PUT /admin/parametros/radio_caminata_m`, caché ≤ 60 s).
 - **Comando para el usuario** (desde `backend/`): `.venv\Scripts\python.exe scripts\aplicar_migracion.py 0007_radio_caminata_1000.sql --aplicar` (sin `--aplicar` solo muestra el SQL).
 - **Prueba con semillas (Av. Santander 5.0638, -75.4949 → hito La Enea):** a 500 m solo hay «Paradero El Cable 2» (205 m) cerca del origen → `sin_ruta_directa`, con alternativas El Cable (origen) y La Enea (destino). A 1000 m aparece «Paradero La Enea 1» (652 m) → opción por la ruta La Enea: caminata 8,2 min, espera 5,0, bus 25,2, total 38,4 min.
+
+## 2026-10-31 · backend-dev · alta de usuarios con contraseña (reemplaza la invitación)
+
+- **Cambio:** `POST /admin/usuarios` crea la cuenta con `POST /auth/v1/admin/users` (`email_confirm: true`, como `crear_usuarios_demo.py`) en vez de `/auth/v1/invite`, que fallaba por el límite del correo gratuito de Supabase. Reemplaza la decisión de B5 («invitación por correo»).
+- **Contraseña:** opcional en el cuerpo (8 a 72 caracteres); si falta, `secrets.token_urlsafe(12)` (16 caracteres). Se devuelve una sola vez en la respuesta 201 (`contrasena`), igual que la clave de fuentes GPS; no se guarda ni se registra. Compartirla es manual (prototipo).
+- **Limpieza:** si falla `perfil_usuario` tras crear la cuenta en Auth, se borra la cuenta (`DELETE /auth/v1/admin/users/{id}`, de mejor esfuerzo) y se propaga el error.
+- **Errores:** correo ya registrado (`email_exists`, `user_already_exists`, HTTP 409) → `409 CONFLICTO_NEGOCIO`; `weak_password` → `400 VALIDACION` (matiz sobre lo pedido: es un error del dato, no del servicio); cualquier otro fallo de Supabase → `503 SERVICIO_EXTERNO_NO_DISPONIBLE`.
+- **Sin cambios:** validación de rol y empresa, y que solo el administrador pueda llamarlo (el rol `pasajero` sigue permitido como antes).

@@ -417,16 +417,20 @@ SESIONES_SIN_PERFIL = {
 
 class AutenticacionFalsa:
     def __init__(self) -> None:
-        self.invitados: list[str] = []
+        self.creados: list[tuple[str, str]] = []
+        self.eliminados: list[UUID] = []
 
     async def verificar_sesion(self, jwt: str) -> SesionAuth:
         if jwt not in SESIONES_SIN_PERFIL:
             raise ErrorNoAutenticado("Sesión inválida o vencida.")
         return SESIONES_SIN_PERFIL[jwt]
 
-    async def crear_usuario(self, correo: str, nombre: str | None) -> UUID:
-        self.invitados.append(correo)
+    async def crear_usuario(self, correo: str, contrasena: str, nombre: str | None) -> UUID:
+        self.creados.append((correo, contrasena))
         return uuid4()
+
+    async def eliminar_usuario(self, usuario_id: UUID) -> None:
+        self.eliminados.append(usuario_id)
 
     async def verificar_token(self, jwt: str) -> Identidad:
         if jwt not in TOKENS:

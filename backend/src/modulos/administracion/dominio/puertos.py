@@ -32,8 +32,13 @@ class PuertoSimulador(Protocol):
 
 
 class PuertoAltaUsuarios(Protocol):
-    async def crear_usuario(self, correo: str, nombre: str | None) -> UUID:
-        """Crea la cuenta en Supabase Auth (invitación por correo) y devuelve su id."""
+    async def crear_usuario(self, correo: str, contrasena: str, nombre: str | None) -> UUID:
+        """Crea la cuenta en Supabase Auth con contraseña y correo ya confirmado (API Admin) y devuelve su id.
+        ErrorConflictoNegocio si el correo ya existe; ErrorServicioExterno en otros fallos. No registra nada sensible."""
+        ...
+
+    async def eliminar_usuario(self, usuario_id: UUID) -> None:
+        """Borra la cuenta de Supabase Auth (limpieza si falla el perfil). Nunca lanza: es de mejor esfuerzo."""
         ...
 
 

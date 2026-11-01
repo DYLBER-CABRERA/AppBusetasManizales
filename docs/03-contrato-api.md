@@ -257,7 +257,7 @@ Ya responden con lógica real: `POST|PUT|DELETE /rutas`, `POST /rutas/{id}/servi
 - **`DELETE /rutas/{id}?version&confirmar?`:** con turnos futuros programados (rodamientos no anulados de hoy en adelante) y sin `confirmar=true` → `409` con `detalles.turnosFuturos[{turnoId, fecha, horaSalida, buseta}]` (máx. 50); con `confirmar=true`, baja lógica de la ruta y de sus servicios y cancelación de esos turnos (función SQL `dar_de_baja_ruta`).
 - **`POST /rutas/{id}/servicios`:** la empresa ya opera la ruta → `409`; ya la opera otra empresa y no viene `confirmarCompartida=true` → `409`. **`DELETE /servicios/{id}?version&confirmar?`:** igual que la ruta, con sus turnos futuros; el servicio queda en `baja`.
 - **Paraderos:** `GET /paraderos` lista los activos. Duplicado = mismo nombre (sin tildes ni mayúsculas) a menos de 20 m de otro activo → `409` (al crear y al editar). `DELETE /paraderos/{id}?version&confirmar?`: si lo usan rutas activas y no hay `confirmar=true` → `409` con `detalles.rutas[{rutaId, nombre}]`; la baja es lógica y **no quita el paradero de las rutas que ya lo tenían** (supuesto: la Secretaría debe editar esas rutas).
-- **Usuarios:** `POST /admin/usuarios` invita a la cuenta por Supabase Auth (`/auth/v1/invite`, con la clave de servicio, solo en el backend): el usuario recibe un correo para fijar su contraseña (supuesto: el contrato no define contraseñas). El correo se guarda en minúsculas; repetido → `409`; `jefe_operaciones` exige `empresaId` y los demás roles no pueden tenerlo (`400`). `PUT` cambia nombre, rol, empresa y `activo`; **no se puede quitar el rol ni desactivar al último administrador activo** (`409`). `GET /admin/usuarios?correo=` filtra por subcadena. `GET /admin/roles` devuelve los 4 roles con una lista informativa de permisos.
+- **Usuarios:** `POST /admin/usuarios` crea la cuenta directamente en Supabase Auth con contraseña (ver §20; ya no se invita por correo). El correo se guarda en minúsculas; repetido → `409`; `jefe_operaciones` exige `empresaId` y los demás roles no pueden tenerlo (`400`). `PUT` cambia nombre, rol, empresa y `activo`; **no se puede quitar el rol ni desactivar al último administrador activo** (`409`). `GET /admin/usuarios?correo=` filtra por subcadena. `GET /admin/roles` devuelve los 4 roles con una lista informativa de permisos.
 - **Empresas:** nombre único sin importar mayúsculas entre las activas (`409`); `PUT` con `version`.
 - **Credenciales GPS:** la clave (aleatoria, 43 caracteres) solo aparece en la respuesta de creación; en BD queda su SHA-256. `DELETE` revoca (`activa=false`); una clave revocada deja de servir en `POST /ingesta/posiciones`.
 - **Parámetros:** `PUT /admin/parametros/{clave}` exige número entre `minimo` y `maximo` (`400`); `caja_ciudad` exige un objeto con las mismas claves. La caché de lectura (≤ 60 s) puede tardar ese tiempo en reflejar el cambio. Clave desconocida → `404`; versión desfasada → `409`.
@@ -340,3 +340,26 @@ Ejemplo (sin ruta directa):
     { "lado": "destino", "rutaId": "…", "rutaNombre": "Villamaría", "paradero": { "paraderoId": "…", "nombre": "Villamaría", "lat": 5.045, "lng": -75.5151, "distanciaM": 90.0 } } ] }
 ```
 El texto de `motivo` no debe usarse para decidir lógica: usar `motivoCodigo`.
+
+## 20. Alta de usuarios por el administrador: contraseña (reemplaza la invitación por correo)
+
+`POST /api/v1/admin/usuarios` (solo administrador) ya no usa `/auth/v1/invite` (fallaba con «Email address is invalid» sin SMTP propio). Crea la cuenta con la API Admin de Supabase (`POST {SUPABASE_URL}/auth/v1/admin/users` con `email`, `password` y `email_confirm: true`, con la clave de servicio, solo en el backend) y luego la fila de `perfil_usuario`.
+
+Cuerpo de entrada:
+```json
+{ "correo": "ana@empresa.example", "nombre": "Ana Gómez", "rol": "jefe_operaciones", "empresaId": "…", "contrasena": "Clave-segura-1" }
+```
+- `contrasena` es **opcional**, de 8 a 72 caracteres. Si no viene, el servidor genera una segura de 16 caracteres.
+- El resto no cambia: `rol` ∈ `pasajero|jefe_operaciones|secretaria_movilidad|administrador`; `jefe_operaciones` exige `empresaId` y los demás roles no pueden tenerlo; el correo se guarda en minúsculas.
+
+Respuesta **201** (el `Usuario` de siempre más `contrasena`):
+```json
+{ "id": "…", "correo": "ana@empresa.example", "nombre": "Ana Gómez", "rol": "jefe_operaciones", "empresaId": "…",
+  "activo": true, "version": 1, "contrasena": "Clave-segura-1" }
+```
+- **`contrasena` se devuelve UNA sola vez**, solo en esta respuesta (la escriba el administrador o la genere el servidor). No se guarda en el backend, no se vuelve a devolver (ni `GET /admin/usuarios`, ni `PUT`) y no se registra en logs. El administrador debe compartirla en privado; el panel debe mostrarla con esa advertencia.
+- **400 `VALIDACION`**: correo inválido, rol inválido, empresa faltante o sobrante, contraseña fuera de 8 a 72 caracteres (el mensaje nunca repite la contraseña), o contraseña rechazada por Supabase como débil.
+- **401 / 403**: sin sesión / rol distinto de administrador (nada llega a Supabase).
+- **404 `NO_ENCONTRADO`**: la `empresaId` no existe.
+- **409 `CONFLICTO_NEGOCIO`**: el correo ya está registrado (en perfiles o en Supabase Auth).
+- **503 `SERVICIO_EXTERNO_NO_DISPONIBLE`**: Supabase no responde, rechazó la creación (p. ej. correo inválido para Supabase) o falta `SUPABASE_SERVICE_ROLE_KEY`. Si Supabase creó la cuenta pero falla el perfil, el backend intenta borrar la cuenta recién creada para no dejarla huérfana y responde `500`.

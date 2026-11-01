@@ -13,7 +13,7 @@ import httpx
 from modulos.administracion.dominio.puertos import RepositorioUsuarios
 from nucleo.autenticacion import SesionAuth
 from nucleo.autorizacion import Identidad, Rol
-from nucleo.errores import ErrorConflictoNegocio, ErrorNoAutenticado, ErrorServicioExterno
+from nucleo.errores import ErrorConflictoNegocio, ErrorNoAutenticado, ErrorServicioExterno, ErrorValidacion
 
 TTL_CACHE_S = 30.0
 
@@ -78,21 +78,41 @@ class AutenticacionSupabase:
         self._cache[llave] = (ahora + TTL_CACHE_S, identidad)
         return identidad
 
-    async def crear_usuario(self, correo: str, nombre: str | None) -> UUID:
-        """Invita al usuario (Supabase le envía el correo para fijar su contraseña). Usa la clave de servicio, que
-        nunca sale del backend ni se registra."""
+    def _cabeceras_admin(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._clave_servicio}", "apikey": self._clave_servicio}
+
+    async def crear_usuario(self, correo: str, contrasena: str, nombre: str | None) -> UUID:
+        """Crea la cuenta con la API Admin (correo confirmado, sin enviar correos). Usa la clave de servicio, que nunca
+        sale del backend. Ni la contraseña, ni el correo, ni la respuesta de Supabase se registran."""
         if not self._url or not self._clave_servicio:
             raise ErrorServicioExterno("Falta SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY para crear usuarios.")
         try:
             respuesta = await self._cliente.post(
-                f"{self._url}/auth/v1/invite",
-                headers={"Authorization": f"Bearer {self._clave_servicio}", "apikey": self._clave_servicio},
-                json={"email": correo, "data": {"nombre": nombre} if nombre else {}},
+                f"{self._url}/auth/v1/admin/users",
+                headers=self._cabeceras_admin(),
+                json={"email": correo, "password": contrasena, "email_confirm": True,
+                      "user_metadata": {"nombre": nombre} if nombre else {}},
             )
         except httpx.HTTPError as exc:
             raise ErrorServicioExterno("No se pudo crear el usuario en el servicio de autenticación.") from exc
-        if respuesta.status_code in (409, 422):
+        if respuesta.status_code in (200, 201):
+            try:
+                return UUID(str(respuesta.json()["id"]))
+            except (KeyError, ValueError, TypeError) as exc:
+                raise ErrorServicioExterno("El servicio de autenticación devolvió una respuesta inesperada.") from exc
+        codigo = ""
+        try:
+            codigo = str(respuesta.json().get("error_code") or "")
+        except ValueError:
+            pass
+        if respuesta.status_code == 409 or codigo in ("email_exists", "user_already_exists"):
             raise ErrorConflictoNegocio("Ya existe una cuenta con ese correo.")
-        if respuesta.status_code >= 300:
-            raise ErrorServicioExterno("El servicio de autenticación rechazó la creación del usuario.")
-        return UUID(str(respuesta.json()["id"]))
+        if codigo == "weak_password":
+            raise ErrorValidacion("La contraseña es demasiado débil para el servicio de autenticación.")
+        raise ErrorServicioExterno("El servicio de autenticación rechazó la creación del usuario.")
+
+    async def eliminar_usuario(self, usuario_id: UUID) -> None:
+        try:
+            await self._cliente.delete(f"{self._url}/auth/v1/admin/users/{usuario_id}", headers=self._cabeceras_admin())
+        except Exception:  # noqa: BLE001 - limpieza de mejor esfuerzo: no debe tapar el error original
+            return

@@ -81,6 +81,14 @@ class UsuarioCrear(EsquemaBase):
     nombre: str | None = Field(default=None, max_length=120)
     rol: RolTexto
     empresa_id: UUID | None = Field(default=None, description="Obligatoria si el rol es jefe_operaciones")
+    contrasena: str | None = Field(
+        default=None, min_length=8, max_length=72,
+        description="Opcional. Si no viene, el servidor genera una segura. Se devuelve UNA sola vez en la respuesta.",
+    )
+
+
+class UsuarioCreado(Usuario):
+    contrasena: str = Field(description="Se muestra UNA sola vez; no se guarda ni se vuelve a devolver. Compartirla en privado.")
 
 
 class UsuarioEditar(EsquemaBase):
@@ -203,11 +211,11 @@ async def listar_usuarios(
     return await caso_uso(identidad, correo)
 
 
-@router.post("/admin/usuarios", response_model=Usuario, status_code=201, responses=errores(400, 401, 403, 404, 409))
+@router.post("/admin/usuarios", response_model=UsuarioCreado, status_code=201, responses=errores(400, 401, 403, 404, 409))
 async def crear_usuario(
     cuerpo: UsuarioCrear, identidad: Identidad = _admin, caso_uso: CrearUsuario = Depends(caso("crear_usuario"))
 ) -> dict:
-    return await caso_uso(identidad, cuerpo.correo, cuerpo.nombre, cuerpo.rol, cuerpo.empresa_id)
+    return await caso_uso(identidad, cuerpo.correo, cuerpo.nombre, cuerpo.rol, cuerpo.empresa_id, cuerpo.contrasena)
 
 
 @router.put("/admin/usuarios/{usuario_id}", response_model=Usuario, responses=errores(400, 401, 403, 404, 409))

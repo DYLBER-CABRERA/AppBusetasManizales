@@ -3599,8 +3599,91 @@
         "title": "Usuario",
         "type": "object"
       },
+      "UsuarioCreado": {
+        "properties": {
+          "activo": {
+            "title": "Activo",
+            "type": "boolean"
+          },
+          "contrasena": {
+            "description": "Se muestra UNA sola vez; no se guarda ni se vuelve a devolver. Compartirla en privado.",
+            "title": "Contrasena",
+            "type": "string"
+          },
+          "correo": {
+            "title": "Correo",
+            "type": "string"
+          },
+          "empresaId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresaid"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nombre"
+          },
+          "rol": {
+            "enum": [
+              "pasajero",
+              "jefe_operaciones",
+              "secretaria_movilidad",
+              "administrador"
+            ],
+            "title": "Rol",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "correo",
+          "rol",
+          "activo",
+          "version",
+          "contrasena"
+        ],
+        "title": "UsuarioCreado",
+        "type": "object"
+      },
       "UsuarioCrear": {
         "properties": {
+          "contrasena": {
+            "anyOf": [
+              {
+                "maxLength": 72,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opcional. Si no viene, el servidor genera una segura. Se devuelve UNA sola vez en la respuesta.",
+            "title": "Contrasena"
+          },
           "correo": {
             "maxLength": 254,
             "title": "Correo",
@@ -4669,7 +4752,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Usuario"
+                  "$ref": "#/components/schemas/UsuarioCreado"
                 }
               }
             },
