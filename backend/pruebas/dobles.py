@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 from composicion import Repositorios
 from modulos.seguimiento import hash_de_clave
+from nucleo.autenticacion import SesionAuth
 from nucleo.autorizacion import Identidad, Rol
 from nucleo.errores import ErrorConflictoNegocio, ErrorConflictoVersion, ErrorNoAutenticado, ErrorNoEncontrado
 
@@ -360,6 +361,12 @@ class SeguimientoEnMemoria:
         progreso = self.progreso_paradero_m if paradero_id == PARADERO_A else 3000.0
         return {"progreso_m": progreso, "longitud_m": self.longitud}
 
+    async def progresos_de_ruta(self, ruta_id: UUID) -> list[dict[str, Any]]:
+        if ruta_id != RUTA_ENEA:
+            return []
+        return [{"orden": 1, "paradero_id": PARADERO_A, "progreso_m": self.progreso_paradero_m, "longitud_m": self.longitud},
+                {"orden": 2, "paradero_id": PARADERO_B, "progreso_m": 3000.0, "longitud_m": self.longitud}]
+
     async def servicios_para_eta(self, ruta_id: UUID) -> list[dict[str, Any]]:
         return [
             {"servicio_id": SERVICIO_SIDERAL_ENEA, "empresa_nombre": "Sideral", "codigo_publico": "39", "estado": "activo",
@@ -401,13 +408,29 @@ TOKENS = {
 }
 
 
+USUARIO_NUEVO = uuid4()
+SESIONES_SIN_PERFIL = {
+    "tok-nuevo": SesionAuth(USUARIO_NUEVO, "nueva@correo.example"),
+    "tok-pasajera": SesionAuth(USUARIO_PASAJERA, "pasajera@correo.example"),
+}
+
+
 class AutenticacionFalsa:
     def __init__(self) -> None:
-        self.invitados: list[str] = []
+        self.creados: list[tuple[str, str]] = []
+        self.eliminados: list[UUID] = []
 
-    async def crear_usuario(self, correo: str, nombre: str | None) -> UUID:
-        self.invitados.append(correo)
+    async def verificar_sesion(self, jwt: str) -> SesionAuth:
+        if jwt not in SESIONES_SIN_PERFIL:
+            raise ErrorNoAutenticado("Sesión inválida o vencida.")
+        return SESIONES_SIN_PERFIL[jwt]
+
+    async def crear_usuario(self, correo: str, contrasena: str, nombre: str | None) -> UUID:
+        self.creados.append((correo, contrasena))
         return uuid4()
+
+    async def eliminar_usuario(self, usuario_id: UUID) -> None:
+        self.eliminados.append(usuario_id)
 
     async def verificar_token(self, jwt: str) -> Identidad:
         if jwt not in TOKENS:
@@ -430,6 +453,21 @@ class UsuariosEnMemoria:
 
     async def perfil(self, usuario_id: UUID) -> dict[str, Any] | None:
         return self.perfiles.get(usuario_id)
+
+    async def perfil_completo(self, usuario_id: UUID) -> dict[str, Any] | None:
+        p = self.perfiles.get(usuario_id)
+        return None if p is None else {"nombre": None, "apellido": None, "celular": None, **p}
+
+    async def crear_pasajero(self, usuario_id, correo, nombre, apellido, celular) -> dict[str, Any] | None:
+        if usuario_id in self.perfiles:
+            return None
+        if any(p["correo"] == correo for p in self.perfiles.values()):
+            raise ErrorConflictoNegocio("Ese correo ya está asociado a otro perfil.")
+        self.perfiles[usuario_id] = {
+            "usuario_id": usuario_id, "correo": correo, "nombre": nombre, "apellido": apellido, "celular": celular,
+            "rol": "pasajero", "empresa_id": None, "empresa_nombre": None, "activo": True,
+        }
+        return await self.perfil_completo(usuario_id)
 
 
 CUADRADO = [[-75.52, 5.06], [-75.50, 5.06], [-75.50, 5.08], [-75.52, 5.08], [-75.52, 5.06]]  # [lng, lat]

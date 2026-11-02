@@ -123,6 +123,7 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Parámetros y fuentes GPS (PENDIENTE, datos de ejemplo hasta B5):** `src/lib/mocks-admin.ts`. Los mínimos y máximos de ejemplo son inventados salvo «50 a 2000» de la distancia de aviso; los reales los manda el backend (`minimo`/`maximo`). La clave de una fuente nunca se guarda: vive en memoria mientras el modal está abierto (sin Esc para cerrarlo por accidente) y se borra de la caché de la mutación.
 - **`Modal`** admite `sinEscape`.
 
+
 ## 2026-10-28 · web-admin-dev · integración con el backend completo (B5 a B8)
 
 - **Datos de ejemplo eliminados:** se borraron `mocks.ts`, `mocks-jefe.ts` y `mocks-admin.ts`, el parámetro `ejemplo` de `consultar`, la sesión de ejemplo (cookie y modo de login) y `NEXT_PUBLIC_USAR_MOCKS`. Ningún endpoint del contrato responde 501. El login exige Supabase configurado.
@@ -164,3 +165,108 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - Errores: 400 con «contraseña» en el mensaje (incluida la débil según Supabase) → error del campo contraseña; 409 → error del campo correo; 404 → «La empresa elegida ya no existe»; 503 → mensaje genérico con **Reintentar**; 403 → mensaje del backend.
 - Supuesto: el backend no distingue con un código el 400 de contraseña, así que se reconoce por la palabra «contrase» en el mensaje.
 - Sin dependencias nuevas. 29 pruebas.
+=======
+## 2026-10-29 · mobile-dev · M0
+
+- **Versiones fijadas** (`mobile/pubspec.yaml`, sin `^`; todas gratuitas y de código abierto): Flutter 3.47.9 / Dart 3.13.7, flutter_map 8.3.2, latlong2 0.10.1, geolocator 14.1.2, dio 5.11.1, web_socket_channel 3.0.3, supabase_flutter 2.18.3 (solo Auth), flutter_riverpod 3.4.3, go_router 18.1.2, shared_preferences 2.5.6, google_fonts 9.0.0, intl 0.20.3, flutter_local_notifications 22.3.3. Son las de `mobile/CLAUDE.md` §2; no se agregó ninguna otra. `flutter_localizations` es del SDK (textos de Material en español).
+- **`applicationId` `com.busetasapp.prototipo`**; el `namespace` de Gradle y el paquete Dart (`busetas_app`) quedan como los generó `flutter create`.
+- **Tráfico en claro:** `android:usesCleartextTraffic="true"` en el manifiesto principal. Una *network security config* no puede limitarse a rangos de IP privados (solo admite dominios), así que se usa el atributo global. Aceptable para el prototipo (backend en el portátil por `http://192.168.x.x:8000`).
+- **`google_fonts` 9 y `TextTheme`:** esta versión devuelve el `TextTheme` de `material_ui`, incompatible con el de Flutter 3.47. El tema solo toma el nombre de la familia (`GoogleFonts.atkinsonHyperlegible().fontFamily`) y arma el `TextTheme` con la API de Flutter.
+- **Sin datos de ejemplo en la app:** el backend ya no devuelve 501, así que no hay *mocks*. Las pantallas de M1 a M4 son marcadores hasta su bloque.
+
+## 2026-10-29 · mobile-dev · M1
+
+- **Sin dependencias nuevas.** Mapa, Buscar y Ficha de ruta consumen el backend real (`/rutas/cercanas`, `/rutas`, `/rutas/{id}`, `/horarios`, `/frecuencias`, `/busetas`, `/busqueda/*`, `/hitos/{id}/rutas`); sin datos de ejemplo en `lib/`.
+- **Color de ruta:** el contrato no trae color. La app reparte una paleta de 6 colores con buen contraste (sin amarillo ni rojo) por orden alfabético del nombre, para que dos rutas no repitan color.
+- **Radio de «sin rutas cerca»:** el texto usa 800 m fijo (valor por defecto de `radio_busqueda_m`); un pasajero no puede leer `/admin/parametros`. `PENDIENTE(decisión)`: exponer el radio vigente en la respuesta de `/rutas/cercanas` si el administrador lo cambia.
+- **Chips de Buscar:** Catedral, El Cable, Carrera 23, Fundadores y Terminal (docs/01 §2.3). Cada chip busca el hito por nombre en `/busqueda/hitos` y lista `/hitos/{id}/rutas`.
+- **«N en servicio» en la hoja del mapa** usa `unidadesEnServicio` de `GET /rutas/{id}/busetas` (REST). El WebSocket y la animación llegan en M2.
+- **Riverpod 3:** se desactivan los reintentos automáticos (`retry: (_, _) => null`); cada pantalla ofrece **Reintentar**.
+
+## 2026-10-30 · mobile-dev · M2
+
+- **Dependencia de desarrollo nueva:** `stream_channel` 2.1.4 (dart-lang, licencia BSD-3, gratuita; ya estaba en el árbol de `web_socket_channel`). Solo la usan las pruebas, para un `WebSocketChannel` falso (`test/ayudas/canal_falso.dart`). No entra en el APK.
+- **Tiempo real (`/ws/rutas/{id}`, sin el prefijo `/api/v1`):** el seguimiento de cada ruta vive mientras la pantalla está a la vista (`TickerMode`) y se cierra al salir o al pasar la app a segundo plano. Reconexión 1, 2, 4, 8 y 15 s; mientras no hay socket se consulta `GET /rutas/{id}/busetas` cada 5 s (`intervalo_refresco_cliente_s`; un pasajero no puede leer el parámetro, se usa su valor por defecto). Con socket, REST concilia cada 30 s porque cada mensaje `posiciones` trae solo las busetas que reportaron en ese ciclo (la app las mezcla por `busetaId`).
+- **Desactualizado:** más de 3 intervalos sin datos **y** con busetas o seguimiento disponible. Una ruta sin GPS (Serviturismo) nunca se marca desactualizada, porque no hay nada que actualizar.
+- **`senal_perdida`:** la app lo maneja si llega, pero el backend no lo emite (docs/03 §16); lo normal es `estado: sin_senal`.
+- **«Ya cerró» / «aún no inicia»:** se calcula en el cliente con los horarios de hoy y la hora de Bogotá (UTC−5): primera salida más temprana y cierre más tardío entre las empresas con dato; sin dato de hoy no se dice nada.
+- **ETA:** se recalcula cada 5 s (un intervalo de refresco; antes 10 s) mientras la pantalla está abierta; con un fallo se conserva el último valor y aparece **Reintentar**. El botón «Avisarme cuando esté a 300 m» llega en M3 (exige sesión).
+- **Aviso de «datos desactualizados» y de «Estimación por horario»** usan un ámbar propio (no el amarillo `#F6C500`, reservado a las busetas), siempre con ícono y texto.
+
+## 2026-10-31 · mobile-dev · M3
+
+- **Sin dependencias nuevas.** `supabase_flutter` solo para Auth (`signInWithPassword`, `signOut`); los datos van por la API. Se inicializa solo si la compilación trae `SUPABASE_URL` y `SUPABASE_ANON_KEY`; sin ellas la app funciona sin cuenta (BR-01) y la hoja de sesión lo explica. Se usa el parámetro `publishableKey` de `Supabase.initialize` (el `anonKey` está deprecado y ambos son la misma clave).
+- **Solo «Iniciar sesión», sin registro.** El backend no crea `perfil_usuario` al registrarse (ver `solicitudes-entre-agentes.md`). Tras entrar, la app llama a `GET /yo`: sin perfil (`401`) o con otro rol cierra la sesión y lo explica. Es el comportamiento seguro hasta que el equipo decida cómo se registran los pasajeros.
+- **Token:** `ClienteApi` lo lee de Supabase en cada llamada (se renueva solo). Nunca se registra, ni en el cliente REST ni en la URL de `/ws/notificaciones?token=` (la conexión no escribe la URL en ningún log).
+- **Acción que pidió la sesión:** guardar una ruta o crear una alerta sin sesión abre la hoja y, al entrar, ejecuta esa acción (docs/referencia UX §2.1). `POST /favoritos` es idempotente, así que repetir no duplica.
+- **Notificaciones (D-P09):** con sesión, la app escucha `/ws/notificaciones` (reconexión 1, 2, 4, 8 y 15 s, con el token vigente en cada intento). `alerta_llegada` y `alerta_desvio` se muestran como banner sobre cualquier pantalla (8 s o **Cerrar**) y como notificación del sistema (`flutter_local_notifications`, canal «Alertas de llegada»). Sin push remoto: funciona con la app abierta o en segundo plano reciente. El permiso de notificaciones de Android 13+ se pide una vez al iniciar sesión.
+- **Alertas:** distancia fija de 300 m (valor por defecto de `distancia_aviso_llegada_m`; un pasajero no puede leer el parámetro). Si ya existe una activa (`409 CONFLICTO_NEGOCIO`) se avisa y se refresca la lista.
+- **Guardados** muestra rutas favoritas (las dadas de baja salen como «Ya no disponible» y se pueden quitar) y alertas con el nombre de la ruta y del paradero. Los paraderos favoritos no tienen `rutaId` en el contrato, así que no se abre su ETA desde ahí; la app los lista y permite quitarlos (hoy no hay forma de guardar un paradero desde la app).
+
+## 2026-10-31 · mobile-dev · Registro de pasajeros (contrato §17, commit dd32839 de `feat/backend-base`)
+
+- **Sin dependencias nuevas.** Cierra la solicitud abierta de registro: la app crea la cuenta con `signUp` de Supabase Auth y enseguida llama a `POST /api/v1/yo` con nombre, apellido y celular. La respuesta a la solicitud vive en la rama del backend; aquí no se edita su texto para no generar conflictos al fusionar.
+- **Hoja única de sesión** con tres modos: Iniciar sesión, Crear cuenta (nombre, apellido, celular, correo, contraseña y confirmación) y «Completa tu perfil».
+- **Sesión a medias:** entre el alta/login y la confirmación del perfil la app no trata la sesión como activa (no hay Guardados ni WebSocket de notificaciones). Si el pasajero cierra la hoja sin terminar, se cierra la sesión de Supabase.
+- **Login de una cuenta sin perfil** (`GET /yo` → `401`): no se puede inventar nombre ni celular, así que la hoja pasa a «Completa tu perfil» y envía `POST /yo`. Registrar con un correo que ya existe intenta entrar con esa contraseña y completar el perfil (el `POST /yo` devuelve `200` si ya existía y no lo sobrescribe).
+- **Errores:** `400 VALIDACION` se muestra por campo (`detalles[].campo`); `409` explica que el correo es de otro perfil y descarta la sesión; los de Supabase se traducen (correo existente, contraseña débil, correo inválido, registro desactivado, límite de intentos). Con confirmación por correo activa en Supabase, el registro pide confirmar y luego iniciar sesión (ahí se completa el perfil).
+- **Validación en el cliente** (el backend vuelve a validar): campos obligatorios, máx. 60 caracteres, celular móvil colombiano (admite `+57`, espacios, guiones, puntos y paréntesis), correo con forma válida, contraseña de 6+ caracteres y confirmación igual.
+
+## 2026-10-31 · mobile-dev · M4 (Viajar)
+
+- **Sin dependencias nuevas.** `POST /viajes/planificar`, solo directas (D-P07). Origen y destino: Mi ubicación, un hito (búsqueda o chips de la pantalla Buscar) o un punto tocado en el mapa (pantalla completa con OpenStreetMap). Texto libre queda fuera (D-P06).
+- **Ubicación:** «Mi ubicación» viaja solo como `{lat, lng}` de la consulta puntual; no se guarda ni se registra. Sin permiso, la opción se muestra desactivada con su explicación. Elegir un punto en el mapa no necesita permiso.
+- **Barra de tramos (COM-08):** proporcional a los minutos de cada tramo (caminata, espera, buseta con el color de la ruta); los tramos de 0 min no se dibujan. La información no depende del color: la leyenda lleva ícono y minutos, y el conjunto tiene una etiqueta de accesibilidad.
+- **Minutos:** el backend los entrega con un decimal; se muestran enteros y nunca «0 min» (mínimo 1).
+- **Sin opciones:** se muestra el `motivo` del backend y, si viene, el `paraderoMasCercano` con su distancia.
+- **Origen igual al destino** se avisa en el cliente y no se llama a la API.
+- **Cada opción** ofrece «Ver ruta» y «¿Cuándo llega?» (ETA del paradero de origen de esa ruta).
+- `PENDIENTE(decisión)`: el backend a veces devuelve `busMin: 0.0` (visto con origen y destino a menos de un paradero de distancia entre sí en el circuito); la app lo muestra tal cual. Si es un error del cálculo, corresponde al backend.
+- Se eliminó `pantalla_pendiente.dart`: ya no queda ninguna pestaña por construir.
+
+## 2026-10-31 · mobile-dev · Viajar sin viaje directo
+
+- **Causa de «no encuentra ruta» cerca de una ruta activa:** la planificación va de paradero a paradero (≤ `radio_caminata_m`, 500 m). En la Avenida Santander los paraderos de La Enea están a 653 y 809 m, así que el único paradero cercano es de otra ruta y el backend responde «No hay una ruta directa entre esos paraderos». La app enviaba bien la ubicación; el comportamiento es del backend (ver solicitud abierta).
+- **Cambio en la app (sin contrato nuevo):** si no hay opciones y el origen tiene coordenadas (Mi ubicación, punto del mapa o hito), «Viajar» consulta `GET /rutas/cercanas` y `GET /paraderos/cercanos?rutaId` y muestra «Rutas que pasan cerca de tu origen» con la distancia a la ruta, su paradero más cercano, **Ver ruta** y **¿Cuándo llega?**. Es una sugerencia opcional: si falla, solo se ve la respuesta principal. Añade aviso «solo se sube y se baja en paraderos».
+
+## 2026-10-31 · backend-dev · registro de pasajeros con perfil completo
+
+- **Decisión (resuelve la pregunta de `docs/solicitudes-entre-agentes.md`):** el registro en Supabase Auth lo hace la app móvil; el backend solo expone `POST /yo` para crear el perfil de pasajero. Se eligió `POST /yo` (mismo recurso que `GET /yo`) en vez de un endpoint nuevo.
+- **Autenticación sin perfil:** `PuertoAutenticacion.verificar_sesion` (nuevo) valida el token con `GET /auth/v1/user` y devuelve id y correo SIN exigir perfil (`verificar_token` sigue exigiéndolo y sin cambios, así el resto de la API no cambia). El correo sale del token, nunca del cuerpo.
+- **Esquema:** `perfil_usuario` solo tenía `nombre`; no tenía apellido ni celular. Se agrega la migración `0006_perfil_pasajero.sql` (NO aplicada): `apellido text`, `celular text` y `ck_perfil_celular`. `nombre` guarda el nombre; no se duplicó información.
+- **Comando para aplicarla** (desde `backend/`; simulacro sin `--aplicar`): `.venv\Scripts\python.exe scripts\aplicar_migracion.py 0006_perfil_pasajero.sql --aplicar`. Es idempotente. `verificar_bd.py --aplicar-migraciones` (BD limpia) también la aplica porque toma todos los `0*.sql`.
+- **`perfil()` no cambia** (lo usa cada petición autenticada): las columnas nuevas solo se leen en `perfil_completo`, que usa `POST /yo`. Así, un backend nuevo con la migración pendiente no rompe el login de nadie; solo falla `POST /yo`.
+- **Idempotencia:** `insert … on conflict (id) do nothing`; si ya existe, 200 con el existente. Un correo ya usado por otro perfil da 409 (índice único de correo).
+- **Celular:** móvil colombiano de 10 dígitos que empieza por 3, se guarda normalizado. No se aceptan teléfonos fijos ni otros países. Sin registros de correo, celular ni token en logs (hay prueba).
+- **`GET /yo` no devuelve aún nombre, apellido ni celular** (para no depender de la migración en cada inicio de sesión); si el equipo lo quiere, es un cambio pequeño tras aplicar 0006.
+
+## 2026-10-31 · backend-dev · GET /yo con nombre, apellido y celular
+
+- Con la migración 0006 aplicada, `GET /yo` usa `perfil_completo` y devuelve `nombre`, `apellido` y `celular` (la misma forma de `POST /yo`). La autenticación de cada petición sigue usando `perfil()` sin las columnas nuevas.
+
+## 2026-10-31 · backend-dev · planificación: busMin con el avance secuencial de cada pase
+
+- **Reproducción con las semillas** (`pruebas/unitarias/test_planificacion_semillas.py`, sin BD): con los GeoJSON, la proyección de un paradero por cercanía se equivoca en «Paradero Villamaría 4» (orden 6, está en la vuelta, pero se proyecta en la ida: 2 200 m en vez de 3 895 m). Antes: «Paradero Villamaría 4 → Villamaría» daba 2,5 min (debía ser 21,3) y «Villamaría → Paradero Villamaría 4» daba 21,3 min (debía ser 2,5). El caso «Paradero La Enea 2 → La Enea» (La Enea no repite tramos) da 6 536 m = **19,6 min** con el avance secuencial de las semillas; un valor de 2,8 min no sale de esos datos, así que si aparece en la app apunta a una BD con funciones SQL viejas (ver abajo).
+- **Cambio:** el planificador ya no pide el avance de un paradero suelto (`progreso_paradero`, que cae en proyección por cercanía si no encuentra el paradero y solo devuelve el primer pase) sino la secuencia completa (`progresos_paraderos_ruta` vía `RepositorioSeguimientoSql.progresos_de_ruta`) y toma el menor recorrido entre todos los pases del origen y del destino (`mejor_recorrido_m`). `calcular_tiempos` recibe el recorrido en metros. No cambia el SQL ni el esquema.
+- **Si la app sigue mostrando tiempos subestimados:** la BD puede tener la versión anterior de las funciones de 0003. Comparar (solo lectura): `.venv\Scripts\python.exe scripts\actualizar_bd.py --comparar`; aplicar (requiere autorización del usuario): `.venv\Scripts\python.exe scripts\actualizar_bd.py --aplicar`.
+- **Pendiente:** el avance de la BUSETA (ETA, alertas) sigue proyectándose por cercanía (`progreso_en_ruta`), ambiguo en tramos repetidos; no se tocó.
+
+## 2026-10-31 · backend-dev · planificación: motivo con código y alternativas cercanas
+
+- **Problema:** con paraderos cerca del origen pero de rutas que no llegan al destino, el motivo era «No hay una ruta directa…» sin contexto.
+- **Cambio aditivo y opcional:** `motivoCodigo` (4 valores) y `alternativas[]` (ruta + su paradero más cercano a cada punto, máx. 5 por lado). `paraderoMasCercano` ahora también se llena en `sin_ruta_directa` (el más cercano al origen). Sin cambios para clientes anteriores. Prueba con semillas: Av. Santander → Villamaría (500 m) da El Cable por el origen y Villamaría por el destino.
+
+## 2026-10-31 · backend-dev · radio de caminata del planificador: 500 m → 1000 m
+
+- **Constante/parámetro:** el radio es el parámetro global `radio_caminata_m` (ya existía en `parametro_global` desde B1 y en `VALORES_POR_DEFECTO` de `nucleo/parametros.py`). **Solo lo usa el planificador** (prueba que lo comprueba); no se comparte con otros cálculos. Siguen igual: `radio_busqueda_m` 800 (`/rutas/cercanas` y `/paraderos/cercanos`), `radio_hito_m` 300 (hitos), el radio de 500 m propio del bot, y la distancia de aviso de alertas (`distancia_aviso_llegada_m` 300). El ETA no usa radio.
+- **Cambio:** valor por defecto en código 500 → 1000 y migración `0007_radio_caminata_1000.sql` (NO aplicada) que actualiza la fila de la BD **solo si sigue en 500** (no pisa una edición del administrador). Rango permitido del parámetro: 100 a 2000. También se puede cambiar desde el panel (`PUT /admin/parametros/radio_caminata_m`, caché ≤ 60 s).
+- **Comando para el usuario** (desde `backend/`): `.venv\Scripts\python.exe scripts\aplicar_migracion.py 0007_radio_caminata_1000.sql --aplicar` (sin `--aplicar` solo muestra el SQL).
+- **Prueba con semillas (Av. Santander 5.0638, -75.4949 → hito La Enea):** a 500 m solo hay «Paradero El Cable 2» (205 m) cerca del origen → `sin_ruta_directa`, con alternativas El Cable (origen) y La Enea (destino). A 1000 m aparece «Paradero La Enea 1» (652 m) → opción por la ruta La Enea: caminata 8,2 min, espera 5,0, bus 25,2, total 38,4 min.
+
+## 2026-10-31 · backend-dev · alta de usuarios con contraseña (reemplaza la invitación)
+
+- **Cambio:** `POST /admin/usuarios` crea la cuenta con `POST /auth/v1/admin/users` (`email_confirm: true`, como `crear_usuarios_demo.py`) en vez de `/auth/v1/invite`, que fallaba por el límite del correo gratuito de Supabase. Reemplaza la decisión de B5 («invitación por correo»).
+- **Contraseña:** opcional en el cuerpo (8 a 72 caracteres); si falta, `secrets.token_urlsafe(12)` (16 caracteres). Se devuelve una sola vez en la respuesta 201 (`contrasena`), igual que la clave de fuentes GPS; no se guarda ni se registra. Compartirla es manual (prototipo).
+- **Limpieza:** si falla `perfil_usuario` tras crear la cuenta en Auth, se borra la cuenta (`DELETE /auth/v1/admin/users/{id}`, de mejor esfuerzo) y se propaga el error.
+- **Errores:** correo ya registrado (`email_exists`, `user_already_exists`, HTTP 409) → `409 CONFLICTO_NEGOCIO`; `weak_password` → `400 VALIDACION` (matiz sobre lo pedido: es un error del dato, no del servicio); cualquier otro fallo de Supabase → `503 SERVICIO_EXTERNO_NO_DISPONIBLE`.
+- **Sin cambios:** validación de rol y empresa, y que solo el administrador pueda llamarlo (el rol `pasajero` sigue permitido como antes).

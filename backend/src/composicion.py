@@ -21,6 +21,7 @@ from herramientas.repositorio_simulacion_sql import RepositorioSimulacionSql
 from herramientas.simulador_gps import SimuladorGps
 from modulos.administracion import (
     AutenticacionSupabase,
+    CompletarPerfilPasajero,
     ConfigurarParametro,
     ConsultarEstadoDemo,
     CrearCredencialGps,
@@ -159,6 +160,7 @@ class Servicios:
     calcular_eta_paradero: CalcularEtaParadero
     autenticacion: PuertoAutenticacion
     obtener_perfil: ObtenerPerfil
+    completar_perfil_pasajero: CompletarPerfilPasajero
     consultar_estado_demo: ConsultarEstadoDemo
     ejecutar_escenario_demo: EjecutarEscenarioDemo
     actualizar_horarios_servicio: ActualizarHorariosServicio
@@ -260,6 +262,7 @@ def construir_servicios(
         ),
         autenticacion=repos.autenticacion,
         obtener_perfil=ObtenerPerfil(repos.usuarios),
+        completar_perfil_pasajero=CompletarPerfilPasajero(repos.usuarios),
         consultar_estado_demo=ConsultarEstadoDemo(simulador, configuracion.modo_demo),
         ejecutar_escenario_demo=EjecutarEscenarioDemo(simulador, configuracion.modo_demo),
         actualizar_horarios_servicio=ActualizarHorariosServicio(repos.horarios),

@@ -51,25 +51,43 @@ def _validar_rol_empresa(rol: str, empresa_id: UUID | None) -> None:
         raise ErrorValidacion("Solo el jefe de operaciones pertenece a una empresa.")
 
 
+CONTRASENA_MINIMA = 8
+CONTRASENA_MAXIMA = 72  # límite práctico de bcrypt en Supabase Auth
+
+
 class CrearUsuario(_Base):
+    """Crea la cuenta en Supabase Auth (con contraseña, correo confirmado) y su perfil. Devuelve la contraseña UNA vez."""
+
     def __init__(self, repositorio: RepositorioAdmin, altas: PuertoAltaUsuarios) -> None:
         super().__init__(repositorio)
         self._altas = altas
 
     async def __call__(
-        self, identidad: Identidad | None, correo: str, nombre: str | None, rol: str, empresa_id: UUID | None
+        self, identidad: Identidad | None, correo: str, nombre: str | None, rol: str, empresa_id: UUID | None,
+        contrasena: str | None = None,
     ) -> dict[str, Any]:
         _admin(identidad)
         correo = correo.strip().lower()
         if "@" not in correo or correo.startswith("@") or correo.endswith("@"):
             raise ErrorValidacion("El correo no es válido.")
         _validar_rol_empresa(rol, empresa_id)
+        if contrasena is not None and not CONTRASENA_MINIMA <= len(contrasena) <= CONTRASENA_MAXIMA:
+            raise ErrorValidacion(
+                f"La contraseña debe tener entre {CONTRASENA_MINIMA} y {CONTRASENA_MAXIMA} caracteres.",
+                [{"campo": "contrasena", "motivo": "longitud"}],
+            )
         if empresa_id is not None and not await self._repo.empresa_activa(empresa_id):
             raise ErrorNoEncontrado("La empresa no existe.")
         if await self._repo.correo_existe(correo):
             raise ErrorConflictoNegocio("Ya existe un usuario con ese correo.")
-        usuario_id = await self._altas.crear_usuario(correo, nombre)
-        return await self._repo.crear_perfil(usuario_id, correo, nombre, rol, empresa_id)
+        entregada = contrasena if contrasena is not None else secrets.token_urlsafe(12)  # 16 caracteres seguros
+        usuario_id = await self._altas.crear_usuario(correo, entregada, nombre)
+        try:
+            perfil = await self._repo.crear_perfil(usuario_id, correo, nombre, rol, empresa_id)
+        except Exception:
+            await self._altas.eliminar_usuario(usuario_id)  # no dejar cuentas huérfanas en Auth
+            raise
+        return {**perfil, "contrasena": entregada}  # única vez: nunca se guarda ni se vuelve a devolver
 
 
 class EditarUsuario(_Base):

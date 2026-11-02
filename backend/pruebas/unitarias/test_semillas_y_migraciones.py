@@ -28,11 +28,12 @@ def test_hitos_dentro_de_manizales_y_catedral_cerca_de_la_referencia() -> None:
     assert haversine_m((-75.517, 5.069), (hitos["Catedral"]["lng"], hitos["Catedral"]["lat"])) < 1000
 
 
-def test_cinco_migraciones_en_orden() -> None:
+def test_migraciones_en_orden() -> None:
     nombres = [p.name for p in sorted(MIGRACIONES.glob("0*.sql"))]
     assert nombres == [
         "0001_extensiones_y_tipos.sql", "0002_tablas.sql", "0003_indices_y_funciones.sql",
-        "0004_seguridad.sql", "0005_parametros.sql",
+        "0004_seguridad.sql", "0005_parametros.sql", "0006_perfil_pasajero.sql",
+        "0007_radio_caminata_1000.sql",
     ]
 
 
