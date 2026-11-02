@@ -1,0 +1,567 @@
+{
+  "atribucion": "© OpenStreetMap contributors (ODbL) · https://www.openstreetmap.org/copyright",
+  "fuente": "Overpass API (OpenStreetMap): place=suburb|neighbourhood|quarter|city_block|locality dentro de los municipios de Manizales y Villamaría; se toma el centro de relaciones y vías",
+  "descargado_en": "2026-11-02",
+  "nota": "Coordenadas de OSM sin validar (validado:false). Revisar a mano antes de tratarlas como oficiales.",
+  "total": 36,
+  "barrios": [
+    {
+      "nombre": "Albania",
+      "tipo": "sector",
+      "alias": [
+        "albania"
+      ],
+      "lat": 5.005364,
+      "lng": -75.478324,
+      "osm_tipo": "node",
+      "osm_id": 703213675,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Barroblanco",
+      "tipo": "sector",
+      "alias": [
+        "barroblanco"
+      ],
+      "lat": 5.008141,
+      "lng": -75.491626,
+      "osm_tipo": "node",
+      "osm_id": 703213669,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Bretaña",
+      "tipo": "sector",
+      "alias": [
+        "bretana"
+      ],
+      "lat": 5.011503,
+      "lng": -75.465753,
+      "osm_tipo": "node",
+      "osm_id": 703213869,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Bulgaria",
+      "tipo": "sector",
+      "alias": [
+        "bulgaria"
+      ],
+      "lat": 4.981975,
+      "lng": -75.455374,
+      "osm_tipo": "node",
+      "osm_id": 703213661,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Cachiri",
+      "tipo": "sector",
+      "alias": [
+        "cachiri"
+      ],
+      "lat": 4.991915,
+      "lng": -75.427308,
+      "osm_tipo": "node",
+      "osm_id": 703213717,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Casateja",
+      "tipo": "sector",
+      "alias": [
+        "casateja"
+      ],
+      "lat": 4.993816,
+      "lng": -75.419122,
+      "osm_tipo": "node",
+      "osm_id": 703213684,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Castilla",
+      "tipo": "sector",
+      "alias": [
+        "castilla"
+      ],
+      "lat": 4.996447,
+      "lng": -75.462391,
+      "osm_tipo": "node",
+      "osm_id": 703213673,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Costa Rica",
+      "tipo": "sector",
+      "alias": [
+        "costa rica"
+      ],
+      "lat": 4.964626,
+      "lng": -75.496431,
+      "osm_tipo": "node",
+      "osm_id": 703213660,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "El Cofre",
+      "tipo": "sector",
+      "alias": [
+        "el cofre"
+      ],
+      "lat": 4.962826,
+      "lng": -75.404504,
+      "osm_tipo": "node",
+      "osm_id": 703213886,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "El Rey",
+      "tipo": "sector",
+      "alias": [
+        "el rey"
+      ],
+      "lat": 4.97949,
+      "lng": -75.40962,
+      "osm_tipo": "node",
+      "osm_id": 703213892,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Guadalajara",
+      "tipo": "sector",
+      "alias": [
+        "guadalajara"
+      ],
+      "lat": 5.007995,
+      "lng": -75.435494,
+      "osm_tipo": "node",
+      "osm_id": 703213686,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Honda Blanca",
+      "tipo": "sector",
+      "alias": [
+        "honda blanca"
+      ],
+      "lat": 5.024806,
+      "lng": -75.475693,
+      "osm_tipo": "node",
+      "osm_id": 703213867,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Aurora",
+      "tipo": "sector",
+      "alias": [
+        "la aurora"
+      ],
+      "lat": 4.990307,
+      "lng": -75.493527,
+      "osm_tipo": "node",
+      "osm_id": 703213671,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Cristalina",
+      "tipo": "sector",
+      "alias": [
+        "la cristalina"
+      ],
+      "lat": 5.006825,
+      "lng": -75.509899,
+      "osm_tipo": "node",
+      "osm_id": 703213646,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Florida",
+      "tipo": "barrio",
+      "alias": [
+        "la florida"
+      ],
+      "lat": 5.033846,
+      "lng": -75.484996,
+      "osm_tipo": "node",
+      "osm_id": 599740254,
+      "place": "neighbourhood",
+      "validado": false
+    },
+    {
+      "nombre": "La India",
+      "tipo": "sector",
+      "alias": [
+        "la india"
+      ],
+      "lat": 4.962972,
+      "lng": -75.487533,
+      "osm_tipo": "node",
+      "osm_id": 703213658,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Isabela",
+      "tipo": "sector",
+      "alias": [
+        "la isabela"
+      ],
+      "lat": 4.991184,
+      "lng": -75.46663,
+      "osm_tipo": "node",
+      "osm_id": 703213672,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Laguna",
+      "tipo": "sector",
+      "alias": [
+        "la laguna"
+      ],
+      "lat": 4.992939,
+      "lng": -75.404358,
+      "osm_tipo": "node",
+      "osm_id": 703213891,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Maria",
+      "tipo": "sector",
+      "alias": [
+        "la maria"
+      ],
+      "lat": 4.973138,
+      "lng": -75.440073,
+      "osm_tipo": "node",
+      "osm_id": 703213677,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Marina",
+      "tipo": "sector",
+      "alias": [
+        "la marina"
+      ],
+      "lat": 4.96458,
+      "lng": -75.448942,
+      "osm_tipo": "node",
+      "osm_id": 703213653,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Nubia",
+      "tipo": "sector",
+      "alias": [
+        "la nubia"
+      ],
+      "lat": 5.020859,
+      "lng": -75.466045,
+      "osm_tipo": "node",
+      "osm_id": 703213866,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Paloma",
+      "tipo": "sector",
+      "alias": [
+        "la paloma"
+      ],
+      "lat": 4.986945,
+      "lng": -75.465022,
+      "osm_tipo": "node",
+      "osm_id": 703213666,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "La Pradera",
+      "tipo": "barrio",
+      "alias": [
+        "la pradera"
+      ],
+      "lat": 5.044284,
+      "lng": -75.519598,
+      "osm_tipo": "node",
+      "osm_id": 599740236,
+      "place": "neighbourhood",
+      "validado": false
+    },
+    {
+      "nombre": "La Primavera",
+      "tipo": "sector",
+      "alias": [
+        "la primavera"
+      ],
+      "lat": 5.005364,
+      "lng": -75.451574,
+      "osm_tipo": "node",
+      "osm_id": 703213685,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Las Brisas",
+      "tipo": "sector",
+      "alias": [
+        "las brisas"
+      ],
+      "lat": 5.010188,
+      "lng": -75.516623,
+      "osm_tipo": "node",
+      "osm_id": 703213837,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Los Andes",
+      "tipo": "sector",
+      "alias": [
+        "los andes"
+      ],
+      "lat": 4.986799,
+      "lng": -75.444411,
+      "osm_tipo": "node",
+      "osm_id": 703213679,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Monserrate",
+      "tipo": "barrio",
+      "alias": [
+        "monserrate"
+      ],
+      "lat": 5.039352,
+      "lng": -75.510618,
+      "osm_tipo": "node",
+      "osm_id": 1731400503,
+      "place": "neighbourhood",
+      "validado": false
+    },
+    {
+      "nombre": "Montaño",
+      "tipo": "sector",
+      "alias": [
+        "montano"
+      ],
+      "lat": 4.9925,
+      "lng": -75.452304,
+      "osm_tipo": "node",
+      "osm_id": 703213681,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Palenque",
+      "tipo": "sector",
+      "alias": [
+        "palenque"
+      ],
+      "lat": 4.9504,
+      "lng": -75.415906,
+      "osm_tipo": "node",
+      "osm_id": 703213649,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Pedro Uribe",
+      "tipo": "sector",
+      "alias": [
+        "pedro uribe"
+      ],
+      "lat": 4.992354,
+      "lng": -75.48958,
+      "osm_tipo": "node",
+      "osm_id": 703213670,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "San Antonio",
+      "tipo": "sector",
+      "alias": [
+        "san antonio"
+      ],
+      "lat": 5.001563,
+      "lng": -75.431108,
+      "osm_tipo": "node",
+      "osm_id": 703213682,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Santa Ana",
+      "tipo": "barrio",
+      "alias": [
+        "santa ana"
+      ],
+      "lat": 5.050274,
+      "lng": -75.511004,
+      "osm_tipo": "node",
+      "osm_id": 1731378193,
+      "place": "neighbourhood",
+      "validado": false
+    },
+    {
+      "nombre": "Santa Teresa",
+      "tipo": "sector",
+      "alias": [
+        "santa teresa"
+      ],
+      "lat": 4.982267,
+      "lng": -75.421314,
+      "osm_tipo": "node",
+      "osm_id": 703213680,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Tolda Fria",
+      "tipo": "sector",
+      "alias": [
+        "tolda fria"
+      ],
+      "lat": 4.9504,
+      "lng": -75.436956,
+      "osm_tipo": "node",
+      "osm_id": 703213650,
+      "place": "locality",
+      "validado": false,
+      "dudoso": [
+        "place=locality (puede ser rural o un lugar, no un barrio)"
+      ]
+    },
+    {
+      "nombre": "Turín",
+      "tipo": "barrio",
+      "alias": [
+        "turin"
+      ],
+      "lat": 5.036405,
+      "lng": -75.509735,
+      "osm_tipo": "node",
+      "osm_id": 1731400502,
+      "place": "neighbourhood",
+      "validado": false
+    },
+    {
+      "nombre": "Urapanes",
+      "tipo": "barrio",
+      "alias": [
+        "urapanes"
+      ],
+      "lat": 5.046961,
+      "lng": -75.509953,
+      "osm_tipo": "node",
+      "osm_id": 1731400504,
+      "place": "neighbourhood",
+      "validado": false
+    }
+  ]
+}
