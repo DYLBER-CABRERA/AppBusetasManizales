@@ -57,10 +57,13 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       <header className="flex items-center justify-between bg-tinta px-6 py-3 text-white">
         <span className="font-titulo text-lg font-bold">BusetasApp · Gestión</span>
         <div className="flex items-center gap-4 text-sm">
-          <span>
-            {perfil.correo} · {ETIQUETA_ROL[perfil.rol] ?? perfil.rol}
-            {perfil.empresaNombre ? ` · ${perfil.empresaNombre}` : ""}
-          </span>
+          <div className="text-right leading-tight">
+            <p className="font-semibold">
+              {perfil.nombre?.trim() || perfil.correo} · {ETIQUETA_ROL[perfil.rol] ?? perfil.rol}
+              {perfil.empresaNombre ? ` · ${perfil.empresaNombre}` : ""}
+            </p>
+            {perfil.nombre?.trim() ? <p className="text-xs text-white/85">{perfil.correo}</p> : null}
+          </div>
           <button type="button" onClick={salir}
             className="min-h-11 rounded border border-white px-4 font-semibold hover:bg-white/15">
             Cerrar sesión

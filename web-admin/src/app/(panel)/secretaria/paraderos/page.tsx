@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaParaderos } from "@/componentes/secretaria/PantallaParaderos";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Paraderos" bloque="W3" />;
+  return <PantallaParaderos />;
 }

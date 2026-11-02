@@ -865,7 +865,11 @@ export interface paths {
         /** Obtener Perfil */
         get: operations["obtener_perfil"];
         put?: never;
-        post?: never;
+        /**
+         * Completar Perfil Pasajero
+         * @description Completa el perfil de un pasajero recién registrado en Supabase Auth (el registro correo+contraseña lo hace la app).
+         */
+        post: operations["completar_perfil_pasajero"];
         delete?: never;
         options?: never;
         head?: never;
@@ -931,6 +935,25 @@ export interface components {
             ultimaNotificacionEn?: string | null;
             /** Version */
             version: number;
+        };
+        /**
+         * AlternativaCercana
+         * @description Ruta que pasa cerca del origen o del destino, con su paradero más cercano a ese punto (sugerencia de alternativa).
+         */
+        AlternativaCercana: {
+            /**
+             * Lado
+             * @enum {string}
+             */
+            lado: "origen" | "destino";
+            paradero: components["schemas"]["ParaderoCercano"];
+            /**
+             * Rutaid
+             * Format: uuid
+             */
+            rutaId: string;
+            /** Rutanombre */
+            rutaNombre: string;
         };
         /** Aviso */
         Aviso: {
@@ -1678,14 +1701,26 @@ export interface components {
             /** Version */
             version: number;
         };
-        /** Perfil */
-        Perfil: {
+        /** PerfilPasajero */
+        PerfilPasajero: {
+            /** Apellido */
+            apellido?: string | null;
+            /**
+             * Celular
+             * @description 10 dígitos, móvil colombiano normalizado (ej. 3001234567)
+             */
+            celular?: string | null;
             /** Correo */
             correo: string;
             /** Empresaid */
             empresaId?: string | null;
             /** Empresanombre */
             empresaNombre?: string | null;
+            /**
+             * Nombre
+             * @description null en cuentas anteriores al registro con perfil completo (demo)
+             */
+            nombre?: string | null;
             /**
              * Rol
              * @enum {string}
@@ -1697,6 +1732,27 @@ export interface components {
              */
             usuarioId: string;
         };
+        /**
+         * PerfilPasajeroCrear
+         * @description El rol NO se acepta: siempre es `pasajero`. Campos desconocidos (incluido `rol`) se ignoran.
+         */
+        PerfilPasajeroCrear: {
+            /**
+             * Apellido
+             * @description Se recortan espacios; obligatorio, máx. 60
+             */
+            apellido: string;
+            /**
+             * Celular
+             * @description Móvil colombiano; admite +57, espacios, guiones y paréntesis
+             */
+            celular: string;
+            /**
+             * Nombre
+             * @description Se recortan espacios; obligatorio, máx. 60
+             */
+            nombre: string;
+        };
         /** PlanificarEntrada */
         PlanificarEntrada: {
             destino: components["schemas"]["Lugar"];
@@ -1704,7 +1760,10 @@ export interface components {
         };
         /** PosicionEntrada */
         PosicionEntrada: {
-            /** Lat */
+            /**
+             * Lat
+             * @description Se valida por posición: fuera de rango → rechazada `coordenadas_invalidas`
+             */
             lat: number;
             /** Lng */
             lng: number;
@@ -1764,8 +1823,18 @@ export interface components {
         };
         /** RespuestaPlanificacion */
         RespuestaPlanificacion: {
+            /**
+             * Alternativas
+             * @description Solo con motivoCodigo `sin_ruta_directa`: rutas que pasan junto al origen y al destino
+             */
+            alternativas?: components["schemas"]["AlternativaCercana"][];
             /** Motivo */
             motivo?: string | null;
+            /**
+             * Motivocodigo
+             * @description Solo sin opciones; distingue el motivo
+             */
+            motivoCodigo?: ("sin_paraderos_origen" | "sin_paraderos_destino" | "sin_ruta_directa" | "sin_servicio_en_horario") | null;
             /** Opciones */
             opciones: components["schemas"]["OpcionViaje"][];
             paraderoMasCercano?: components["schemas"]["ParaderoCercano"] | null;
@@ -2170,8 +2239,41 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** UsuarioCreado */
+        UsuarioCreado: {
+            /** Activo */
+            activo: boolean;
+            /**
+             * Contrasena
+             * @description Se muestra UNA sola vez; no se guarda ni se vuelve a devolver. Compartirla en privado.
+             */
+            contrasena: string;
+            /** Correo */
+            correo: string;
+            /** Empresaid */
+            empresaId?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nombre */
+            nombre?: string | null;
+            /**
+             * Rol
+             * @enum {string}
+             */
+            rol: "pasajero" | "jefe_operaciones" | "secretaria_movilidad" | "administrador";
+            /** Version */
+            version: number;
+        };
         /** UsuarioCrear */
         UsuarioCrear: {
+            /**
+             * Contrasena
+             * @description Opcional. Si no viene, el servidor genera una segura. Se devuelve UNA sola vez en la respuesta.
+             */
+            contrasena?: string | null;
             /** Correo */
             correo: string;
             /**
@@ -2285,15 +2387,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_empresas_admin: {
@@ -2334,15 +2427,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2421,15 +2505,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2526,15 +2601,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_credenciales_gps: {
@@ -2595,15 +2661,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2691,15 +2748,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_parametros: {
@@ -2740,15 +2788,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2845,15 +2884,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_roles: {
@@ -2894,15 +2924,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2968,15 +2989,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     crear_usuario: {
@@ -2998,7 +3010,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Usuario"];
+                    "application/json": components["schemas"]["UsuarioCreado"];
                 };
             };
             /** @description VALIDACION */
@@ -3028,6 +3040,15 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
+            /** @description NO_ENCONTRADO */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
             /** @description CONFLICTO_VERSION o CONFLICTO_NEGOCIO */
             409: {
                 headers: {
@@ -3048,15 +3069,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3153,15 +3165,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_alertas: {
@@ -3191,8 +3194,8 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description ERROR_INTERNO */
-            500: {
+            /** @description NO_AUTORIZADO */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3200,8 +3203,8 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
+            /** @description ERROR_INTERNO */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3251,6 +3254,15 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
             /** @description NO_ENCONTRADO */
             404: {
                 headers: {
@@ -3287,15 +3299,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     eliminar_alerta: {
@@ -3325,6 +3328,15 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
             /** @description NO_ENCONTRADO */
             404: {
                 headers: {
@@ -3345,15 +3357,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3394,15 +3397,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3461,6 +3455,15 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
+            /** @description NO_ENCONTRADO */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -3472,15 +3475,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3553,20 +3547,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_busetas: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3600,17 +3588,17 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description ERROR_INTERNO */
-            500: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RespuestaError"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
+            /** @description ERROR_INTERNO */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3622,7 +3610,10 @@ export interface operations {
     };
     guardar_buseta: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3696,20 +3687,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     editar_buseta: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 buseta_id: string;
@@ -3794,15 +3779,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     buscar_hitos: {
@@ -3845,15 +3821,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3910,20 +3877,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_conductores: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3957,17 +3918,17 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description ERROR_INTERNO */
-            500: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RespuestaError"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
+            /** @description ERROR_INTERNO */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3979,7 +3940,10 @@ export interface operations {
     };
     guardar_conductor: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4053,20 +4017,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     editar_conductor: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 conductor_id: string;
@@ -4144,15 +4102,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4238,15 +4187,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     consultar_estado_demo: {
@@ -4303,15 +4243,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_empresas: {
@@ -4334,15 +4265,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4420,15 +4342,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_favoritos: {
@@ -4458,8 +4371,8 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description ERROR_INTERNO */
-            500: {
+            /** @description NO_AUTORIZADO */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4467,8 +4380,8 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
+            /** @description ERROR_INTERNO */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4527,6 +4440,15 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
             /** @description NO_ENCONTRADO */
             404: {
                 headers: {
@@ -4547,15 +4469,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4592,6 +4505,15 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
             /** @description NO_ENCONTRADO */
             404: {
                 headers: {
@@ -4612,15 +4534,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4697,15 +4610,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     consultar_rutas_por_hito: {
@@ -4748,15 +4652,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4824,20 +4719,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_servicios_de_mi_empresa: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4871,17 +4760,17 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description ERROR_INTERNO */
-            500: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RespuestaError"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
+            /** @description ERROR_INTERNO */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4929,15 +4818,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5023,15 +4903,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     consultar_paraderos_cercanos: {
@@ -5077,15 +4948,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5182,15 +5044,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     eliminar_paradero: {
@@ -5268,15 +5121,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     calcular_eta_paradero: {
@@ -5338,15 +5182,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     listar_rodamientos: {
@@ -5354,6 +5189,8 @@ export interface operations {
             query?: {
                 desde?: string | null;
                 hasta?: string | null;
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
             };
             header?: never;
             path?: never;
@@ -5368,6 +5205,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Rodamiento"][];
+                };
+            };
+            /** @description VALIDACION */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
                 };
             };
             /** @description NO_AUTENTICADO */
@@ -5406,20 +5252,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     crear_rodamiento: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5466,6 +5306,15 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
+            /** @description NO_ENCONTRADO */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
             /** @description CONFLICTO_VERSION o CONFLICTO_NEGOCIO */
             409: {
                 headers: {
@@ -5493,20 +5342,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     obtener_rodamiento: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 rodamiento_id: string;
@@ -5569,20 +5412,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     actualizar_rodamiento: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 rodamiento_id: string;
@@ -5667,20 +5504,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     anular_rodamiento: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 rodamiento_id: string;
@@ -5749,15 +5580,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5769,7 +5591,10 @@ export interface operations {
     };
     publicar_rodamiento: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 rodamiento_id: string;
@@ -5838,15 +5663,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5876,15 +5692,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5979,15 +5786,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     consultar_rutas_cercanas: {
@@ -6039,15 +5837,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     obtener_detalle_ruta: {
@@ -6090,15 +5879,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6195,15 +5975,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     eliminar_ruta: {
@@ -6281,15 +6052,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     consultar_busetas_en_vivo: {
@@ -6332,15 +6094,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6397,15 +6150,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     consultar_horarios: {
@@ -6448,15 +6192,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6553,15 +6288,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     consultar_salud: {
@@ -6584,15 +6310,6 @@ export interface operations {
             };
             /** @description ERROR_INTERNO */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6677,20 +6394,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     actualizar_frecuencias_servicio: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 servicio_id: string;
@@ -6775,20 +6486,14 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     actualizar_horarios_servicio: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Solo administrador; el jefe lo ignora */
+                empresaId?: string | null;
+            };
             header?: never;
             path: {
                 servicio_id: string;
@@ -6873,15 +6578,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     planificar_viaje: {
@@ -6942,15 +6638,6 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RespuestaError"];
-                };
-            };
         };
     };
     obtener_perfil: {
@@ -6968,7 +6655,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Perfil"];
+                    "application/json": components["schemas"]["PerfilPasajero"];
                 };
             };
             /** @description NO_AUTENTICADO */
@@ -6989,8 +6676,77 @@ export interface operations {
                     "application/json": components["schemas"]["RespuestaError"];
                 };
             };
-            /** @description PENDIENTE: endpoint declarado en el contrato, lógica aún no implementada */
-            501: {
+        };
+    };
+    completar_perfil_pasajero: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PerfilPasajeroCrear"];
+            };
+        };
+        responses: {
+            /** @description El perfil ya existía (idempotente) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilPasajero"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerfilPasajero"];
+                };
+            };
+            /** @description VALIDACION */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTENTICADO */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description CONFLICTO_VERSION o CONFLICTO_NEGOCIO */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description ERROR_INTERNO */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

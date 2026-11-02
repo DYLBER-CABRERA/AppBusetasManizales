@@ -1,12 +1,10 @@
 import { olvidarEmpresa } from "./contexto-empresa";
-import { entorno } from "./entorno";
+import { supabaseConfigurado } from "./entorno";
 import { supabaseNavegador } from "./supabase";
 import type { components } from "./tipos-api";
 
-export type Perfil = components["schemas"]["Perfil"];
+export type Perfil = components["schemas"]["PerfilPasajero"];
 export type Rol = "pasajero" | "jefe_operaciones" | "secretaria_movilidad" | "administrador";
-
-export const COOKIE_MOCK = "busetas_sesion_ejemplo";
 
 /** Carpeta inicial de cada rol. */
 export const RUTA_INICIAL: Record<Rol, string> = {
@@ -28,17 +26,6 @@ export function rutaInicial(rol: string): string {
   return RUTA_INICIAL[rol as Rol] ?? "/login";
 }
 
-// ---- sesión de ejemplo (PENDIENTE: se elimina cuando el backend responda /yo y haya Supabase) ----
-export function correoSesionEjemplo(): string | null {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_MOCK}=([^;]*)`));
-  return m?.[1] ? decodeURIComponent(m[1]) : null;
-}
-
-export function hayCredencialesSupabase(): boolean {
-  return supabaseNavegador() !== null;
-}
-
 export async function obtenerToken(): Promise<string | null> {
   const sb = supabaseNavegador();
   if (!sb) return null;
@@ -48,19 +35,14 @@ export async function obtenerToken(): Promise<string | null> {
 
 export async function iniciarSesion(correo: string, contrasena: string): Promise<void> {
   const sb = supabaseNavegador();
-  if (sb) {
-    const { error } = await sb.auth.signInWithPassword({ email: correo, password: contrasena });
-    if (error) throw new Error("Correo o contraseña incorrectos.");
-    return;
-  }
-  if (!entorno.usarMocks) {
+  if (!sb || !supabaseConfigurado) {
     throw new Error("Falta configurar Supabase (NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY).");
   }
-  document.cookie = `${COOKIE_MOCK}=${encodeURIComponent(correo)}; path=/; SameSite=Lax`;
+  const { error } = await sb.auth.signInWithPassword({ email: correo, password: contrasena });
+  if (error) throw new Error("Correo o contraseña incorrectos.");
 }
 
 export async function cerrarSesion(): Promise<void> {
   olvidarEmpresa();
   await supabaseNavegador()?.auth.signOut();
-  document.cookie = `${COOKIE_MOCK}=; path=/; max-age=0`;
 }

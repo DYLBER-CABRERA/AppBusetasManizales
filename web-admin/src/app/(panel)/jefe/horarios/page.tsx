@@ -1,5 +1,5 @@
-import { PantallaPendiente } from "@/componentes/PantallaPendiente";
+import { PantallaHorarios } from "@/componentes/jefe/PantallaHorarios";
 
 export default function Page() {
-  return <PantallaPendiente titulo="Horarios y frecuencias" bloque="W4" />;
+  return <PantallaHorarios />;
 }

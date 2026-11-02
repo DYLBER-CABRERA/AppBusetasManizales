@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BannerError } from "@/componentes/BannerError";
 import { Esqueleto } from "@/componentes/Esqueleto";
 import { Modal } from "@/componentes/Modal";
+import { ModalClaveNueva } from "./ModalClaveNueva";
 import { useToast } from "@/componentes/Toast";
 import { Vacio } from "@/componentes/Vacio";
 import {
@@ -146,19 +147,9 @@ function TarjetaEmpresa({ empresa, onClaveNueva }: { empresa: EmpresaAdmin; onCl
 
 export function PantallaFuentesGps() {
   const empresas = useEmpresasAdmin();
-  const toast = useToast();
+  const activas = empresas.data?.filter((e) => e.estado === "activo");
   // La clave vive solo aquí, en memoria, mientras el modal está abierto: nunca en caché ni en el almacenamiento.
   const [nueva, setNueva] = useState<{ credencial: CredencialCreada; empresa: string } | null>(null);
-
-  async function copiar() {
-    if (!nueva) return;
-    try {
-      await navigator.clipboard.writeText(nueva.credencial.clave);
-      toast("Copiada");
-    } catch {
-      toast("No se pudo copiar: selecciónala y cópiala a mano");
-    }
-  }
 
   return (
     <section className="space-y-6">
@@ -167,26 +158,14 @@ export function PantallaFuentesGps() {
 
       {empresas.isError ? <BannerError mensaje={empresas.error.message} onReintentar={() => empresas.refetch()} /> : null}
       {empresas.isPending ? <Esqueleto filas={4} /> : null}
-      {empresas.data && empresas.data.length === 0 ? (
+      {activas && activas.length === 0 ? (
         <Vacio titulo="No hay empresas" causa="Sin empresas no hay fuentes GPS." accion={<span>Crea una empresa en la sección Empresas.</span>} />
       ) : null}
-      {empresas.data?.map((e) => (
+      {activas?.map((e) => (
         <TarjetaEmpresa key={e.id} empresa={e} onClaveNueva={(credencial, empresa) => setNueva({ credencial, empresa })} />
       ))}
 
-      <Modal abierto={nueva !== null} sinEscape titulo="Clave nueva" onCerrar={() => setNueva(null)}
-        acciones={
-          <>
-            <button type="button" onClick={copiar}
-              className="min-h-11 rounded border border-verde px-5 font-semibold text-verde">Copiar</button>
-            <button type="button" onClick={() => setNueva(null)}
-              className="min-h-11 rounded bg-verde px-5 font-semibold text-white">Ya la copié</button>
-          </>
-        }>
-        <p className="mb-2 font-semibold">Copia la clave ahora. No podrás verla otra vez.</p>
-        <p className="mb-2">Fuente «{nueva?.credencial.nombre}» de {nueva?.empresa}:</p>
-        <code className="block break-all rounded bg-fondo p-3 text-base select-all">{nueva?.credencial.clave}</code>
-      </Modal>
+      <ModalClaveNueva key={nueva?.credencial.id} credencial={nueva?.credencial ?? null} empresa={nueva?.empresa ?? ""} onCerrar={() => setNueva(null)} />
     </section>
   );
 }
