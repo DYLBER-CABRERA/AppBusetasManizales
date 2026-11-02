@@ -1,10 +1,27 @@
 {
-  "atribucion": "© OpenStreetMap contributors (ODbL) · https://www.openstreetmap.org/copyright",
-  "fuente": "Overpass API (OpenStreetMap): place=suburb|neighbourhood|quarter|city_block|locality dentro de los municipios de Manizales y Villamaría; se toma el centro de relaciones y vías",
-  "descargado_en": "2026-11-02",
-  "nota": "Coordenadas de OSM sin validar (validado:false). Revisar a mano antes de tratarlas como oficiales.",
-  "total": 36,
+  "atribucion": "Barrios urbanos: Alcaldía de Manizales, «Límite de barrios Municipio de Manizales» (Acuerdos Municipales 589 de 2004 y 1038 de 2019), https://sig.manizales.gov.co/wadmzl/rest/services/20_WEB/2021_consulta_catas_urbano_web/FeatureServer/1. Veredas y otros lugares: © OpenStreetMap contributors (ODbL), https://www.openstreetmap.org/copyright",
+  "fuentes": {
+    "alcaldia": "fuentes/barrios_alcaldia.geojson (descargado 2026-11-02 de la API pública del ArcGIS de la Alcaldía)",
+    "osm": "fuentes/barrios_osm.json (Overpass API, scripts/descargar_barrios.py)"
+  },
+  "generado_en": "2026-11-02",
+  "nota": "Puntos representativos (interiores al polígono) de cada barrio, no hitos exactos: validado:false. `comuna` y `nombre_original` son informativos y no se cargan a la BD.",
+  "total": 148,
   "barrios": [
+    {
+      "nombre": "20 de Julio",
+      "tipo": "barrio",
+      "alias": [
+        "20 de julio"
+      ],
+      "lat": 5.062386,
+      "lng": -75.518255,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "20 DE JULIO",
+      "validado": false
+    },
     {
       "nombre": "Albania",
       "tipo": "sector",
@@ -19,7 +36,162 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Alhambra",
+      "tipo": "barrio",
+      "alias": [
+        "alhambra"
+      ],
+      "lat": 5.037775,
+      "lng": -75.46811,
+      "fuente": "alcaldia",
+      "comuna": "07",
+      "poligonos": 1,
+      "nombre_original": "ALHAMBRA",
+      "validado": false
+    },
+    {
+      "nombre": "Alta Suiza",
+      "tipo": "barrio",
+      "alias": [
+        "alta suiza"
+      ],
+      "lat": 5.050536,
+      "lng": -75.481933,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "ALTA SUIZA",
+      "validado": false
+    },
+    {
+      "nombre": "Altos de Capri",
+      "tipo": "barrio",
+      "alias": [
+        "altos de capri"
+      ],
+      "lat": 5.076499,
+      "lng": -75.502182,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "ALTOS DE CAPRI",
+      "validado": false
+    },
+    {
+      "nombre": "Aranjuez",
+      "tipo": "barrio",
+      "alias": [
+        "aranjuez"
+      ],
+      "lat": 5.042413,
+      "lng": -75.499953,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "ARANJUEZ",
+      "validado": false
+    },
+    {
+      "nombre": "Arboleda",
+      "tipo": "barrio",
+      "alias": [
+        "arboleda"
+      ],
+      "lat": 5.05908,
+      "lng": -75.497743,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "ARBOLEDA",
+      "validado": false
+    },
+    {
+      "nombre": "Arenillo",
+      "tipo": "barrio",
+      "alias": [
+        "arenillo"
+      ],
+      "lat": 5.048293,
+      "lng": -75.532274,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "ARENILLO",
+      "validado": false
+    },
+    {
+      "nombre": "Arrayanes",
+      "tipo": "barrio",
+      "alias": [
+        "arrayanes"
+      ],
+      "lat": 5.059376,
+      "lng": -75.511015,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "ARRAYANES",
+      "validado": false
+    },
+    {
+      "nombre": "Asis",
+      "tipo": "barrio",
+      "alias": [
+        "asis"
+      ],
+      "lat": 5.075129,
+      "lng": -75.516545,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 1,
+      "nombre_original": "ASIS",
+      "validado": false
+    },
+    {
+      "nombre": "Avanzada",
+      "tipo": "barrio",
+      "alias": [
+        "avanzada"
+      ],
+      "lat": 5.076091,
+      "lng": -75.514188,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 2,
+      "nombre_original": "AVANZADA",
+      "validado": false
+    },
+    {
+      "nombre": "Baja Suiza",
+      "tipo": "barrio",
+      "alias": [
+        "baja suiza"
+      ],
+      "lat": 5.056378,
+      "lng": -75.48125,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "BAJA SUIZA",
+      "validado": false
+    },
+    {
+      "nombre": "Bajo Prado",
+      "tipo": "barrio",
+      "alias": [
+        "bajo prado"
+      ],
+      "lat": 5.058861,
+      "lng": -75.505941,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "BAJO PRADO",
+      "validado": false
     },
     {
       "nombre": "Barroblanco",
@@ -35,7 +207,78 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Belén",
+      "tipo": "barrio",
+      "alias": [
+        "belen"
+      ],
+      "lat": 5.059925,
+      "lng": -75.493482,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "BELEN",
+      "validado": false
+    },
+    {
+      "nombre": "Bella Montaña",
+      "tipo": "barrio",
+      "alias": [
+        "bella montana"
+      ],
+      "lat": 5.093972,
+      "lng": -75.529071,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "BELLA MONTAÑA",
+      "validado": false
+    },
+    {
+      "nombre": "Betania",
+      "tipo": "barrio",
+      "alias": [
+        "betania"
+      ],
+      "lat": 5.055702,
+      "lng": -75.496761,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "BETANIA",
+      "validado": false
+    },
+    {
+      "nombre": "Bosques de Niza",
+      "tipo": "barrio",
+      "alias": [
+        "bosques de niza"
+      ],
+      "lat": 5.048936,
+      "lng": -75.474503,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "BOSQUES DE NIZA",
+      "validado": false
+    },
+    {
+      "nombre": "Bosques del Norte",
+      "tipo": "barrio",
+      "alias": [
+        "bosques del norte"
+      ],
+      "lat": 5.081738,
+      "lng": -75.490392,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "BOSQUES DEL NORTE",
+      "validado": false
     },
     {
       "nombre": "Bretaña",
@@ -51,7 +294,23 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Buena Esperanza",
+      "tipo": "barrio",
+      "alias": [
+        "buena esperanza",
+        "buena espernza"
+      ],
+      "lat": 5.061643,
+      "lng": -75.52156,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "BUENA ESPERNZA",
+      "validado": false
     },
     {
       "nombre": "Bulgaria",
@@ -67,7 +326,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "Cachiri",
@@ -83,7 +343,64 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Camelia",
+      "tipo": "barrio",
+      "alias": [
+        "camelia"
+      ],
+      "lat": 5.049564,
+      "lng": -75.48556,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "CAMELIA",
+      "validado": false
+    },
+    {
+      "nombre": "Camilo Torres",
+      "tipo": "barrio",
+      "alias": [
+        "camilo torres"
+      ],
+      "lat": 5.053096,
+      "lng": -75.505927,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "CAMILO TORRES",
+      "validado": false
+    },
+    {
+      "nombre": "Campoamor",
+      "tipo": "barrio",
+      "alias": [
+        "campoamor"
+      ],
+      "lat": 5.064164,
+      "lng": -75.513238,
+      "fuente": "alcaldia",
+      "comuna": "03",
+      "poligonos": 1,
+      "nombre_original": "CAMPOAMOR",
+      "validado": false
+    },
+    {
+      "nombre": "Campohermoso",
+      "tipo": "barrio",
+      "alias": [
+        "campohermoso"
+      ],
+      "lat": 5.075365,
+      "lng": -75.521333,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 2,
+      "nombre_original": "CAMPOHERMOSO",
+      "validado": false
     },
     {
       "nombre": "Casateja",
@@ -99,7 +416,36 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Caserio La Enea",
+      "tipo": "barrio",
+      "alias": [
+        "caserio la enea"
+      ],
+      "lat": 5.033672,
+      "lng": -75.45989,
+      "fuente": "alcaldia",
+      "comuna": "07",
+      "poligonos": 1,
+      "nombre_original": "CASERIO LA ENEA",
+      "validado": false
+    },
+    {
+      "nombre": "Castellana",
+      "tipo": "barrio",
+      "alias": [
+        "castellana"
+      ],
+      "lat": 5.063582,
+      "lng": -75.525044,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "CASTELLANA",
+      "validado": false
     },
     {
       "nombre": "Castilla",
@@ -115,7 +461,148 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Centenario",
+      "tipo": "barrio",
+      "alias": [
+        "centenario"
+      ],
+      "lat": 5.055859,
+      "lng": -75.527976,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "CENTENARIO",
+      "validado": false
+    },
+    {
+      "nombre": "Centro",
+      "tipo": "barrio",
+      "alias": [
+        "centro"
+      ],
+      "lat": 5.068289,
+      "lng": -75.516232,
+      "fuente": "alcaldia",
+      "comuna": "03",
+      "poligonos": 1,
+      "nombre_original": "CENTRO",
+      "validado": false
+    },
+    {
+      "nombre": "Cerros de la Alhambra",
+      "tipo": "barrio",
+      "alias": [
+        "cerros de la alhambra"
+      ],
+      "lat": 5.040955,
+      "lng": -75.458911,
+      "fuente": "alcaldia",
+      "comuna": "07",
+      "poligonos": 1,
+      "nombre_original": "CERROS DE LA ALHAMBRA",
+      "validado": false
+    },
+    {
+      "nombre": "Cervantes",
+      "tipo": "barrio",
+      "alias": [
+        "cervantes"
+      ],
+      "lat": 5.062793,
+      "lng": -75.510253,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 2,
+      "nombre_original": "CERVANTES",
+      "validado": false
+    },
+    {
+      "nombre": "Chipre",
+      "tipo": "barrio",
+      "alias": [
+        "chipre"
+      ],
+      "lat": 5.07655,
+      "lng": -75.525721,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "CHIPRE",
+      "validado": false
+    },
+    {
+      "nombre": "Ciudadela La Linda",
+      "tipo": "barrio",
+      "alias": [
+        "ciudadela la linda"
+      ],
+      "lat": 5.094123,
+      "lng": -75.548344,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "CIUDADELA LA LINDA",
+      "validado": false
+    },
+    {
+      "nombre": "Colombia",
+      "tipo": "barrio",
+      "alias": [
+        "colombia"
+      ],
+      "lat": 5.060976,
+      "lng": -75.503523,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "COLOMBIA",
+      "validado": false
+    },
+    {
+      "nombre": "Colón",
+      "tipo": "barrio",
+      "alias": [
+        "colon"
+      ],
+      "lat": 5.07243,
+      "lng": -75.517577,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 1,
+      "nombre_original": "COLON",
+      "validado": false
+    },
+    {
+      "nombre": "Colseguros",
+      "tipo": "barrio",
+      "alias": [
+        "colseguros"
+      ],
+      "lat": 5.053579,
+      "lng": -75.477965,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "COLSEGUROS",
+      "validado": false
+    },
+    {
+      "nombre": "Comuneros",
+      "tipo": "barrio",
+      "alias": [
+        "comuneros"
+      ],
+      "lat": 5.07276,
+      "lng": -75.490952,
+      "fuente": "alcaldia",
+      "comuna": "12",
+      "poligonos": 1,
+      "nombre_original": "COMUNEROS",
+      "validado": false
     },
     {
       "nombre": "Costa Rica",
@@ -131,7 +618,78 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Delicias",
+      "tipo": "barrio",
+      "alias": [
+        "delicias"
+      ],
+      "lat": 5.069944,
+      "lng": -75.511305,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 1,
+      "nombre_original": "DELICIAS",
+      "validado": false
+    },
+    {
+      "nombre": "El Bosque",
+      "tipo": "barrio",
+      "alias": [
+        "el bosque"
+      ],
+      "lat": 5.063375,
+      "lng": -75.52308,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "EL BOSQUE",
+      "validado": false
+    },
+    {
+      "nombre": "El Campín",
+      "tipo": "barrio",
+      "alias": [
+        "el campin"
+      ],
+      "lat": 5.060718,
+      "lng": -75.502373,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "EL CAMPIN",
+      "validado": false
+    },
+    {
+      "nombre": "El Caribe",
+      "tipo": "barrio",
+      "alias": [
+        "el caribe"
+      ],
+      "lat": 5.07393,
+      "lng": -75.495765,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "EL CARIBE",
+      "validado": false
+    },
+    {
+      "nombre": "El Carmen",
+      "tipo": "barrio",
+      "alias": [
+        "el carmen"
+      ],
+      "lat": 5.057971,
+      "lng": -75.519063,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "EL CARMEN",
+      "validado": false
     },
     {
       "nombre": "El Cofre",
@@ -147,7 +705,36 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "El Paraíso",
+      "tipo": "barrio",
+      "alias": [
+        "el paraiso"
+      ],
+      "lat": 5.05468,
+      "lng": -75.513073,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "EL PARAISO",
+      "validado": false
+    },
+    {
+      "nombre": "El Porvenir",
+      "tipo": "barrio",
+      "alias": [
+        "el porvenir"
+      ],
+      "lat": 5.071008,
+      "lng": -75.489322,
+      "fuente": "alcaldia",
+      "comuna": "12",
+      "poligonos": 1,
+      "nombre_original": "EL PORVENIR",
+      "validado": false
     },
     {
       "nombre": "El Rey",
@@ -163,7 +750,120 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "El Sol",
+      "tipo": "barrio",
+      "alias": [
+        "el sol"
+      ],
+      "lat": 5.067465,
+      "lng": -75.497251,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "EL SOL",
+      "validado": false
+    },
+    {
+      "nombre": "El Trébol",
+      "tipo": "barrio",
+      "alias": [
+        "el trebol"
+      ],
+      "lat": 5.041654,
+      "lng": -75.482435,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "EL TREBOL",
+      "validado": false
+    },
+    {
+      "nombre": "Estambul",
+      "tipo": "barrio",
+      "alias": [
+        "estambul"
+      ],
+      "lat": 5.048908,
+      "lng": -75.526421,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "ESTAMBUL",
+      "validado": false
+    },
+    {
+      "nombre": "Estrada",
+      "tipo": "barrio",
+      "alias": [
+        "estrada"
+      ],
+      "lat": 5.071551,
+      "lng": -75.509358,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 1,
+      "nombre_original": "ESTRADA",
+      "validado": false
+    },
+    {
+      "nombre": "Fanny González",
+      "tipo": "barrio",
+      "alias": [
+        "fanny gonzalez"
+      ],
+      "lat": 5.072615,
+      "lng": -75.502351,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "FANNY GONZALEZ",
+      "validado": false
+    },
+    {
+      "nombre": "Fátima",
+      "tipo": "barrio",
+      "alias": [
+        "fatima"
+      ],
+      "lat": 5.052476,
+      "lng": -75.497089,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "FATIMA",
+      "validado": false
+    },
+    {
+      "nombre": "Galán",
+      "tipo": "barrio",
+      "alias": [
+        "galan"
+      ],
+      "lat": 5.074659,
+      "lng": -75.511038,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 1,
+      "nombre_original": "GALAN",
+      "validado": false
+    },
+    {
+      "nombre": "González",
+      "tipo": "barrio",
+      "alias": [
+        "gonzalez"
+      ],
+      "lat": 5.058917,
+      "lng": -75.504396,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "GONZALEZ",
+      "validado": false
     },
     {
       "nombre": "Guadalajara",
@@ -179,7 +879,36 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Guamal",
+      "tipo": "barrio",
+      "alias": [
+        "guamal"
+      ],
+      "lat": 5.056392,
+      "lng": -75.509101,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "GUAMAL",
+      "validado": false
+    },
+    {
+      "nombre": "Guayacanes",
+      "tipo": "barrio",
+      "alias": [
+        "guayacanes"
+      ],
+      "lat": 5.054394,
+      "lng": -75.487928,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "GUAYACANES",
+      "validado": false
     },
     {
       "nombre": "Honda Blanca",
@@ -195,7 +924,50 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Kennedy",
+      "tipo": "barrio",
+      "alias": [
+        "kennedy"
+      ],
+      "lat": 5.053348,
+      "lng": -75.50104,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "KENNEDY",
+      "validado": false
+    },
+    {
+      "nombre": "La Argentina",
+      "tipo": "barrio",
+      "alias": [
+        "la argentina"
+      ],
+      "lat": 5.065758,
+      "lng": -75.495868,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "LA ARGENTINA",
+      "validado": false
+    },
+    {
+      "nombre": "La Asunción",
+      "tipo": "barrio",
+      "alias": [
+        "la asuncion"
+      ],
+      "lat": 5.068782,
+      "lng": -75.495164,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "LA ASUNCION",
+      "validado": false
     },
     {
       "nombre": "La Aurora",
@@ -211,7 +983,22 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "La Carola",
+      "tipo": "barrio",
+      "alias": [
+        "la carola"
+      ],
+      "lat": 5.067479,
+      "lng": -75.486889,
+      "fuente": "alcaldia",
+      "comuna": "12",
+      "poligonos": 1,
+      "nombre_original": "LA CAROLA",
+      "validado": false
     },
     {
       "nombre": "La Cristalina",
@@ -227,7 +1014,36 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "La Cumbre",
+      "tipo": "barrio",
+      "alias": [
+        "la cumbre"
+      ],
+      "lat": 5.070041,
+      "lng": -75.472146,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "LA CUMBRE",
+      "validado": false
+    },
+    {
+      "nombre": "La Estrella",
+      "tipo": "barrio",
+      "alias": [
+        "la estrella"
+      ],
+      "lat": 5.059574,
+      "lng": -75.489233,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "LA ESTRELLA",
+      "validado": false
     },
     {
       "nombre": "La Florida",
@@ -240,6 +1056,21 @@
       "osm_tipo": "node",
       "osm_id": 599740254,
       "place": "neighbourhood",
+      "validado": false,
+      "fuente": "osm"
+    },
+    {
+      "nombre": "La Francia",
+      "tipo": "barrio",
+      "alias": [
+        "la francia"
+      ],
+      "lat": 5.067753,
+      "lng": -75.532464,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "LA FRANCIA",
       "validado": false
     },
     {
@@ -256,7 +1087,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "La Isabela",
@@ -272,7 +1104,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "La Laguna",
@@ -288,7 +1121,22 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "La Leonora",
+      "tipo": "barrio",
+      "alias": [
+        "la leonora"
+      ],
+      "lat": 5.064185,
+      "lng": -75.493757,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "LA LEONORA",
+      "validado": false
     },
     {
       "nombre": "La Maria",
@@ -304,7 +1152,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "La Marina",
@@ -320,7 +1169,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "La Nubia",
@@ -336,7 +1186,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "La Paloma",
@@ -352,7 +1203,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "La Pradera",
@@ -365,7 +1217,8 @@
       "osm_tipo": "node",
       "osm_id": 599740236,
       "place": "neighbourhood",
-      "validado": false
+      "validado": false,
+      "fuente": "osm"
     },
     {
       "nombre": "La Primavera",
@@ -381,7 +1234,64 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "La Rambla",
+      "tipo": "barrio",
+      "alias": [
+        "la rambla"
+      ],
+      "lat": 5.060273,
+      "lng": -75.48586,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "LA RAMBLA",
+      "validado": false
+    },
+    {
+      "nombre": "La Sultana",
+      "tipo": "barrio",
+      "alias": [
+        "la sultana"
+      ],
+      "lat": 5.06165,
+      "lng": -75.472405,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "LA SULTANA",
+      "validado": false
+    },
+    {
+      "nombre": "La Toscana",
+      "tipo": "barrio",
+      "alias": [
+        "la toscana"
+      ],
+      "lat": 5.059418,
+      "lng": -75.479173,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "LA TOSCANA",
+      "validado": false
+    },
+    {
+      "nombre": "Las Américas",
+      "tipo": "barrio",
+      "alias": [
+        "las americas"
+      ],
+      "lat": 5.071616,
+      "lng": -75.522007,
+      "fuente": "alcaldia",
+      "comuna": "03",
+      "poligonos": 2,
+      "nombre_original": "LAS AMERICAS",
+      "validado": false
     },
     {
       "nombre": "Las Brisas",
@@ -397,7 +1307,78 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Las Colinas",
+      "tipo": "barrio",
+      "alias": [
+        "las colinas"
+      ],
+      "lat": 5.049124,
+      "lng": -75.505682,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "LAS COLINAS",
+      "validado": false
+    },
+    {
+      "nombre": "Laureles",
+      "tipo": "barrio",
+      "alias": [
+        "laureles"
+      ],
+      "lat": 5.055238,
+      "lng": -75.483845,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "LAURELES",
+      "validado": false
+    },
+    {
+      "nombre": "Lleras",
+      "tipo": "barrio",
+      "alias": [
+        "lleras"
+      ],
+      "lat": 5.064084,
+      "lng": -75.501648,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "LLERAS",
+      "validado": false
+    },
+    {
+      "nombre": "Los Agustinos",
+      "tipo": "barrio",
+      "alias": [
+        "los agustinos"
+      ],
+      "lat": 5.068885,
+      "lng": -75.522581,
+      "fuente": "alcaldia",
+      "comuna": "03",
+      "poligonos": 1,
+      "nombre_original": "LOS AGUSTINOS",
+      "validado": false
+    },
+    {
+      "nombre": "Los Alcázares",
+      "tipo": "barrio",
+      "alias": [
+        "los alcazares"
+      ],
+      "lat": 5.064398,
+      "lng": -75.530207,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 2,
+      "nombre_original": "LOS ALCAZARES",
+      "validado": false
     },
     {
       "nombre": "Los Andes",
@@ -413,7 +1394,120 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Los Cedros",
+      "tipo": "barrio",
+      "alias": [
+        "los cedros"
+      ],
+      "lat": 5.068807,
+      "lng": -75.500031,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "LOS CEDROS",
+      "validado": false
+    },
+    {
+      "nombre": "Los Rosales",
+      "tipo": "barrio",
+      "alias": [
+        "los rosales"
+      ],
+      "lat": 5.06275,
+      "lng": -75.489985,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "LOS ROSALES",
+      "validado": false
+    },
+    {
+      "nombre": "Lusitania",
+      "tipo": "barrio",
+      "alias": [
+        "lusitania"
+      ],
+      "lat": 5.031471,
+      "lng": -75.477096,
+      "fuente": "alcaldia",
+      "comuna": "07",
+      "poligonos": 1,
+      "nombre_original": "LUSITANIA",
+      "validado": false
+    },
+    {
+      "nombre": "Malhabar",
+      "tipo": "barrio",
+      "alias": [
+        "malhabar"
+      ],
+      "lat": 5.046026,
+      "lng": -75.502928,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "MALHABAR",
+      "validado": false
+    },
+    {
+      "nombre": "Malteria",
+      "tipo": "barrio",
+      "alias": [
+        "malteria"
+      ],
+      "lat": 5.040047,
+      "lng": -75.433523,
+      "fuente": "alcaldia",
+      "comuna": "07",
+      "poligonos": 1,
+      "nombre_original": "MALTERIA",
+      "validado": false
+    },
+    {
+      "nombre": "Marmato",
+      "tipo": "barrio",
+      "alias": [
+        "marmato"
+      ],
+      "lat": 5.062365,
+      "lng": -75.516293,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "MARMATO",
+      "validado": false
+    },
+    {
+      "nombre": "Milán",
+      "tipo": "barrio",
+      "alias": [
+        "milan"
+      ],
+      "lat": 5.044884,
+      "lng": -75.478836,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "MILAN",
+      "validado": false
+    },
+    {
+      "nombre": "Minitas",
+      "tipo": "barrio",
+      "alias": [
+        "minitas"
+      ],
+      "lat": 5.063399,
+      "lng": -75.475879,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "MINITAS",
+      "validado": false
     },
     {
       "nombre": "Monserrate",
@@ -426,7 +1520,8 @@
       "osm_tipo": "node",
       "osm_id": 1731400503,
       "place": "neighbourhood",
-      "validado": false
+      "validado": false,
+      "fuente": "osm"
     },
     {
       "nombre": "Montaño",
@@ -442,7 +1537,50 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Morrogacho",
+      "tipo": "barrio",
+      "alias": [
+        "morrogacho"
+      ],
+      "lat": 5.073651,
+      "lng": -75.534507,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "MORROGACHO",
+      "validado": false
+    },
+    {
+      "nombre": "Nevado",
+      "tipo": "barrio",
+      "alias": [
+        "nevado"
+      ],
+      "lat": 5.058867,
+      "lng": -75.514508,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "NEVADO",
+      "validado": false
+    },
+    {
+      "nombre": "Nogales",
+      "tipo": "barrio",
+      "alias": [
+        "nogales"
+      ],
+      "lat": 5.059112,
+      "lng": -75.524331,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "NOGALES",
+      "validado": false
     },
     {
       "nombre": "Palenque",
@@ -458,7 +1596,50 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Palermo",
+      "tipo": "barrio",
+      "alias": [
+        "palermo"
+      ],
+      "lat": 5.052651,
+      "lng": -75.488741,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "PALERMO",
+      "validado": false
+    },
+    {
+      "nombre": "Palogrande",
+      "tipo": "barrio",
+      "alias": [
+        "palogrande"
+      ],
+      "lat": 5.056459,
+      "lng": -75.490653,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "PALOGRANDE",
+      "validado": false
+    },
+    {
+      "nombre": "Panorama",
+      "tipo": "barrio",
+      "alias": [
+        "panorama"
+      ],
+      "lat": 5.053955,
+      "lng": -75.527011,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "PANORAMA",
+      "validado": false
     },
     {
       "nombre": "Pedro Uribe",
@@ -474,13 +1655,128 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Peralonso",
+      "tipo": "barrio",
+      "alias": [
+        "peralonso"
+      ],
+      "lat": 5.07184,
+      "lng": -75.498396,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "PERALONSO",
+      "validado": false
+    },
+    {
+      "nombre": "Persia",
+      "tipo": "barrio",
+      "alias": [
+        "persia"
+      ],
+      "lat": 5.056443,
+      "lng": -75.503495,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "PERSIA",
+      "validado": false
+    },
+    {
+      "nombre": "Pío XII",
+      "tipo": "barrio",
+      "alias": [
+        "pio xii"
+      ],
+      "lat": 5.049036,
+      "lng": -75.500686,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "PIO XII",
+      "validado": false
+    },
+    {
+      "nombre": "Prado",
+      "tipo": "barrio",
+      "alias": [
+        "prado"
+      ],
+      "lat": 5.060638,
+      "lng": -75.505934,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "PRADO",
+      "validado": false
+    },
+    {
+      "nombre": "Puerta del Sol (Corinto)",
+      "tipo": "barrio",
+      "alias": [
+        "puerta del sol (corinto)",
+        "puerta del sol(corinto)"
+      ],
+      "lat": 5.087919,
+      "lng": -75.510475,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 3,
+      "nombre_original": "PUERTA DEL SOL(Corinto)",
+      "validado": false
+    },
+    {
+      "nombre": "Residencias Manizales",
+      "tipo": "barrio",
+      "alias": [
+        "residencias manizales"
+      ],
+      "lat": 5.049566,
+      "lng": -75.479175,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "RESIDENCIAS MANIZALES",
+      "validado": false
+    },
+    {
+      "nombre": "Sacatin",
+      "tipo": "barrio",
+      "alias": [
+        "sacatin"
+      ],
+      "lat": 5.088404,
+      "lng": -75.529235,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "SACATIN",
+      "validado": false
     },
     {
       "nombre": "San Antonio",
-      "tipo": "sector",
+      "tipo": "barrio",
       "alias": [
         "san antonio"
+      ],
+      "lat": 5.065448,
+      "lng": -75.51995,
+      "fuente": "alcaldia",
+      "comuna": "11",
+      "poligonos": 1,
+      "nombre_original": "SAN ANTONIO",
+      "validado": false
+    },
+    {
+      "nombre": "San Antonio (vereda)",
+      "tipo": "sector",
+      "alias": [
+        "san antonio",
+        "san antonio (vereda)"
       ],
       "lat": 5.001563,
       "lng": -75.431108,
@@ -490,7 +1786,120 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "San Cancio",
+      "tipo": "barrio",
+      "alias": [
+        "san cancio"
+      ],
+      "lat": 5.04698,
+      "lng": -75.492846,
+      "fuente": "alcaldia",
+      "comuna": "08",
+      "poligonos": 1,
+      "nombre_original": "SAN CANCIO",
+      "validado": false
+    },
+    {
+      "nombre": "San Cayetano",
+      "tipo": "barrio",
+      "alias": [
+        "san cayetano"
+      ],
+      "lat": 5.074199,
+      "lng": -75.49253,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "SAN CAYETANO",
+      "validado": false
+    },
+    {
+      "nombre": "San Ignacio",
+      "tipo": "barrio",
+      "alias": [
+        "san ignacio"
+      ],
+      "lat": 5.07447,
+      "lng": -75.513076,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 1,
+      "nombre_original": "SAN IGNACIO",
+      "validado": false
+    },
+    {
+      "nombre": "San Joaquín",
+      "tipo": "barrio",
+      "alias": [
+        "san joaquin"
+      ],
+      "lat": 5.065226,
+      "lng": -75.516413,
+      "fuente": "alcaldia",
+      "comuna": "03",
+      "poligonos": 1,
+      "nombre_original": "SAN JOAQUIN",
+      "validado": false
+    },
+    {
+      "nombre": "San Jorge",
+      "tipo": "barrio",
+      "alias": [
+        "san jorge"
+      ],
+      "lat": 5.065826,
+      "lng": -75.500402,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "SAN JORGE",
+      "validado": false
+    },
+    {
+      "nombre": "San José",
+      "tipo": "barrio",
+      "alias": [
+        "san jose"
+      ],
+      "lat": 5.071835,
+      "lng": -75.514124,
+      "fuente": "alcaldia",
+      "comuna": "02",
+      "poligonos": 1,
+      "nombre_original": "SAN JOSE",
+      "validado": false
+    },
+    {
+      "nombre": "San Marcel",
+      "tipo": "barrio",
+      "alias": [
+        "san marcel"
+      ],
+      "lat": 5.035454,
+      "lng": -75.475675,
+      "fuente": "alcaldia",
+      "comuna": "07",
+      "poligonos": 1,
+      "nombre_original": "SAN MARCEL",
+      "validado": false
+    },
+    {
+      "nombre": "San Sebastián",
+      "tipo": "barrio",
+      "alias": [
+        "san sebastian"
+      ],
+      "lat": 5.088739,
+      "lng": -75.489615,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "SAN SEBASTIAN",
+      "validado": false
     },
     {
       "nombre": "Santa Ana",
@@ -503,6 +1912,21 @@
       "osm_tipo": "node",
       "osm_id": 1731378193,
       "place": "neighbourhood",
+      "validado": false,
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Santa Helena",
+      "tipo": "barrio",
+      "alias": [
+        "santa helena"
+      ],
+      "lat": 5.068657,
+      "lng": -75.50476,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "SANTA HELENA",
       "validado": false
     },
     {
@@ -519,7 +1943,50 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Sierra Morena",
+      "tipo": "barrio",
+      "alias": [
+        "sierra morena"
+      ],
+      "lat": 5.075971,
+      "lng": -75.508504,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "SIERRA MORENA",
+      "validado": false
+    },
+    {
+      "nombre": "Sinaí",
+      "tipo": "barrio",
+      "alias": [
+        "sinai"
+      ],
+      "lat": 5.072955,
+      "lng": -75.485701,
+      "fuente": "alcaldia",
+      "comuna": "12",
+      "poligonos": 1,
+      "nombre_original": "SINAI",
+      "validado": false
+    },
+    {
+      "nombre": "Solferino",
+      "tipo": "barrio",
+      "alias": [
+        "solferino"
+      ],
+      "lat": 5.077745,
+      "lng": -75.487169,
+      "fuente": "alcaldia",
+      "comuna": "12",
+      "poligonos": 1,
+      "nombre_original": "SOLFERINO",
+      "validado": false
     },
     {
       "nombre": "Tolda Fria",
@@ -535,7 +2002,8 @@
       "validado": false,
       "dudoso": [
         "place=locality (puede ser rural o un lugar, no un barrio)"
-      ]
+      ],
+      "fuente": "osm"
     },
     {
       "nombre": "Turín",
@@ -548,7 +2016,8 @@
       "osm_tipo": "node",
       "osm_id": 1731400502,
       "place": "neighbourhood",
-      "validado": false
+      "validado": false,
+      "fuente": "osm"
     },
     {
       "nombre": "Urapanes",
@@ -561,6 +2030,147 @@
       "osm_tipo": "node",
       "osm_id": 1731400504,
       "place": "neighbourhood",
+      "validado": false,
+      "fuente": "osm"
+    },
+    {
+      "nombre": "Uribe",
+      "tipo": "barrio",
+      "alias": [
+        "uribe"
+      ],
+      "lat": 5.063696,
+      "lng": -75.50693,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 2,
+      "nombre_original": "URIBE",
+      "validado": false
+    },
+    {
+      "nombre": "Vélez",
+      "tipo": "barrio",
+      "alias": [
+        "velez"
+      ],
+      "lat": 5.063701,
+      "lng": -75.504422,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 1,
+      "nombre_original": "VELEZ",
+      "validado": false
+    },
+    {
+      "nombre": "Versalles",
+      "tipo": "barrio",
+      "alias": [
+        "versalles"
+      ],
+      "lat": 5.061769,
+      "lng": -75.499342,
+      "fuente": "alcaldia",
+      "comuna": "04",
+      "poligonos": 1,
+      "nombre_original": "VERSALLES",
+      "validado": false
+    },
+    {
+      "nombre": "Villa Julia",
+      "tipo": "barrio",
+      "alias": [
+        "villa julia"
+      ],
+      "lat": 5.071785,
+      "lng": -75.506557,
+      "fuente": "alcaldia",
+      "comuna": "05",
+      "poligonos": 1,
+      "nombre_original": "VILLA JULIA",
+      "validado": false
+    },
+    {
+      "nombre": "Villacarmenza",
+      "tipo": "barrio",
+      "alias": [
+        "villacarmenza"
+      ],
+      "lat": 5.060101,
+      "lng": -75.508489,
+      "fuente": "alcaldia",
+      "comuna": "10",
+      "poligonos": 2,
+      "nombre_original": "VILLACARMENZA",
+      "validado": false
+    },
+    {
+      "nombre": "Villahermosa",
+      "tipo": "barrio",
+      "alias": [
+        "villahermosa"
+      ],
+      "lat": 5.069499,
+      "lng": -75.492271,
+      "fuente": "alcaldia",
+      "comuna": "12",
+      "poligonos": 1,
+      "nombre_original": "VILLAHERMOSA",
+      "validado": false
+    },
+    {
+      "nombre": "Villapilar",
+      "tipo": "barrio",
+      "alias": [
+        "villapilar"
+      ],
+      "lat": 5.085341,
+      "lng": -75.526193,
+      "fuente": "alcaldia",
+      "comuna": "01",
+      "poligonos": 1,
+      "nombre_original": "VILLAPILAR",
+      "validado": false
+    },
+    {
+      "nombre": "Viveros",
+      "tipo": "barrio",
+      "alias": [
+        "viveros"
+      ],
+      "lat": 5.065682,
+      "lng": -75.480632,
+      "fuente": "alcaldia",
+      "comuna": "06",
+      "poligonos": 1,
+      "nombre_original": "VIVEROS",
+      "validado": false
+    },
+    {
+      "nombre": "Vivienda Popular",
+      "tipo": "barrio",
+      "alias": [
+        "vivienda popular"
+      ],
+      "lat": 5.050368,
+      "lng": -75.49773,
+      "fuente": "alcaldia",
+      "comuna": "09",
+      "poligonos": 1,
+      "nombre_original": "VIVIENDA POPULAR",
+      "validado": false
+    },
+    {
+      "nombre": "Zona Industrial",
+      "tipo": "barrio",
+      "alias": [
+        "zona industrial"
+      ],
+      "lat": 5.035189,
+      "lng": -75.453295,
+      "fuente": "alcaldia",
+      "comuna": "07",
+      "poligonos": 1,
+      "nombre_original": "ZONA INDUSTRIAL",
       "validado": false
     }
   ]

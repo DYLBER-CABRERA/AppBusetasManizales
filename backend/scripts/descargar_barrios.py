@@ -20,7 +20,7 @@ from pathlib import Path
 import httpx
 
 RAIZ = Path(__file__).resolve().parents[1]
-DESTINO = RAIZ / "supabase" / "semillas" / "barrios.json"
+DESTINO = RAIZ / "supabase" / "semillas" / "fuentes" / "barrios_osm.json"
 ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
 USER_AGENT = "BusetasApp-prototipo-clase/0.1 (proyecto academico; datos de ejemplo)"
 ATRIBUCION = "© OpenStreetMap contributors (ODbL) · https://www.openstreetmap.org/copyright"

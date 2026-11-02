@@ -55,7 +55,7 @@ def cargar_barrios_archivo() -> list[dict]:
     ruta = SEMILLAS / "barrios.json"
     if not ruta.exists():
         return []
-    return json.loads(ruta.read_text(encoding="utf-8"))["barrios"]
+    return json.loads(ruta.read_text(encoding="utf-8"))["barrios"]  # generado por scripts/generar_barrios_alcaldia.py
 
 
 def validar_barrios(barrios: list[dict], nombres_hitos: set[str] = frozenset()) -> list[str]:
@@ -130,21 +130,39 @@ def _uno(conn: Any, sql: str, params: tuple) -> Any:
     return fila[0] if fila else None
 
 
-def cargar_barrios(conn: Any, barrios: list[dict]) -> str:
-    """Inserta los barrios como hitos. Idempotente por nombre normalizado: no pisa ni duplica hitos existentes
-    (p. ej. «La Enea» y «Villamaría», que ya son hitos de las rutas)."""
-    nuevos = omitidos = 0
+def cargar_barrios(conn: Any, barrios: list[dict], protegidos: set[str]) -> str:
+    """Carga los barrios como hitos, todo en la transacción de `cargar` y sin borrar nada.
+
+    - No existe un hito con ese nombre normalizado (`normalizar_texto`): se inserta.
+    - Ya existe y el barrio viene de la capa OFICIAL (fuente «alcaldia»): se ACTUALIZA ubicación, tipo y alias solo si difieren
+      (> 1 m o tipo distinto) y solo si el existente es `barrio` o `sector`. Nunca se toca un hito original (`protegidos`).
+    - Cualquier otro caso se omite (idempotente)."""
+    nuevos = actualizados = omitidos = 0
     for b in barrios:
-        if _uno(conn, "select id from hito where normalizar_texto(nombre) = normalizar_texto(%s) and estado = 'activo'", (b["nombre"],)):
-            omitidos += 1
+        punto = "st_setsrid(st_makepoint(%s, %s), 4326)::geography"
+        existente = conn.execute(
+            f"select id, tipo::text as tipo, st_distance(ubicacion, {punto}) as metros from hito "
+            "where normalizar_texto(nombre) = normalizar_texto(%s) and estado = 'activo' limit 1",
+            (b["lng"], b["lat"], b["nombre"]),
+        ).fetchone()
+        if existente is None:
+            conn.execute(
+                "insert into hito (nombre, tipo, alias, ubicacion) values (%s, %s::tipo_hito, %s, " + punto + ")",
+                (b["nombre"], b["tipo"], b["alias"], b["lng"], b["lat"]),
+            )
+            nuevos += 1
             continue
-        conn.execute(
-            "insert into hito (nombre, tipo, alias, ubicacion) values (%s, %s::tipo_hito, %s, "
-            "st_setsrid(st_makepoint(%s, %s), 4326)::geography)",
-            (b["nombre"], b["tipo"], b["alias"], b["lng"], b["lat"]),
-        )
-        nuevos += 1
-    return f"Barrios (OpenStreetMap, sin validar): {nuevos} nuevos, {omitidos} ya existían como hito"
+        id_hito, tipo, metros = existente
+        cambia = metros > 1 or tipo != b["tipo"]
+        if b.get("fuente") == "alcaldia" and cambia and tipo in ("barrio", "sector") and normalizar(b["nombre"]) not in protegidos:
+            conn.execute(
+                "update hito set tipo = %s::tipo_hito, alias = %s, ubicacion = " + punto + ", version = version + 1 where id = %s",
+                (b["tipo"], b["alias"], b["lng"], b["lat"], id_hito),
+            )
+            actualizados += 1
+        else:
+            omitidos += 1
+    return f"Barrios: {nuevos} nuevos, {actualizados} actualizados (capa oficial), {omitidos} sin cambios (sin validar)"
 
 
 def cargar_empresas_y_red(conn: Any, datos: dict, hitos: list[dict], trazados: dict[str, dict]) -> dict:
@@ -312,7 +330,8 @@ def cargar(conn: Any, reloj: PuertoReloj) -> list[str]:
     datos, hitos, trazados = cargar_archivos()
     hoy = reloj.ahora().date()
     ids = cargar_empresas_y_red(conn, datos, hitos, trazados)
-    notas = [cargar_barrios(conn, cargar_barrios_archivo())]
+    protegidos = {normalizar(h["nombre"]) for h in hitos}  # los hitos originales no se tocan
+    notas = [cargar_barrios(conn, cargar_barrios_archivo(), protegidos)]
     notas += cargar_avisos(conn, datos, ids)
     notas += asegurar_rodamientos(conn, datos, ids, hoy)
     notas.append(cargar_uso_historico(conn, datos, ids, hoy))
@@ -325,6 +344,9 @@ def main() -> int:
         print("Semillas inconsistentes:\n - " + "\n - ".join(problemas), file=sys.stderr)
         return 1
     print("Archivos de semilla consistentes.")
+    barrios = cargar_barrios_archivo()
+    oficiales = sum(1 for b in barrios if b.get("fuente") == "alcaldia")
+    print(f"Barrios en barrios.json: {len(barrios)} ({oficiales} de la capa oficial de la Alcaldía, {len(barrios) - oficiales} de OpenStreetMap)")
     if "--aplicar" not in sys.argv:
         print("Modo simulacro: no se tocó ninguna base. Usa --aplicar para insertar en DATABASE_URL.")
         return 0
