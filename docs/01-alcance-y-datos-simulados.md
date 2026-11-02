@@ -37,6 +37,8 @@ Orden de puntos de paso sugerido (de los mockups; coordenadas por geocodificar y
 
 Catedral, El Cable, Carrera 23, Fundadores, Terminal, Parque de Caldas (nombres tomados de los documentos de campo). Las coordenadas se obtienen con `scripts/geocodificar_hitos.py` (Nominatim/OpenStreetMap, ≤ 1 petición por segundo, con `User-Agent` propio) y **el equipo las valida**. Referencia de sanidad (aproximada, a verificar): la Catedral queda cerca de 5.069° N, 75.517° O. Cada hito guarda alias (`catedral`, `la catedral`, `cable`, …).
 
+**Barrios y sectores (OpenStreetMap):** además de estos hitos, `backend/scripts/descargar_barrios.py` descarga UNA vez desde Overpass API los lugares `place=suburb|neighbourhood|quarter|city_block|locality` de Manizales y Villamaría y los guarda en `backend/supabase/semillas/barrios.json` (`validado:false`); `cargar_semillas.py` los carga como hitos tipo `barrio` (urbanos) o `sector` (veredas), sin duplicar los existentes. Datos © OpenStreetMap contributors (ODbL, https://www.openstreetmap.org/copyright). OSM trae pocos barrios de Manizales; el equipo puede completar el archivo a mano con la misma forma.
+
 ### 2.4 Paraderos (ficticios)
 
 Los puntos de paso de cada ruta (hitos) son paraderos con el nombre del hito. Además, `generar_trazados.py` crea paraderos intermedios cada ~400 m sobre el trazado llamados `Paradero <ruta> <n>`, marcados `ficticio`. Cada ruta debe quedar con entre 6 y 12 paraderos ordenados (`ruta_paradero.orden`).

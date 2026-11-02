@@ -38,6 +38,49 @@ def cargar_archivos() -> tuple[dict, list[dict], dict[str, dict]]:
     return datos, hitos, trazados
 
 
+TIPOS_HITO = {"hito", "barrio", "sector", "universidad", "hospital", "terminal", "otro"}
+CAJA = {"min_lat": 4.95, "max_lat": 5.20, "min_lng": -75.65, "max_lng": -75.40}  # = parámetro caja_ciudad (provisional)
+
+
+def normalizar(texto: str) -> str:
+    """minúsculas, sin tildes, espacios colapsados (igual que `normalizar_texto` de la BD)."""
+    import unicodedata
+
+    sin_tildes = "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
+    return " ".join(sin_tildes.lower().split())
+
+
+def cargar_barrios_archivo() -> list[dict]:
+    """Barrios y sectores descargados de OpenStreetMap (scripts/descargar_barrios.py). Vacío si el archivo no existe."""
+    ruta = SEMILLAS / "barrios.json"
+    if not ruta.exists():
+        return []
+    return json.loads(ruta.read_text(encoding="utf-8"))["barrios"]
+
+
+def validar_barrios(barrios: list[dict], nombres_hitos: set[str] = frozenset()) -> list[str]:
+    problemas: list[str] = []
+    vistos: dict[str, str] = {}
+    for b in barrios:
+        nombre = (b.get("nombre") or "").strip()
+        if not nombre:
+            problemas.append("Hay un barrio sin nombre")
+            continue
+        clave = normalizar(nombre)
+        if clave in vistos:
+            problemas.append(f"Barrio duplicado (sin tildes): {nombre} / {vistos[clave]}")
+        vistos[clave] = nombre
+        if b.get("tipo") not in TIPOS_HITO:
+            problemas.append(f"{nombre}: tipo de hito inválido ({b.get('tipo')})")
+        if not (CAJA["min_lat"] <= b.get("lat", 0) <= CAJA["max_lat"] and CAJA["min_lng"] <= b.get("lng", 0) <= CAJA["max_lng"]):
+            problemas.append(f"{nombre}: fuera de la caja de la ciudad")
+        if clave not in {normalizar(a) for a in b.get("alias", [])}:
+            problemas.append(f"{nombre}: falta el alias normalizado «{clave}»")
+        if any(a != normalizar(a) for a in b.get("alias", [])):
+            problemas.append(f"{nombre}: los alias deben ir en minúsculas y sin tildes")
+    return problemas
+
+
 def validar_archivos() -> list[str]:
     """Devuelve la lista de problemas (vacía = semillas consistentes)."""
     problemas: list[str] = []
@@ -48,6 +91,7 @@ def validar_archivos() -> list[str]:
     for obligatorio in ("Catedral", "El Cable", "Carrera 23", "Fundadores", "Terminal", "Parque de Caldas"):
         if obligatorio not in nombres_hitos:
             problemas.append(f"Falta el hito {obligatorio}")
+    problemas += validar_barrios(cargar_barrios_archivo())
     for slug, fc in trazados.items():
         lineas = [f for f in fc["features"] if f["geometry"]["type"] == "LineString"]
         puntos = [f for f in fc["features"] if f["properties"].get("tipo") == "paradero"]
@@ -84,6 +128,23 @@ def validar_archivos() -> list[str]:
 def _uno(conn: Any, sql: str, params: tuple) -> Any:
     fila = conn.execute(sql, params).fetchone()
     return fila[0] if fila else None
+
+
+def cargar_barrios(conn: Any, barrios: list[dict]) -> str:
+    """Inserta los barrios como hitos. Idempotente por nombre normalizado: no pisa ni duplica hitos existentes
+    (p. ej. «La Enea» y «Villamaría», que ya son hitos de las rutas)."""
+    nuevos = omitidos = 0
+    for b in barrios:
+        if _uno(conn, "select id from hito where normalizar_texto(nombre) = normalizar_texto(%s) and estado = 'activo'", (b["nombre"],)):
+            omitidos += 1
+            continue
+        conn.execute(
+            "insert into hito (nombre, tipo, alias, ubicacion) values (%s, %s::tipo_hito, %s, "
+            "st_setsrid(st_makepoint(%s, %s), 4326)::geography)",
+            (b["nombre"], b["tipo"], b["alias"], b["lng"], b["lat"]),
+        )
+        nuevos += 1
+    return f"Barrios (OpenStreetMap, sin validar): {nuevos} nuevos, {omitidos} ya existían como hito"
 
 
 def cargar_empresas_y_red(conn: Any, datos: dict, hitos: list[dict], trazados: dict[str, dict]) -> dict:
@@ -251,7 +312,8 @@ def cargar(conn: Any, reloj: PuertoReloj) -> list[str]:
     datos, hitos, trazados = cargar_archivos()
     hoy = reloj.ahora().date()
     ids = cargar_empresas_y_red(conn, datos, hitos, trazados)
-    notas = cargar_avisos(conn, datos, ids)
+    notas = [cargar_barrios(conn, cargar_barrios_archivo())]
+    notas += cargar_avisos(conn, datos, ids)
     notas += asegurar_rodamientos(conn, datos, ids, hoy)
     notas.append(cargar_uso_historico(conn, datos, ids, hoy))
     return notas

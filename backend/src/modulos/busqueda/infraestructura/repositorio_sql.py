@@ -46,7 +46,8 @@ class RepositorioBusquedaSql:
                 where h.estado = 'activo' and (
                   normalizar_texto(h.nombre) like %(patron)s
                   or exists (select 1 from unnest(h.alias) a where normalizar_texto(a) like %(patron)s))
-                order by (normalizar_texto(h.nombre) = %(texto)s) desc, normalizar_texto(h.nombre)
+                order by (normalizar_texto(h.nombre) = %(texto)s) desc,
+                         starts_with(normalizar_texto(h.nombre), %(texto)s) desc, normalizar_texto(h.nombre)
                 limit 20""",
             {"patron": patron, "texto": texto},  # type: ignore[arg-type]
         )
