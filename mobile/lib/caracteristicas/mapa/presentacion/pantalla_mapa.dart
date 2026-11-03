@@ -16,6 +16,7 @@ import '../../ruta/dominio/seguimiento.dart';
 import '../../ruta/presentacion/seguimiento_provider.dart';
 import '../../ruta/presentacion/widgets/fila_ruta.dart';
 import '../../ruta/presentacion/widgets/marcadores_busetas.dart';
+import '../../buscar/presentacion/buscar_provider.dart';
 import '../../viajar/presentacion/capa_puntos_elegidos.dart';
 import 'mapa_providers.dart';
 
@@ -43,6 +44,12 @@ class _PantallaMapaState extends ConsumerState<PantallaMapa> {
     final idsCercanas = {for (final r in cercanas.value?.rutas ?? const <RutaResumen>[]) r.id};
 
     ref.listen(ubicacionProvider, (_, siguiente) => _centrarEn(siguiente.value));
+    // Al elegir un lugar en Buscar, el mapa se centra en él (la bandera la dibuja CapaPuntosElegidos).
+    ref.listen(busquedaProvider, (anterior, siguiente) {
+      if (siguiente is! BusquedaDeHito) return;
+      final antes = anterior is BusquedaDeHito ? anterior.hito.id : null;
+      if (antes != siguiente.hito.id) _centrarEn(LatLng(siguiente.hito.lat, siguiente.hito.lng));
+    });
 
     // Trazados de todas las rutas activas; los de las cercanas van más gruesos.
     final polilineas = <Polyline>[];
