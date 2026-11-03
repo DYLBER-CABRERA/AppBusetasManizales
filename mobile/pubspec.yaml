@@ -34,4 +34,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - image/telegram.webp
+    - images/telegram.webp
+    - images/logo_busetas.png

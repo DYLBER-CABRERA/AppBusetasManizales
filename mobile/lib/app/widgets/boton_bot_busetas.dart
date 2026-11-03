@@ -33,7 +33,7 @@ class BotonBotBusetas extends ConsumerWidget {
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
           onPressed: () => _abrir(context, ref),
-          child: Image.asset('image/telegram.webp', width: 56, height: 56, cacheWidth: 112),
+          child: Image.asset('images/telegram.webp', width: 56, height: 56, cacheWidth: 112),
         ),
       );
 }

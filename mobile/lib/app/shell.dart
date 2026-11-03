@@ -30,7 +30,17 @@ class ShellPrincipal extends StatelessWidget {
     final indice = navegacion.currentIndex;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_destinos[indice].etiqueta),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(
+              label: 'BusetasApp',
+              child: Image.asset('images/logo_busetas.png', width: 32, height: 32, cacheWidth: 96),
+            ),
+            const SizedBox(width: 10),
+            Flexible(child: Text(_destinos[indice].etiqueta, overflow: TextOverflow.ellipsis)),
+          ],
+        ),
         actions: [
           if (indice == 0)
             IconButton(
