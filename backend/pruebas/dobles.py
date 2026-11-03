@@ -208,6 +208,49 @@ class BusquedaEnMemoria:
         return {RUTA_ENEA: 150.0} if hito_id == HITO_CABLE else {}
 
 
+def _normal(texto: str) -> str:
+    import unicodedata
+
+    sin = "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
+    return " ".join(sin.lower().split())
+
+
+class BusquedaConHitos:
+    """Réplica en memoria del SQL de `RepositorioBusquedaSql` con hitos reales (hitos.json + barrios.json): busca por
+    SUBCADENA sobre el nombre o los alias normalizados (como `like '%texto%'`), orden exacto → empieza con → alfabético, máx. 20.
+    Las rutas son La Enea (código 39) y Villamaría."""
+
+    RUTAS = {RUTA_ENEA: "la enea", RUTA_VILLAMARIA: "villamaria"}
+
+    def __init__(self, hitos: list[dict[str, Any]]) -> None:
+        from uuid import NAMESPACE_DNS, uuid5
+
+        self.hitos = {uuid5(NAMESPACE_DNS, h["nombre"]): {**h, "id": uuid5(NAMESPACE_DNS, h["nombre"])} for h in hitos}
+        self.consultas_hitos: list[str] = []
+
+    async def buscar_rutas(self, patron: str, texto: str) -> list[UUID]:
+        return [i for i, n in self.RUTAS.items() if texto in n] + ([RUTA_ENEA] if texto == "39" else [])
+
+    async def buscar_hitos(self, patron: str, texto: str) -> list[dict[str, Any]]:
+        self.consultas_hitos.append(texto)
+        encontrados = [
+            h for h in self.hitos.values()
+            if texto in _normal(h["nombre"]) or any(texto in _normal(a) for a in h.get("alias", []))
+        ]
+        exacto = lambda h: _normal(h["nombre"]) == texto or texto in [_normal(a) for a in h.get("alias", [])]  # noqa: E731
+        encontrados.sort(key=lambda h: (not exacto(h), not _normal(h["nombre"]).startswith(texto), _normal(h["nombre"])))
+        return encontrados[:20]
+
+    async def obtener_hito(self, hito_id: UUID) -> dict[str, Any] | None:
+        return self.hitos.get(hito_id)
+
+    async def rutas_por_hito(self, hito_id: UUID, radio_m: int) -> dict[UUID, float]:
+        nombre = _normal(self.hitos[hito_id]["nombre"])
+        if "la enea" in nombre:
+            return {RUTA_ENEA: 120.0}
+        return {RUTA_VILLAMARIA: 90.0} if nombre == "villamaria" else {}
+
+
 class AvisosEnMemoria:
     def __init__(self) -> None:
         self.consultas: list[tuple[UUID | None, datetime]] = []

@@ -281,7 +281,7 @@ El bot no agrega endpoints REST: es un adaptador que llama a los mismos casos de
 - **Rutas cerca de mí:** pide la ubicación con el botón de Telegram y usa `GET /rutas/cercanas` (radio fijo de 500 m) más los paraderos de cada ruta; «Encontré N rutas a menos de 500 m» y, por ruta, «Ruta X · paradero a N m» con los botones «Ver ruta» y «¿Cuándo llega?». La ubicación vive solo en memoria del chat **10 minutos** y nunca se guarda ni se registra.
 - **¿Cuándo llega?:** usa el ETA de la ruta y el paradero elegidos. Con GPS: «próxima buseta en N min · Según el GPS · actualizado hace N s»; por horario: «⚠️ Sin señal GPS en este momento. Te doy un estimado por horario: sale cada N min aprox.»; si no hay dato, el mensaje del ETA.
 - **Avisarme cuando esté cerca:** crea una alerta con `telegram_chat_id` (D-P08) a 300 m (`distancia_aviso_llegada_m`); repetida → «Ya tenías una alerta activa». El bot escribe primero cuando la buseta llega a la distancia o se desvía («⚠️ La buseta N se desvió de su recorrido. Tu llegada puede cambiar.», una vez por episodio).
-- **Horarios / Avisos / texto libre:** horarios por ruta (de hoy), avisos vigentes (máx. 5) y coincidencia por palabras clave sin tildes (hitos y rutas); sin LLM. Sin coincidencia, vuelve al menú.
+- **Horarios / Avisos / texto libre:** horarios por ruta (de hoy), avisos vigentes (máx. 5) y reconocimiento de lugares en texto libre (§22); sin LLM. Sin coincidencia confiable, lo dice y vuelve al menú.
 - Los botones de la conversación usan identificadores cortos por chat (Telegram limita `callback_data` a 64 bytes); si un botón vence se pide compartir de nuevo la ubicación.
 
 ## 16. Cierre (B8)
@@ -367,3 +367,15 @@ Respuesta **201** (el `Usuario` de siempre más `contrasena`):
 ## 21. Búsqueda de hitos: más resultados posibles y orden
 
 Sin cambios de forma. `GET /busqueda/hitos?q=` ahora ordena: nombre **exacto**, luego los que **empiezan** con el texto, luego el resto alfabéticamente (máximo 20). Hay barrios y sectores como hitos (tipo `barrio` o `sector`, ver `docs/01` §2.3), también válidos como origen o destino de `POST /viajes/planificar` (`hitoId`).
+
+## 22. Bot: reconocimiento de lugares en texto libre
+
+Sin cambios en la API REST. El bot reconoce hitos, barrios y rutas en lo que escribe el pasajero así (la intención —«horarios», «avisos», «cuándo llega», «cerca de»— y el lugar se reconocen por separado, con el mismo reconocedor en todas las pantallas):
+
+1. Normaliza (minúsculas, sin tildes, signos fuera) y prueba **frases de la más larga a la más corta** («caserío la enea» antes que «la enea» antes que «enea»), sin descartar palabras que sean parte del nombre.
+2. Coincidencia por **palabra completa**, nunca por subcadena dentro de una palabra: **nombre exacto → alias exacto → palabras completas dentro del nombre o alias → rutas** (por nombre o código).
+3. Si hay **varios lugares posibles y ninguno exacto** (p. ej. «santa»), pregunta «¿A cuál te refieres?» con hasta 5 botones; nunca elige uno al azar.
+4. Sin coincidencia confiable: «No te entendí…»; no inventa un lugar parecido.
+5. Con una intención y un lugar: «horarios de la enea» (horarios de las rutas que pasan por el lugar), «avisos de la enea» (avisos de esas rutas), «cuándo llega a la enea» y «rutas cerca de la enea» (rutas a ≤ 500 m del lugar; el lugar no se guarda como ubicación del pasajero). «Rutas cerca de mí» sigue pidiendo la ubicación.
+
+`GET /busqueda/hitos`: el orden ahora trata un alias exacto como coincidencia exacta (q=`enea` devuelve «La Enea» antes que «Caserío La Enea»).

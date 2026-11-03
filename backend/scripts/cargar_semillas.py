@@ -135,13 +135,13 @@ def cargar_barrios(conn: Any, barrios: list[dict], protegidos: set[str]) -> str:
 
     - No existe un hito con ese nombre normalizado (`normalizar_texto`): se inserta.
     - Ya existe y el barrio viene de la capa OFICIAL (fuente «alcaldia»): se ACTUALIZA ubicación, tipo y alias solo si difieren
-      (> 1 m o tipo distinto) y solo si el existente es `barrio` o `sector`. Nunca se toca un hito original (`protegidos`).
+      (> 1 m, tipo o nombre distintos) y solo si el existente es `barrio` o `sector`. Nunca se toca un hito original (`protegidos`).
     - Cualquier otro caso se omite (idempotente)."""
     nuevos = actualizados = omitidos = 0
     for b in barrios:
         punto = "st_setsrid(st_makepoint(%s, %s), 4326)::geography"
         existente = conn.execute(
-            f"select id, tipo::text as tipo, st_distance(ubicacion, {punto}) as metros from hito "
+            f"select id, tipo::text as tipo, st_distance(ubicacion, {punto}) as metros, nombre from hito "
             "where normalizar_texto(nombre) = normalizar_texto(%s) and estado = 'activo' limit 1",
             (b["lng"], b["lat"], b["nombre"]),
         ).fetchone()
@@ -152,12 +152,12 @@ def cargar_barrios(conn: Any, barrios: list[dict], protegidos: set[str]) -> str:
             )
             nuevos += 1
             continue
-        id_hito, tipo, metros = existente
-        cambia = metros > 1 or tipo != b["tipo"]
+        id_hito, tipo, metros, nombre = existente
+        cambia = metros > 1 or tipo != b["tipo"] or nombre != b["nombre"]
         if b.get("fuente") == "alcaldia" and cambia and tipo in ("barrio", "sector") and normalizar(b["nombre"]) not in protegidos:
             conn.execute(
-                "update hito set tipo = %s::tipo_hito, alias = %s, ubicacion = " + punto + ", version = version + 1 where id = %s",
-                (b["tipo"], b["alias"], b["lng"], b["lat"], id_hito),
+                "update hito set nombre = %s, tipo = %s::tipo_hito, alias = %s, ubicacion = " + punto + ", version = version + 1 where id = %s",
+                (b["nombre"], b["tipo"], b["alias"], b["lng"], b["lat"], id_hito),
             )
             actualizados += 1
         else:
