@@ -270,3 +270,10 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Limpieza:** si falla `perfil_usuario` tras crear la cuenta en Auth, se borra la cuenta (`DELETE /auth/v1/admin/users/{id}`, de mejor esfuerzo) y se propaga el error.
 - **Errores:** correo ya registrado (`email_exists`, `user_already_exists`, HTTP 409) → `409 CONFLICTO_NEGOCIO`; `weak_password` → `400 VALIDACION` (matiz sobre lo pedido: es un error del dato, no del servicio); cualquier otro fallo de Supabase → `503 SERVICIO_EXTERNO_NO_DISPONIBLE`.
 - **Sin cambios:** validación de rol y empresa, y que solo el administrador pueda llamarlo (el rol `pasajero` sigue permitido como antes).
+
+## 2026-11-02 · mobile-dev · botón «botBusetas» (abre Telegram) y `url_launcher`
+
+- **Qué:** botón flotante en el shell de la app (pestañas Mapa, Buscar, Viajar, Guardados y Avisos) que abre `https://t.me/BusetasAppBot` con `launchUrl(..., mode: LaunchMode.externalApplication)`: Telegram si está instalada, o el navegador. Si no se puede abrir, muestra un aviso breve y no falla.
+- **Dependencia nueva:** `url_launcher 6.3.3` (BSD-3, gratuita). Ya estaba en `pubspec.lock` como dependencia transitiva; ahora se declara directa y fijada.
+- **No es un endpoint:** el bot vive en el backend; la app solo abre el enlace público. No se envía ningún dato del pasajero.
+

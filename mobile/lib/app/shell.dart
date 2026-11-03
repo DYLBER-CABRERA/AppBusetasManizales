@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'banner_ejemplo.dart';
+import 'widgets/boton_bot_busetas.dart';
 
 class _Destino {
   const _Destino(this.etiqueta, this.icono, this.iconoActivo);
@@ -46,6 +47,7 @@ class ShellPrincipal extends StatelessWidget {
           Expanded(child: navegacion),
         ],
       ),
+      floatingActionButton: const BotonBotBusetas(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: indice,
         onDestinationSelected: (i) =>
