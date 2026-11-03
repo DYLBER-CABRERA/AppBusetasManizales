@@ -4,7 +4,7 @@
     "alcaldia": "fuentes/barrios_alcaldia.geojson (descargado 2026-11-02 de la API pública del ArcGIS de la Alcaldía)",
     "osm": "fuentes/barrios_osm.json (Overpass API, scripts/descargar_barrios.py)"
   },
-  "generado_en": "2026-11-02",
+  "generado_en": "2026-11-03",
   "nota": "Puntos representativos (interiores al polígono) de cada barrio, no hitos exactos: validado:false. `comuna` y `nombre_original` son informativos y no se cargan a la BD.",
   "total": 148,
   "barrios": [
@@ -420,7 +420,7 @@
       "fuente": "osm"
     },
     {
-      "nombre": "Caserio La Enea",
+      "nombre": "Caserío La Enea",
       "tipo": "barrio",
       "alias": [
         "caserio la enea"

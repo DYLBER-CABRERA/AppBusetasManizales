@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from uuid import NAMESPACE_DNS, UUID, uuid5
 
 import pytest
 from fastapi.testclient import TestClient
@@ -142,7 +141,7 @@ class ConexionFalsa:
     """Simula `hito`: busca por nombre normalizado y registra inserciones y actualizaciones."""
 
     def __init__(self, existentes: dict[str, dict]) -> None:
-        self.existentes = existentes  # nombre normalizado → {id, tipo, lat, lng}
+        self.existentes = existentes  # nombre normalizado → {id, tipo, lat, lng, nombre}
         self.inserts: list[tuple] = []
         self.updates: list[tuple] = []
 
@@ -153,7 +152,7 @@ class ConexionFalsa:
             if h is None:
                 return _Resultado(None)
             metros = ((h["lat"] - lat) ** 2 + (h["lng"] - lng) ** 2) ** 0.5 * 111_000
-            return _Resultado((h["id"], h["tipo"], metros))
+            return _Resultado((h["id"], h["tipo"], metros, h.get("nombre", nombre)))
         if sql.startswith("insert into hito"):
             self.inserts.append(params)
         elif sql.startswith("update hito"):
@@ -172,6 +171,7 @@ def test_la_carga_inserta_actualiza_solo_la_capa_oficial_y_no_toca_los_originale
         "catedral": {"id": 3, "tipo": "hito", "lat": 5.0674, "lng": -75.5173},  # hito original
         "la enea": {"id": 4, "tipo": "barrio", "lat": 5.0318, "lng": -75.4631},  # hito original (tipo barrio)
         "igual": {"id": 5, "tipo": "barrio", "lat": 5.07, "lng": -75.51},  # ya está igual
+        "caserio la enea": {"id": 7, "tipo": "barrio", "lat": 5.07, "lng": -75.51, "nombre": "Caserio La Enea"},  # solo cambia la tilde
         "osm viejo": {"id": 6, "tipo": "sector", "lat": 5.0, "lng": -75.4},  # existe y viene de OSM: no se actualiza
     }
     conexion = ConexionFalsa(existentes)
@@ -184,11 +184,12 @@ def test_la_carga_inserta_actualiza_solo_la_capa_oficial_y_no_toca_los_originale
         _barrio("Igual"),  # sin cambios
         _barrio("Osm Viejo", fuente="osm", tipo="sector", lat=5.5, lng=-75.4),  # existente de OSM → se omite
         _barrio("Fátima"),  # nuevo
+        _barrio("Caserío La Enea"),  # oficial, mismo punto: solo se corrige el nombre
     ]
     nota = cargar_barrios(conexion, barrios, {"catedral", "la enea"})
     assert [p[0] for p in conexion.inserts] == ["San Antonio (vereda)", "Fátima"]
-    assert sorted(p[-1] for p in conexion.updates) == [1, 2]  # Turín y San Antonio, por id
-    assert nota == "Barrios: 2 nuevos, 2 actualizados (capa oficial), 4 sin cambios (sin validar)"
+    assert sorted(p[-1] for p in conexion.updates) == [1, 2, 7]  # Turín, San Antonio y Caserío (nombre), por id
+    assert nota == "Barrios: 2 nuevos, 3 actualizados (capa oficial), 4 sin cambios (sin validar)"
     # idempotente: con los mismos datos ya cargados no cambia nada
     repetida = ConexionFalsa({normalizar(b["nombre"]): {"id": i, "tipo": b["tipo"], "lat": b["lat"], "lng": b["lng"]}
                               for i, b in enumerate(barrios)})
@@ -199,35 +200,9 @@ def test_la_carga_inserta_actualiza_solo_la_capa_oficial_y_no_toca_los_originale
 # ---------- búsqueda con los datos reales del archivo ----------
 
 
-class BusquedaConHitos:
-    """Misma lógica que el SQL de `RepositorioBusquedaSql.buscar_hitos`: contiene (nombre o alias) sobre texto normalizado,
-    orden exacto, luego los que EMPIEZAN con el texto, luego alfabético; máximo 20."""
-
-    def __init__(self, hitos: list[dict]) -> None:
-        self.hitos = {uuid5(NAMESPACE_DNS, h["nombre"]): {**h, "id": uuid5(NAMESPACE_DNS, h["nombre"])} for h in hitos}
-
-    async def buscar_rutas(self, patron: str, texto: str):
-        return []
-
-    async def buscar_hitos(self, patron: str, texto: str):
-        def coincide(h: dict) -> bool:
-            return texto in normalizar(h["nombre"]) or any(texto in normalizar(a) for a in h.get("alias", []))
-
-        encontrados = [h for h in self.hitos.values() if coincide(h)]
-        encontrados.sort(key=lambda h: (normalizar(h["nombre"]) != texto, not normalizar(h["nombre"]).startswith(texto),
-                                         normalizar(h["nombre"])))
-        return encontrados[:20]
-
-    async def obtener_hito(self, hito_id: UUID):
-        return self.hitos.get(hito_id)
-
-    async def rutas_por_hito(self, hito_id: UUID, radio_m: int):
-        return {}
-
-
 def _cliente(hitos: list[dict]) -> TestClient:
     repos = dobles.repositorios_en_memoria()
-    repos.busqueda = BusquedaConHitos(hitos)
+    repos.busqueda = dobles.BusquedaConHitos(hitos)
     cont = construir_contenedor(Configuracion(_env_file=None, modo_demo=False), repos, RelojSimulado(RelojFijo()))
     return TestClient(crear_app(cont), raise_server_exceptions=False)
 
@@ -282,5 +257,5 @@ def test_busqueda_respeta_el_maximo_de_20_resultados(cliente: TestClient) -> Non
 def test_el_sql_de_busqueda_ordena_exacto_luego_prefijo_luego_alfabetico() -> None:
     sql = (Path(__file__).resolve().parents[2] / "src/modulos/busqueda/infraestructura/repositorio_sql.py").read_text(encoding="utf-8")
     cuerpo = sql[sql.index("async def buscar_hitos"):]
-    assert "order by (normalizar_texto(h.nombre) = %(texto)s) desc" in cuerpo
+    assert "order by (normalizar_texto(h.nombre) = %(texto)s" in cuerpo and "unnest(h.alias)" in cuerpo
     assert "starts_with(normalizar_texto(h.nombre), %(texto)s) desc" in cuerpo and "limit 20" in cuerpo
