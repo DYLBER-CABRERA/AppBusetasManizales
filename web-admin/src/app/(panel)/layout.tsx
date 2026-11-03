@@ -57,8 +57,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       <BannerEjemplo />
       <header className="flex items-center justify-between bg-tinta px-6 py-3 text-white">
         <div className="flex items-center gap-3">
-          <span className="rounded bg-white px-2 py-1"><Logo alto={32} prioridad /></span>
-          <span className="font-titulo text-lg font-bold">Gestión</span>
+          <Logo alto={40} prioridad />
+          <span className="font-titulo text-lg font-bold">AppBusetas Manizales</span>
         </div>
         <div className="flex items-center gap-4 text-sm">
           <div className="text-right leading-tight">

@@ -28,12 +28,22 @@ const OPERACION_DEL_JEFE = [
 ];
 
 const adjuntarEmpresa: Middleware = {
-  onRequest({ request, schemaPath }) {
+  async onRequest({ request, schemaPath }) {
     const empresaId = empresaParaApi();
     if (!empresaId || !OPERACION_DEL_JEFE.some((r) => r.test(schemaPath))) return request;
     const url = new URL(request.url);
     url.searchParams.set("empresaId", empresaId);
-    return new Request(url, request);
+    // `new Request(url, request)` reenvía el cuerpo como stream (Chrome exige HTTP/2 → ERR_ALPN_NEGOTIATION_FAILED
+    // contra uvicorn). Se copia el cuerpo a un buffer para que viaje normal por HTTP/1.1.
+    const cuerpo = request.body ? await request.arrayBuffer() : undefined;
+    return new Request(url, {
+      method: request.method,
+      headers: request.headers,
+      body: cuerpo,
+      signal: request.signal,
+      credentials: request.credentials,
+      cache: request.cache,
+    });
   },
 };
 

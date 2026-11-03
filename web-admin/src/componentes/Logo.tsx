@@ -1,12 +1,19 @@
-import logo from "@/images/logoAppBusetas.avif";
+import logo from "@/images/logoAppBusetas.png";
 
 /**
- * Logo de BusetasApp. Siempre sobre un fondo claro para que se lea también en la barra oscura.
- * Se usa <img> y no next/image porque Turbopack no lee las dimensiones de un AVIF y la imagen ya es liviana (11 KB).
+ * Logo de BusetasApp: solo el recuadro verde, con esquinas transparentes (sirve sobre fondo claro u oscuro).
+ * Se usa <img> y no next/image porque la imagen ya es liviana.
  */
 export function Logo({ alto = 40, prioridad = false }: { alto?: number; prioridad?: boolean }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={logo.src} alt="BusetasApp" height={alto} fetchPriority={prioridad ? "high" : "auto"} style={{ height: alto, width: "auto" }} />
+    <img
+      src={logo.src}
+      alt="BusetasApp"
+      height={alto}
+      fetchPriority={prioridad ? "high" : "auto"}
+      className="shrink-0"
+      style={{ height: alto, width: "auto", borderRadius: "22%" }}
+    />
   );
 }
