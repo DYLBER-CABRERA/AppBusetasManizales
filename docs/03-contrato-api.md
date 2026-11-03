@@ -363,3 +363,7 @@ Respuesta **201** (el `Usuario` de siempre más `contrasena`):
 - **404 `NO_ENCONTRADO`**: la `empresaId` no existe.
 - **409 `CONFLICTO_NEGOCIO`**: el correo ya está registrado (en perfiles o en Supabase Auth).
 - **503 `SERVICIO_EXTERNO_NO_DISPONIBLE`**: Supabase no responde, rechazó la creación (p. ej. correo inválido para Supabase) o falta `SUPABASE_SERVICE_ROLE_KEY`. Si Supabase creó la cuenta pero falla el perfil, el backend intenta borrar la cuenta recién creada para no dejarla huérfana y responde `500`.
+
+## 21. Búsqueda de hitos: más resultados posibles y orden
+
+Sin cambios de forma. `GET /busqueda/hitos?q=` ahora ordena: nombre **exacto**, luego los que **empiezan** con el texto, luego el resto alfabéticamente (máximo 20). Hay barrios y sectores como hitos (tipo `barrio` o `sector`, ver `docs/01` §2.3), también válidos como origen o destino de `POST /viajes/planificar` (`hitoId`).
