@@ -8,6 +8,7 @@ import { Esqueleto } from "@/componentes/Esqueleto";
 import { Vacio } from "@/componentes/Vacio";
 import { cerrarSesion, puedeEntrar, rutaInicial } from "@/lib/auth";
 import { ErrorApi, MENSAJE_SIN_PERMISO } from "@/lib/errores";
+import { Logo } from "@/componentes/Logo";
 import { ETIQUETA_ROL, gruposDeRol } from "@/lib/navegacion";
 import { useEstadoDemo } from "@/lib/demo";
 import { usePerfil } from "@/lib/perfil";
@@ -55,7 +56,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen flex-col">
       <BannerEjemplo />
       <header className="flex items-center justify-between bg-tinta px-6 py-3 text-white">
-        <span className="font-titulo text-lg font-bold">BusetasApp · Gestión</span>
+        <div className="flex items-center gap-3">
+          <Logo alto={40} prioridad />
+          <span className="font-titulo text-lg font-bold">AppBusetas Manizales</span>
+        </div>
         <div className="flex items-center gap-4 text-sm">
           <div className="text-right leading-tight">
             <p className="font-semibold">

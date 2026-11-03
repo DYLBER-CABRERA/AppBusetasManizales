@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { BannerEjemplo } from "@/componentes/BannerEjemplo";
+import { Logo } from "@/componentes/Logo";
 import { api, consultar } from "@/lib/api";
 import { cerrarSesion, iniciarSesion, rutaInicial } from "@/lib/auth";
 import { registrarPerfil } from "@/lib/contexto-empresa";
@@ -47,6 +48,7 @@ export default function Login() {
     <>
       <BannerEjemplo />
       <main className="mx-auto mt-16 w-full max-w-md rounded-lg bg-white p-8 shadow">
+        <div className="mb-4"><Logo alto={64} prioridad /></div>
         <h1 className="text-2xl font-bold">BusetasApp · Gestión</h1>
         <p className="mt-1 text-sm">Inicia sesión con tu cuenta de gestión.</p>
         <form onSubmit={handleSubmit(enviar)} noValidate className="mt-5 space-y-4">
