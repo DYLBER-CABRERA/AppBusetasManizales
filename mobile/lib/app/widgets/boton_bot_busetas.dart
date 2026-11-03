@@ -5,7 +5,7 @@ import '../../nucleo/enlaces.dart';
 
 final enlaceBotBusetas = Uri.parse('https://t.me/BusetasAppBot');
 
-/// Botón flotante «botBusetas»: abre la conversación con el bot de Telegram.
+/// Botón flotante «botBusetas» con el logo de Telegram: abre la conversación con el bot.
 class BotonBotBusetas extends ConsumerWidget {
   const BotonBotBusetas({super.key});
 
@@ -29,8 +29,11 @@ class BotonBotBusetas extends ConsumerWidget {
         child: FloatingActionButton(
           heroTag: 'bot_busetas',
           tooltip: 'botBusetas',
+          backgroundColor: Colors.transparent,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
           onPressed: () => _abrir(context, ref),
-          child: const Icon(Icons.chat_bubble_outline),
+          child: Image.asset('image/telegram.webp', width: 56, height: 56, cacheWidth: 112),
         ),
       );
 }

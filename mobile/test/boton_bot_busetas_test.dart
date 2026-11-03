@@ -20,6 +20,7 @@ void main() {
       return true;
     });
 
+    expect(find.byType(Image), findsOneWidget);
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
