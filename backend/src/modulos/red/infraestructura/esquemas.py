@@ -87,6 +87,23 @@ class RutaCrear(EsquemaBase):
     confirmar_compartida: bool = False
 
 
+class PuntoRuta(EsquemaBase):
+    lat: float = Field(description="Se valida contra la caja de la ciudad (400 con el índice del punto)")
+    lng: float
+    nombre: str | None = Field(
+        default=None, max_length=120, description="Opcional; si falta se genera «Paradero <NombreRuta> N». Se ignora si el punto "
+        "reutiliza un paradero existente (a ≤ 20 m)",
+    )
+
+
+class RutaDesdePuntos(EsquemaBase):
+    nombre: str = Field(min_length=2, max_length=120)
+    ruta_principal_id: UUID | None = None
+    puntos: list[PuntoRuta] = Field(min_length=2, max_length=60, description="En el orden tocado; cada punto es un paradero")
+    servicios: list[ServicioCrearEntrada] = Field(min_length=1)
+    confirmar_compartida: bool = False
+
+
 class RutaEditar(EsquemaBase):
     nombre: str | None = Field(default=None, min_length=2, max_length=120)
     descripcion: str | None = None

@@ -379,3 +379,47 @@ Sin cambios en la API REST. El bot reconoce hitos, barrios y rutas en lo que esc
 5. Con una intención y un lugar: «horarios de la enea» (horarios de las rutas que pasan por el lugar), «avisos de la enea» (avisos de esas rutas), «cuándo llega a la enea» y «rutas cerca de la enea» (rutas a ≤ 500 m del lugar; el lugar no se guarda como ubicación del pasajero). «Rutas cerca de mí» sigue pidiendo la ubicación.
 
 `GET /busqueda/hitos`: el orden ahora trata un alias exacto como coincidencia exacta (q=`enea` devuelve «La Enea» antes que «Caserío La Enea»).
+
+## 23. Crear una ruta tocando puntos en el mapa: `POST /rutas/desde-puntos`
+
+Nuevo endpoint (aditivo: `POST /rutas` con `paraderoIds` no cambia). Rol Secretaría de Movilidad o administrador. Cada punto se vuelve un paradero de la ruta, en el orden enviado.
+
+`POST /api/v1/rutas/desde-puntos` · `Authorization: Bearer <token>` · `Content-Type: application/json`
+
+```json
+{ "nombre": "Fátima a Chipre",
+  "puntos": [
+    { "lat": 5.052476, "lng": -75.497089, "nombre": "Fátima" },
+    { "lat": 5.0617019, "lng": -75.5079102 },
+    { "lat": 5.0701278, "lng": -75.5179314 },
+    { "lat": 5.07655, "lng": -75.525721, "nombre": "Chipre" } ],
+  "servicios": [ { "empresaId": "…", "codigoPublico": "77" } ],
+  "confirmarCompartida": false }
+```
+- `puntos`: de 2 a 60, en el orden tocado. `lat` y `lng` obligatorios; `nombre` opcional (máx. 120).
+- `servicios`, `confirmarCompartida` y `rutaPrincipalId` igual que en `POST /rutas` (un servicio por empresa; más de una empresa exige `confirmarCompartida=true`). No se crean horarios ni frecuencias: el jefe los registra después.
+
+**201**: la misma forma que `GET /rutas/{id}` (`id, nombre, tipoRecorrido:"circular", servicios[], longitudM, version:1, trazado` GeoJSON `LineString` `[lng, lat]`, `paraderos[{orden, paraderoId, nombre, lat, lng}]`, `avisos:[]`):
+```json
+{ "id": "…", "nombre": "Fátima a Chipre", "tipoRecorrido": "circular", "version": 1, "longitudM": 8300.0,
+  "servicios": [ { "servicioId": "…", "empresaId": "…", "empresaNombre": "Sideral", "codigoPublico": "77" } ],
+  "paraderos": [ { "orden": 1, "paraderoId": "…", "nombre": "Fátima", "lat": 5.052476, "lng": -75.497089 },
+                 { "orden": 2, "paraderoId": "…", "nombre": "Paradero Fátima a Chipre 1", "lat": 5.0617019, "lng": -75.5079102 },
+                 { "orden": 3, "paraderoId": "…", "nombre": "Paradero Fátima a Chipre 2", "lat": 5.0701278, "lng": -75.5179314 },
+                 { "orden": 4, "paraderoId": "…", "nombre": "Chipre", "lat": 5.07655, "lng": -75.525721 } ],
+  "trazado": { "type": "LineString", "coordinates": [ [-75.497089, 5.052476], [-75.5079102, 5.0617019], [-75.5179314, 5.0701278], [-75.525721, 5.07655], [-75.497089, 5.052476] ] },
+  "avisos": [], "version": 1 }
+```
+
+**Reglas**
+- **Paraderos nuevos:** cada punto crea un paradero con `direccion = "Paradero de ejemplo (ficticio)"` (la marca de las semillas; no hay columna `ficticio`). Nombre: el del punto, o si falta **«Paradero <NombreRuta> N»** (el patrón de las semillas, p. ej. «Paradero La Enea 1»); `N` cuenta solo los paraderos nuevos sin nombre. No se nombra a partir de barrios cercanos (los barrios son puntos representativos, no hitos exactos).
+- **Reutilización:** si un punto está a ≤ `radio_reuso_paradero_m` (parámetro global, 20 m por omisión; 0 = nunca reutilizar) de un paradero activo, se **reutiliza** ese paradero (un paradero puede estar en varias rutas): se usa su nombre y su ubicación real, y el `nombre` del punto se ignora. Un paradero no se repite dentro de la misma ruta: si ya se usó, ese punto crea uno nuevo.
+- **Trazado circular (D-P02):** polilínea con tramos rectos entre paraderos consecutivos que **vuelve al primero** (como las semillas); `longitudM` incluye ese tramo de cierre. Por eso el último punto no puede coincidir con el primero. El avance de cada paradero lo calcula la función existente `progresos_paraderos_ruta` (secuencial, creciente, < `longitudM`), que usan el ETA y el planificador.
+- **Atomicidad:** paraderos nuevos, ruta, trazado, secuencia de paradas y servicios se crean en **una sola transacción**.
+- Registra el mismo evento de uso que el resto de la API (no hay auditoría adicional en el proyecto).
+
+**Errores**
+- **400 `VALIDACION`**: menos de 2 o más de 60 puntos; nombre de ruta de menos de 2 caracteres; `lat`/`lng` ausentes o no numéricos; y, con `detalles` por índice, `[{"campo":"puntos[1]","motivo":"fuera_de_zona"}]` (fuera de `caja_ciudad`), `coordenadas_invalidas`, `duplicado_consecutivo` (dos puntos seguidos a < 10 m: se rechazan, no se fusionan) o `ultimo_igual_al_primero` (a < 10 m del primero, con más de 2 puntos).
+- **401** sin token · **403** jefe o pasajero.
+- **404 `NO_ENCONTRADO`**: alguna empresa no existe.
+- **409 `CONFLICTO_NEGOCIO`**: ya existe una ruta activa con ese nombre (sin distinguir tildes ni mayúsculas); más de una empresa sin `confirmarCompartida`; código público ya usado por la empresa.

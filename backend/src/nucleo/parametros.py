@@ -9,6 +9,7 @@ VALORES_POR_DEFECTO: dict[str, Any] = {
     "radio_busqueda_m": 800,
     "radio_caminata_m": 1000,
     "radio_hito_m": 300,
+    "radio_reuso_paradero_m": 20,  # rutas desde puntos: un punto a ≤ este radio de un paradero activo lo reutiliza (0 = nunca)
     "velocidad_default_kmh": 20,
     "umbral_posicion_obsoleta_s": 60,
     "intervalo_refresco_cliente_s": 5,

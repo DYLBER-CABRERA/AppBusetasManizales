@@ -6,8 +6,10 @@ from typing import Any
 from uuid import UUID
 
 from modulos.red.dominio.puertos import ProveedorAvisosVigentes, RepositorioGestionRed, RepositorioRutas
+from modulos.red.dominio.puntos_ruta import DIRECCION_FICTICIA, nombre_automatico, validar_puntos
 from nucleo.autorizacion import Identidad, Rol, exigir_rol
 from nucleo.errores import ErrorConflictoNegocio, ErrorNoEncontrado, ErrorValidacion
+from nucleo.parametros import PuertoParametros
 from nucleo.reloj import PuertoReloj
 from nucleo.version_optimista import verificar_version
 
@@ -125,6 +127,61 @@ class RegistrarRuta(_CasoRuta):
         if ruta_principal_id is not None and not await self._g.ruta_principal_valida(ruta_principal_id):
             raise ErrorValidacion("La ruta principal no existe o ya es una variante.")
         ruta_id = await self._g.crear_ruta(nombre.strip(), ruta_principal_id, paradero_ids, servicios)
+        return await self._detalle(ruta_id)
+
+
+class RegistrarRutaDesdePuntos(_CasoRuta):
+    """Ruta creada tocando puntos en el mapa: cada punto es un paradero de la ruta, en el orden tocado.
+
+    - Un punto a ≤ `radio_reuso_paradero_m` (por omisión 20 m) de un paradero activo REUTILIZA ese paradero (un paradero puede
+      estar en varias rutas); el nombre del punto se ignora y se usa el del paradero existente. Un paradero no se repite
+      dentro de la misma ruta: si ya se usó, el punto crea uno nuevo.
+    - Los demás puntos crean un paradero nuevo marcado «Paradero de ejemplo (ficticio)» en `direccion`, con el nombre dado o,
+      si falta, «Paradero <NombreRuta> N» (N cuenta solo los paraderos nuevos sin nombre).
+    - El circuito se cierra solo: el trazado vuelve al primer punto (D-P02, como las semillas)."""
+
+    def __init__(self, gestion, rutas, avisos, reloj, parametros: PuertoParametros) -> None:  # noqa: ANN001
+        super().__init__(gestion, rutas, avisos, reloj)
+        self._parametros = parametros
+
+    async def __call__(
+        self, identidad: Identidad | None, nombre: str, ruta_principal_id: UUID | None, puntos: list[dict[str, Any]],
+        servicios: list[dict[str, Any]], confirmar_compartida: bool,
+    ) -> dict[str, Any]:
+        _gestion(identidad)
+        nombre = " ".join(nombre.split())
+        if len(nombre) < 2:
+            raise ErrorValidacion("El nombre de la ruta es obligatorio.", [{"campo": "nombre", "motivo": "obligatorio"}])
+        validar_puntos(puntos, await self._parametros.objeto("caja_ciudad"))
+        empresas = [s["empresa_id"] for s in servicios]
+        if len(set(empresas)) != len(empresas):
+            raise ErrorValidacion("Una empresa no puede repetirse en la ruta.")
+        if not await self._g.empresas_activas_existen(empresas):
+            raise ErrorNoEncontrado("Alguna de las empresas no existe.")
+        if len(empresas) > 1 and not confirmar_compartida:
+            raise ErrorConflictoNegocio("La ruta quedará compartida por varias empresas. Confirma para continuar.")
+        if ruta_principal_id is not None and not await self._g.ruta_principal_valida(ruta_principal_id):
+            raise ErrorValidacion("La ruta principal no existe o ya es una variante.")
+        if await self._g.ruta_nombre_existe(nombre):
+            raise ErrorConflictoNegocio("Ya existe una ruta con ese nombre.")
+        radio = await self._parametros.numero("radio_reuso_paradero_m")
+        paraderos: list[dict[str, Any]] = []
+        usados: list[UUID] = []
+        numero = 0
+        for p in puntos:
+            cercano = await self._g.paradero_cercano(p["lat"], p["lng"], radio, usados) if radio > 0 else None
+            if cercano is not None:
+                usados.append(cercano["id"])
+                paraderos.append({"id": cercano["id"], "nombre": cercano["nombre"], "lat": cercano["lat"], "lng": cercano["lng"]})
+                continue
+            propio = " ".join((p.get("nombre") or "").split())
+            if not propio:
+                numero += 1
+            paraderos.append({
+                "id": None, "nombre": propio or nombre_automatico(nombre, numero), "direccion": DIRECCION_FICTICIA,
+                "lat": p["lat"], "lng": p["lng"],
+            })
+        ruta_id = await self._g.crear_ruta_con_paraderos(nombre, ruta_principal_id, paraderos, servicios)
         return await self._detalle(ruta_id)
 
 
