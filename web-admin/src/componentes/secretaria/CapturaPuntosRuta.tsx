@@ -22,7 +22,7 @@ export function CapturaPuntosRuta({ puntos, onCambio, errores, existentes }: Pro
   const indicesError = errores.map((e) => e.indice);
 
   function agregar(p: PuntoCapturado) {
-    if (puntos.length >= MAX_PUNTOS) return setAviso(`Una ruta admite hasta ${MAX_PUNTOS} puntos.`);
+    if (puntos.length >= MAX_PUNTOS) return setAviso(`Máximo ${MAX_PUNTOS} puntos por ruta.`);
     if (muyPegado(puntos, p)) return setAviso("Ese punto queda a menos de 10 m del anterior. Toca un poco más lejos.");
     setAviso(null);
     onCambio([...puntos, p]);

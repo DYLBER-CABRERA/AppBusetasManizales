@@ -4,9 +4,9 @@ import type { components } from "./tipos-api";
 export type PuntoCapturado = { lat: number; lng: number; nombre?: string };
 export type PuntoRuta = components["schemas"]["PuntoRuta"];
 
-// Límites del contrato §23.
+// Límites del contrato §23/§24 (30 porque cada punto es una consulta a OSRM; antes 60).
 export const MIN_PUNTOS = 2;
-export const MAX_PUNTOS = 60;
+export const MAX_PUNTOS = 30;
 export const MAX_NOMBRE_PUNTO = 120;
 export const DISTANCIA_MIN_M = 10;
 

@@ -97,11 +97,13 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
         confirmarCompartida: confirmar,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (resultado) => {
       setCompartida(false);
       await cliente.invalidateQueries({ queryKey: CLAVE_RUTAS });
       if (ruta) await cliente.invalidateQueries({ queryKey: ["sec", "ruta", ruta.id] });
       toast(edita ? "Guardado" : "Registrada");
+      // Al crear, los avisos del 201 informan tramos del trazado que quedaron en línea recta (contrato §24).
+      if (!ruta) resultado.avisos?.forEach((a) => toast(a.cuerpo));
       onListo();
     },
     onError: (e, { confirmar }) => {

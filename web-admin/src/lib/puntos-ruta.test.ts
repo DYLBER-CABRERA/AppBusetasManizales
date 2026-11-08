@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  distanciaM, erroresPorPunto, longitudCircuitoM, muyPegado, puntosParaEnvio, validarPuntos, type PuntoCapturado,
+  distanciaM, erroresPorPunto, longitudCircuitoM, MAX_PUNTOS, muyPegado, puntosParaEnvio, validarPuntos, type PuntoCapturado,
 } from "./puntos-ruta";
 
 // Caso real del contrato §23: Fátima a Chipre.
@@ -44,6 +44,13 @@ describe("puntos de ruta", () => {
     const p = FATIMA_CHIPRE;
     const lista = [p[0]!, { ...p[0]!, lng: p[0]!.lng + 0.00002 }, { ...p[2]!, nombre: "x".repeat(121) }];
     expect(validarPuntos(lista).map((e) => [e.indice, e.motivo])).toEqual([[1, "duplicado_consecutivo"], [2, "nombre_invalido"]]);
+  });
+
+  it("el tope es de 30 puntos (contrato §24) y un 400 sin detalles por punto no marca ninguno", () => {
+    expect(MAX_PUNTOS).toBe(30);
+    // «más de 30 puntos» llega sin `detalles` por índice: el formulario cae al mensaje general del servidor.
+    expect(erroresPorPunto(null)).toEqual([]);
+    expect(erroresPorPunto([])).toEqual([]);
   });
 
   it("traduce los detalles de un 400 por punto y ignora lo demás", () => {
