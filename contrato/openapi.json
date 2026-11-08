@@ -2897,7 +2897,7 @@
             "items": {
               "$ref": "#/components/schemas/PuntoRuta"
             },
-            "maxItems": 60,
+            "maxItems": 30,
             "minItems": 2,
             "title": "Puntos",
             "type": "array"

@@ -396,30 +396,41 @@ Nuevo endpoint (aditivo: `POST /rutas` con `paraderoIds` no cambia). Rol Secreta
   "servicios": [ { "empresaId": "…", "codigoPublico": "77" } ],
   "confirmarCompartida": false }
 ```
-- `puntos`: de 2 a 60, en el orden tocado. `lat` y `lng` obligatorios; `nombre` opcional (máx. 120).
+- `puntos`: de 2 a **30** (antes 60; ver §24), en el orden tocado. `lat` y `lng` obligatorios; `nombre` opcional (máx. 120).
 - `servicios`, `confirmarCompartida` y `rutaPrincipalId` igual que en `POST /rutas` (un servicio por empresa; más de una empresa exige `confirmarCompartida=true`). No se crean horarios ni frecuencias: el jefe los registra después.
 
 **201**: la misma forma que `GET /rutas/{id}` (`id, nombre, tipoRecorrido:"circular", servicios[], longitudM, version:1, trazado` GeoJSON `LineString` `[lng, lat]`, `paraderos[{orden, paraderoId, nombre, lat, lng}]`, `avisos:[]`):
 ```json
-{ "id": "…", "nombre": "Fátima a Chipre", "tipoRecorrido": "circular", "version": 1, "longitudM": 8300.0,
+{ "id": "…", "nombre": "Fátima a Chipre", "tipoRecorrido": "circular", "version": 1, "longitudM": 15865.0,
   "servicios": [ { "servicioId": "…", "empresaId": "…", "empresaNombre": "Sideral", "codigoPublico": "77" } ],
   "paraderos": [ { "orden": 1, "paraderoId": "…", "nombre": "Fátima", "lat": 5.052476, "lng": -75.497089 },
                  { "orden": 2, "paraderoId": "…", "nombre": "Paradero Fátima a Chipre 1", "lat": 5.0617019, "lng": -75.5079102 },
                  { "orden": 3, "paraderoId": "…", "nombre": "Paradero Fátima a Chipre 2", "lat": 5.0701278, "lng": -75.5179314 },
                  { "orden": 4, "paraderoId": "…", "nombre": "Chipre", "lat": 5.07655, "lng": -75.525721 } ],
-  "trazado": { "type": "LineString", "coordinates": [ [-75.497089, 5.052476], [-75.5079102, 5.0617019], [-75.5179314, 5.0701278], [-75.525721, 5.07655], [-75.497089, 5.052476] ] },
+  "trazado": { "type": "LineString", "coordinates": [ [-75.497067, 5.052497], "… cientos de vértices que siguen las calles …", [-75.497067, 5.052497] ] },
   "avisos": [], "version": 1 }
 ```
 
 **Reglas**
 - **Paraderos nuevos:** cada punto crea un paradero con `direccion = "Paradero de ejemplo (ficticio)"` (la marca de las semillas; no hay columna `ficticio`). Nombre: el del punto, o si falta **«Paradero <NombreRuta> N»** (el patrón de las semillas, p. ej. «Paradero La Enea 1»); `N` cuenta solo los paraderos nuevos sin nombre. No se nombra a partir de barrios cercanos (los barrios son puntos representativos, no hitos exactos).
 - **Reutilización:** si un punto está a ≤ `radio_reuso_paradero_m` (parámetro global, 20 m por omisión; 0 = nunca reutilizar) de un paradero activo, se **reutiliza** ese paradero (un paradero puede estar en varias rutas): se usa su nombre y su ubicación real, y el `nombre` del punto se ignora. Un paradero no se repite dentro de la misma ruta: si ya se usó, ese punto crea uno nuevo.
-- **Trazado circular (D-P02):** polilínea con tramos rectos entre paraderos consecutivos que **vuelve al primero** (como las semillas); `longitudM` incluye ese tramo de cierre. Por eso el último punto no puede coincidir con el primero. El avance de cada paradero lo calcula la función existente `progresos_paraderos_ruta` (secuencial, creciente, < `longitudM`), que usan el ETA y el planificador.
+- **Trazado circular (D-P02):** sigue **calles reales** (OSRM, ver §24) entre paraderos consecutivos y **vuelve al primero**; `longitudM` es la longitud de esa geometría real, cierre incluido. Por eso el último punto no puede coincidir con el primero. El avance de cada paradero lo calcula la función existente `progresos_paraderos_ruta` (secuencial, creciente, < `longitudM`), que usan el ETA y el planificador.
 - **Atomicidad:** paraderos nuevos, ruta, trazado, secuencia de paradas y servicios se crean en **una sola transacción**.
 - Registra el mismo evento de uso que el resto de la API (no hay auditoría adicional en el proyecto).
 
 **Errores**
-- **400 `VALIDACION`**: menos de 2 o más de 60 puntos; nombre de ruta de menos de 2 caracteres; `lat`/`lng` ausentes o no numéricos; y, con `detalles` por índice, `[{"campo":"puntos[1]","motivo":"fuera_de_zona"}]` (fuera de `caja_ciudad`), `coordenadas_invalidas`, `duplicado_consecutivo` (dos puntos seguidos a < 10 m: se rechazan, no se fusionan) o `ultimo_igual_al_primero` (a < 10 m del primero, con más de 2 puntos).
+- **400 `VALIDACION`**: menos de 2 o más de 30 puntos; nombre de ruta de menos de 2 caracteres; `lat`/`lng` ausentes o no numéricos; y, con `detalles` por índice, `[{"campo":"puntos[1]","motivo":"fuera_de_zona"}]` (fuera de `caja_ciudad`), `coordenadas_invalidas`, `duplicado_consecutivo` (dos puntos seguidos a < 10 m: se rechazan, no se fusionan) o `ultimo_igual_al_primero` (a < 10 m del primero, con más de 2 puntos).
 - **401** sin token · **403** jefe o pasajero.
 - **404 `NO_ENCONTRADO`**: alguna empresa no existe.
 - **409 `CONFLICTO_NEGOCIO`**: ya existe una ruta activa con ese nombre (sin distinguir tildes ni mayúsculas); más de una empresa sin `confirmarCompartida`; código público ya usado por la empresa.
+
+## 24. Trazado por calles reales (OSRM) en `POST /rutas/desde-puntos`
+
+Cambia **solo cómo se dibuja la línea**; el resto del contrato (201 con la ruta completa) sigue igual y los paraderos son exactamente los puntos tocados (o el paradero existente reutilizado).
+
+- **Servicio:** `GET {OSRM_URL}/route/v1/driving/{lng1},{lat1};{lng2},{lat2}?overview=full&geometries=geojson`. `OSRM_URL` (variable de entorno, por defecto el demo público `https://router.project-osrm.org`, sin API key); vacío = sin OSRM (todo en línea recta, con aviso).
+- **Un par por llamada:** cada par consecutivo de paraderos **y el cierre último→primero** (ruta circular). Las geometrías se concatenan en orden sin duplicar el punto de unión, y la línea queda cerrada (último vértice = primero). OSRM ajusta cada punto a la calle más cercana (unos metros): los paraderos quedan sobre el trazado a pocos metros y su avance sigue calculándose con `progresos_paraderos_ruta`.
+- **Respaldo en recta por tramo:** timeout de 5 s por llamada; si OSRM no responde, devuelve error o `NoRoute` en un par, **solo ese tramo** va en línea recta. La creación **nunca falla por esto**. El `201` lo informa en `avisos` (aviso **no persistido**, `origen: "aplicativo"`, `id` nuevo en cada respuesta, no aparece en `GET /avisos`): `{"titulo":"Trazado parcialmente en línea recta","cuerpo":"Tramo 3→4 sin ruta real, se usó línea recta."}` o, con varios, `"Tramos sin ruta real, se usó línea recta: 2→3, 4→1."` (paradas numeradas desde 1; `4→1` es el cierre). Si no hay ningún tramo en recta no se agrega nada. También queda en los registros del servidor, sin coordenadas.
+- **Cortesía con el servidor demo compartido:** llamadas **secuenciales** con una pausa mínima de **0,2 s** entre ellas, `User-Agent` identificable (`BusetasApp-prototipo-clase/0.1 (proyecto academico; datos de ejemplo)`), presupuesto total de **25 s** (pasado ese tiempo los tramos que faltan van en recta) y **corte tras 3 fallos seguidos** (se asume servicio caído o saturado y el resto va en recta, para no esperar 5 s por tramo).
+- **Máximo de puntos: 30 (antes 60).** Cada punto es una llamada; con 30 son 30 llamadas ≈ 10 s en un caso normal (0,2 s de pausa más la latencia de cada respuesta) y caben en el presupuesto de 25 s. Con 60 se pasaría casi siempre del presupuesto y los últimos tramos saldrían en recta. Las rutas de las semillas tienen de 9 a 12 paradas.
+- `longitudM` es la de la geometría real; en la prueba Fátima → Chipre pasó de 8 300 m (recta) a unos 15 865 m (la vuelta por calle ya no es la recta de regreso).

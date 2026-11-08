@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from modulos.red.aplicacion.trazado_calles import ConstructorDeTrazado
 from modulos.red.dominio.puertos import ProveedorAvisosVigentes, RepositorioGestionRed, RepositorioRutas
 from modulos.red.dominio.puntos_ruta import DIRECCION_FICTICIA, nombre_automatico, validar_puntos
 from nucleo.autorizacion import Identidad, Rol, exigir_rol
@@ -138,11 +139,13 @@ class RegistrarRutaDesdePuntos(_CasoRuta):
       dentro de la misma ruta: si ya se usó, el punto crea uno nuevo.
     - Los demás puntos crean un paradero nuevo marcado «Paradero de ejemplo (ficticio)» en `direccion`, con el nombre dado o,
       si falta, «Paradero <NombreRuta> N» (N cuenta solo los paraderos nuevos sin nombre).
-    - El circuito se cierra solo: el trazado vuelve al primer punto (D-P02, como las semillas)."""
+    - El trazado sigue calles reales (OSRM) entre paradas consecutivas, incluido el cierre último→primero (D-P02); en un
+      tramo sin ruta real usa una recta y lo avisa en `avisos`. Los paraderos son exactamente los puntos tocados."""
 
-    def __init__(self, gestion, rutas, avisos, reloj, parametros: PuertoParametros) -> None:  # noqa: ANN001
+    def __init__(self, gestion, rutas, avisos, reloj, parametros: PuertoParametros, trazado: ConstructorDeTrazado) -> None:  # noqa: ANN001
         super().__init__(gestion, rutas, avisos, reloj)
         self._parametros = parametros
+        self._trazado = trazado
 
     async def __call__(
         self, identidad: Identidad | None, nombre: str, ruta_principal_id: UUID | None, puntos: list[dict[str, Any]],
@@ -181,8 +184,26 @@ class RegistrarRutaDesdePuntos(_CasoRuta):
                 "id": None, "nombre": propio or nombre_automatico(nombre, numero), "direccion": DIRECCION_FICTICIA,
                 "lat": p["lat"], "lng": p["lng"],
             })
-        ruta_id = await self._g.crear_ruta_con_paraderos(nombre, ruta_principal_id, paraderos, servicios)
-        return await self._detalle(ruta_id)
+        trazado = await self._trazado.construir([(p["lat"], p["lng"]) for p in paraderos])
+        ruta_id = await self._g.crear_ruta_con_paraderos(nombre, ruta_principal_id, paraderos, servicios, trazado.coordenadas)
+        detalle = await self._detalle(ruta_id)
+        if trazado.tramos_sin_ruta:  # aviso de la respuesta (no se guarda): qué tramos quedaron en línea recta
+            detalle["avisos"] = [*detalle["avisos"], _aviso_tramos_en_recta(trazado.tramos_sin_ruta)]
+        return detalle
+
+
+def _aviso_tramos_en_recta(tramos: list[tuple[int, int]]) -> dict[str, Any]:
+    from uuid import uuid4
+
+    lista = ", ".join(f"{a}→{b}" for a, b in tramos)
+    cuerpo = (
+        f"Tramo {lista} sin ruta real, se usó línea recta." if len(tramos) == 1
+        else f"Tramos sin ruta real, se usó línea recta: {lista}."
+    )
+    return {
+        "id": uuid4(), "origen": "aplicativo", "empresa_nombre": None, "titulo": "Trazado parcialmente en línea recta",
+        "cuerpo": cuerpo,
+    }
 
 
 class EditarRuta(_CasoRuta):

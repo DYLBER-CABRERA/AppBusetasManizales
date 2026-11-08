@@ -8,7 +8,7 @@ from typing import Any
 from nucleo.errores import ErrorValidacion
 
 MIN_PUNTOS = 2
-MAX_PUNTOS = 60
+MAX_PUNTOS = 30  # cada punto es una llamada a OSRM (demo compartido): ver docs/03 §23
 SEPARACION_MINIMA_M = 10.0  # dos puntos seguidos a menos de esto se consideran el mismo (se rechazan)
 DIRECCION_FICTICIA = "Paradero de ejemplo (ficticio)"  # misma marca que las semillas: no hay columna `ficticio`
 RADIO_TIERRA_M = 6_371_000.0

@@ -173,12 +173,12 @@ def _validar(cliente: TestClient, puntos: list[dict], **extra) -> dict:
     return {"estado": r.status_code, **r.json()}
 
 
-def test_menos_de_2_o_mas_de_60_puntos(cliente: TestClient, repos: Repositorios) -> None:
+def test_menos_de_2_o_mas_de_30_puntos(cliente: TestClient, repos: Repositorios) -> None:
     assert _validar(cliente, [_punto(5.07, -75.51)])["estado"] == 400
-    muchos = [_punto(5.0 + i * 0.002, -75.5) for i in range(61)]
+    muchos = [_punto(5.0 + i * 0.002, -75.5) for i in range(31)]
     assert _validar(cliente, muchos)["estado"] == 400
-    sesenta = [_punto(5.0 + i * 0.002, -75.5 - i * 0.0005) for i in range(60)]
-    assert _validar(cliente, sesenta)["estado"] == 201 and len(repos.gestion_red.creadas) == 1
+    treinta = [_punto(5.0 + i * 0.002, -75.5 - i * 0.0005) for i in range(30)]
+    assert _validar(cliente, treinta)["estado"] == 201 and len(repos.gestion_red.creadas) == 1
 
 
 def test_fuera_de_la_caja_da_400_con_el_indice_del_punto(cliente: TestClient, repos: Repositorios) -> None:

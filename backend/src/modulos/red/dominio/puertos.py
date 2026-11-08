@@ -31,6 +31,16 @@ class RepositorioRutas(Protocol):
     async def listar_empresas(self) -> list[Registro]: ...
 
 
+Coordenada = tuple[float, float]  # (lat, lng)
+
+
+class EnrutadorCalles(Protocol):
+    async def trazar(self, origen: Coordenada, destino: Coordenada) -> list[Coordenada] | None:
+        """Geometría por calles reales entre dos puntos (lista de (lat, lng) con ≥ 2 vértices), o `None` si no hay ruta
+        real (sin respuesta, error o «NoRoute»). Nunca lanza: quien llama usa una recta de respaldo."""
+        ...
+
+
 class ProveedorAvisosVigentes(Protocol):
     async def vigentes(self, ruta_id: UUID | None, ahora: datetime) -> list[Registro]: ...
 
@@ -68,10 +78,12 @@ class RepositorioGestionRed(Protocol):
         """Paradero activo más cercano a ≤ radio_m (id, nombre, lat, lng, distancia_m) que no esté en `excluir_ids`."""
         ...
     async def crear_ruta_con_paraderos(
-        self, nombre: str, ruta_principal_id: UUID | None, paraderos: list[Registro], servicios: list[Registro]
+        self, nombre: str, ruta_principal_id: UUID | None, paraderos: list[Registro], servicios: list[Registro],
+        trazado: list[Coordenada] | None = None,
     ) -> UUID:
-        """UNA transacción: crea los paraderos con `id` None (nombre, lat, lng, direccion), la ruta circular con su trazado,
-        la secuencia de paradas y los servicios. Si algo falla no queda nada."""
+        """UNA transacción: crea los paraderos con `id` None (nombre, lat, lng, direccion), la ruta circular con su trazado
+        (`trazado` = vértices (lat, lng) ya cerrados; si falta, una recta entre paraderos que vuelve al primero), la secuencia
+        de paradas y los servicios. Si algo falla no queda nada."""
         ...
     async def ruta_activa_existe(self, ruta_id: UUID) -> bool: ...
     async def empresa_opera_ruta(self, ruta_id: UUID, empresa_id: UUID) -> bool: ...

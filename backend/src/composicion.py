@@ -81,6 +81,7 @@ from modulos.pasajero import (
 from modulos.planificacion import PlanificarViaje, RepositorioPlanificacionSql
 from modulos.red import (
     AsignarRutaAEmpresa,
+    ConstructorDeTrazado,
     ConsultarParaderosCercanos,
     ConsultarRutasCercanas,
     CrearHito,
@@ -89,6 +90,7 @@ from modulos.red import (
     EditarRuta,
     EliminarParadero,
     EliminarRuta,
+    EnrutadorOsrm,
     ListarEmpresas,
     ListarParaderos,
     ListarRutas,
@@ -131,6 +133,7 @@ class Repositorios:
     usuarios: Any = None
     autenticacion: Any = None  # PuertoAutenticacion
     simulacion: Any = None  # RepositorioSimulacion (solo MODO_DEMO)
+    enrutador: Any = None  # EnrutadorCalles (OSRM); None = rutas desde puntos en línea recta
     operacion: Any = None
     admin: Any = None
     gestion_red: Any = None
@@ -297,7 +300,7 @@ def construir_servicios(
         consultar_estadisticas_uso=ConsultarEstadisticasUso(repos.eventos_uso, repos.parametros),
         registrar_ruta=RegistrarRuta(repos.gestion_red, repos.rutas, repos.avisos, reloj),
         registrar_ruta_desde_puntos=RegistrarRutaDesdePuntos(
-            repos.gestion_red, repos.rutas, repos.avisos, reloj, repos.parametros
+            repos.gestion_red, repos.rutas, repos.avisos, reloj, repos.parametros, ConstructorDeTrazado(repos.enrutador)
         ),
         editar_ruta=EditarRuta(repos.gestion_red, repos.rutas, repos.avisos, reloj),
         eliminar_ruta=EliminarRuta(repos.gestion_red, repos.rutas, reloj),
@@ -342,6 +345,7 @@ def _repositorios_sql(pool: AsyncConnectionPool, config: Configuracion, cliente_
             clave_servicio=config.supabase_service_role_key.get_secret_value(),
         ),
         simulacion=RepositorioSimulacionSql(pool),
+        enrutador=EnrutadorOsrm(cliente_http, config.osrm_url) if config.osrm_url.strip() else None,
         operacion=RepositorioOperacionSql(pool),
         admin=RepositorioAdminSql(pool),
         gestion_red=RepositorioGestionRedSql(pool),

@@ -99,7 +99,7 @@ class PuntoRuta(EsquemaBase):
 class RutaDesdePuntos(EsquemaBase):
     nombre: str = Field(min_length=2, max_length=120)
     ruta_principal_id: UUID | None = None
-    puntos: list[PuntoRuta] = Field(min_length=2, max_length=60, description="En el orden tocado; cada punto es un paradero")
+    puntos: list[PuntoRuta] = Field(min_length=2, max_length=30, description="En el orden tocado; cada punto es un paradero")
     servicios: list[ServicioCrearEntrada] = Field(min_length=1)
     confirmar_compartida: bool = False
 

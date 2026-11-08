@@ -19,6 +19,11 @@ _SERVICIO = """s.id, s.ruta_id, r.nombre as ruta_nombre, s.empresa_id, e.nombre 
 _DUPLICADO_CODIGO = "El código público ya lo usa otro servicio de esa empresa."
 
 
+def _wkt_linea(vertices: list[tuple[float, float]]) -> str:
+    """LineString tal cual (lat, lng) → WKT [lng lat]. Los vértices ya vienen cerrados (circuito)."""
+    return "SRID=4326;LINESTRING(" + ", ".join(f"{lng:.7f} {lat:.7f}" for lat, lng in vertices) + ")"
+
+
 def _wkt_circuito(coordenadas: list[tuple[float, float]]) -> str:
     """Línea que une los paraderos en orden y vuelve al primero (circuito, D-P02). `coordenadas` son (lat, lng)."""
     puntos = [*coordenadas, coordenadas[0]]
@@ -129,17 +134,18 @@ class RepositorioGestionRedSql:
         ))
 
     @staticmethod
-    async def _insertar_ruta(conexion: AsyncConnection[Any], nombre: str, ruta_principal_id, paradero_ids, servicios) -> UUID:
+    async def _insertar_ruta(
+        conexion: AsyncConnection[Any], nombre: str, ruta_principal_id, paradero_ids, servicios, trazado=None
+    ) -> UUID:
         ruta = await _uno(
             conexion,
             "insert into ruta (nombre, tipo_recorrido, ruta_principal_id) values (%s, 'circular', %s) returning id",
             (nombre, ruta_principal_id),
         )
         ruta_id = ruta["id"]
-        coordenadas = await _coordenadas(conexion, paradero_ids)
+        wkt = _wkt_linea(trazado) if trazado else _wkt_circuito(await _coordenadas(conexion, paradero_ids))
         await conexion.execute(
-            "insert into ruta_trazado (ruta_id, sentido, trazado) values (%s, 'circular', st_geogfromtext(%s))",
-            (ruta_id, _wkt_circuito(coordenadas)),
+            "insert into ruta_trazado (ruta_id, sentido, trazado) values (%s, 'circular', st_geogfromtext(%s))", (ruta_id, wkt)
         )
         await conexion.execute("select reemplazar_paraderos_de_ruta(%s::uuid, 'circular', %s::uuid[])", (ruta_id, paradero_ids))
         for s in servicios:
@@ -172,7 +178,7 @@ class RepositorioGestionRedSql:
         )
         return filas[0] if filas else None
 
-    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios) -> UUID:
+    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios, trazado=None) -> UUID:
         try:
             async with self._pool.connection() as conexion:  # una transacción: todo o nada
                 ids: list[UUID] = []
@@ -187,7 +193,7 @@ class RepositorioGestionRedSql:
                         (p["nombre"], p["direccion"], p["lng"], p["lat"]),
                     )
                     ids.append(fila["id"])
-                return await self._insertar_ruta(conexion, nombre, ruta_principal_id, ids, servicios)
+                return await self._insertar_ruta(conexion, nombre, ruta_principal_id, ids, servicios, trazado)
         except UniqueViolation as exc:
             raise ErrorConflictoNegocio(_DUPLICADO_CODIGO) from exc
 

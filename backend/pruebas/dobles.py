@@ -829,8 +829,8 @@ class GestionRedEnMemoria:
         d, p = min(candidatos, key=lambda par: par[0])
         return {**p, "distancia_m": d}
 
-    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios):
-        from modulos.red.infraestructura.repositorio_gestion_sql import _wkt_circuito
+    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios, trazado=None):
+        from modulos.red.infraestructura.repositorio_gestion_sql import _wkt_circuito, _wkt_linea
 
         ids = []
         for p in paraderos:
@@ -844,7 +844,7 @@ class GestionRedEnMemoria:
         coordenadas = [(self.paraderos[i]["lat"], self.paraderos[i]["lng"]) for i in ids]
         ruta_id = uuid4()
         self.creadas[ruta_id] = {"nombre": nombre, "paradero_ids": ids, "servicios": servicios,
-                                 "wkt": _wkt_circuito(coordenadas), "version": 1}
+                                 "wkt": _wkt_linea(trazado) if trazado else _wkt_circuito(coordenadas), "version": 1}
         self.rutas_existentes.append({"nombre": nombre})
         return ruta_id
 
@@ -965,6 +965,17 @@ class PlanificacionEnMemoria:
         return {p: {RUTA_ENEA} for p in paradero_ids if p in (PARADERO_A, PARADERO_B)}
 
 
+class EnrutadorRectoDoble:
+    """EnrutadorCalles de pruebas: devuelve la recta entre los dos puntos (sin llamar a OSRM). Registra las llamadas."""
+
+    def __init__(self) -> None:
+        self.llamadas: list[tuple[tuple[float, float], tuple[float, float]]] = []
+
+    async def trazar(self, origen, destino):
+        self.llamadas.append((origen, destino))
+        return [origen, destino]
+
+
 def repositorios_en_memoria() -> Repositorios:
     seguimiento = SeguimientoEnMemoria()
     usuarios = UsuariosEnMemoria()
@@ -973,6 +984,6 @@ def repositorios_en_memoria() -> Repositorios:
         avisos=AvisosGestionEnMemoria(), eventos_uso=EventosEnMemoria(), parametros=ParametrosEnMemoria(),
         seguimiento=seguimiento, fuentes_gps=FuentesGpsEnMemoria(), usuarios=usuarios,
         autenticacion=AutenticacionFalsa(), simulacion=SimulacionEnMemoria(seguimiento), operacion=OperacionEnMemoria(),
-        admin=AdminEnMemoria(usuarios), gestion_red=GestionRedEnMemoria(),
+        admin=AdminEnMemoria(usuarios), gestion_red=GestionRedEnMemoria(), enrutador=EnrutadorRectoDoble(),
         favoritos=FavoritosEnMemoria(), alertas=AlertasEnMemoria(), planificacion=PlanificacionEnMemoria(),
     )
