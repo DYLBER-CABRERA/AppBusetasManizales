@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from adaptadores_externos.reconocimiento_lugares import ReconocedorDeLugares, Reconocimiento
 from modulos.busqueda import normalizar_consulta
 from nucleo.errores import ErrorAplicacion, ErrorConflictoNegocio
 from nucleo.notificador import DestinoAlerta
@@ -24,10 +25,7 @@ registro = logging.getLogger("busetasapp.bot")
 RADIO_M = 500
 VIGENCIA_UBICACION = timedelta(minutes=10)
 AVISO_EJEMPLO = "Datos de ejemplo · no son rutas oficiales."
-PALABRAS_VACIAS = {
-    "que", "ruta", "rutas", "va", "voy", "para", "por", "pasa", "pasan", "hacia", "a", "al", "el", "la", "los", "las", "de", "del",
-    "en", "un", "una", "me", "sirve", "sirven", "como", "llego", "cual", "cuales", "donde", "hay", "quiero", "ir", "bus", "buseta",
-}
+MAX_OPCIONES = 5
 
 
 @dataclass(frozen=True)
@@ -49,6 +47,7 @@ class _Chat:
     ubicacion: tuple[float, float] | None = None
     desde: datetime | None = None
     pares: list[tuple[UUID, UUID, str]] = field(default_factory=list)  # (ruta, paradero, nombre de la ruta)
+    opciones_hito: dict[str, dict[str, Any]] = field(default_factory=dict)  # lugares ofrecidos cuando hay ambigüedad
 
 
 def _minutos(segundos: int) -> str:
@@ -60,6 +59,7 @@ class LogicaBot:
         self._s = servicios
         self._reloj = reloj
         self._chats: dict[int, _Chat] = {}
+        self._lugares = ReconocedorDeLugares(servicios)
 
     # ---------- estado en memoria ----------
 
@@ -108,15 +108,26 @@ class LogicaBot:
             return await self.inicio(chat_id)
         if "ayuda" in normal or "como funciona" in normal:
             return self.ayuda()
-        if "rutas cerca" in normal or normal == "cerca de mi":
+        if "cerca de mi" in normal:
             return self._pedir_ubicacion()
-        if "cuando llega" in normal:
-            return await self.cuando_llega(chat_id)
-        if "horario" in normal:
-            return await self.elegir_ruta("horarios", "¿De qué ruta quieres ver los horarios?")
-        if "aviso" in normal:
-            return await self.avisos()
-        return await self._buscar_en_texto(normal)
+        # La intención (horarios, avisos, cuándo llega, cerca de…) y el lugar se reconocen por separado: el lugar siempre con
+        # el mismo reconocedor (palabra completa, exacto antes que parcial).
+        intencion = (
+            "llega" if "cuando llega" in normal else "horarios" if "horario" in normal else "avisos" if "aviso" in normal
+            else "cerca" if "cerca de" in normal or "rutas cerca" in normal else None
+        )
+        lugar = await self._lugares.reconocer(normal)
+        if lugar.ambiguo:
+            return self._preguntar(chat_id, lugar)
+        if intencion == "llega":
+            return await self._llega_a(chat_id, lugar)
+        if intencion == "horarios":
+            return await self._horarios_de(lugar)
+        if intencion == "avisos":
+            return await self._avisos_de(lugar)
+        if intencion == "cerca":
+            return await self._cerca_de(chat_id, lugar)
+        return await self._responder_lugar(lugar)
 
     async def ubicacion(self, chat_id: int, lat: float, lng: float) -> Respuesta:
         chat = self._chat(chat_id)
@@ -134,6 +145,8 @@ class LogicaBot:
                 return await self._eta(chat_id, int(resto))
             if accion == "alerta":
                 return await self._alerta(chat_id, int(resto))
+            if accion == "hito":
+                return await self._lugar_elegido(chat_id, resto)
             if accion == "ver":
                 return await self._ver_ruta(self._par(chat_id, int(resto))[0])
         except (ValueError, IndexError):
@@ -238,23 +251,78 @@ class LogicaBot:
             return Respuesta("No hay avisos vigentes.", menu=True)
         return Respuesta("Avisos vigentes:\n" + "\n".join(f"• {a['titulo']}: {a['cuerpo']}" for a in avisos[:5]), menu=True)
 
-    async def _buscar_en_texto(self, normal: str) -> Respuesta:
-        palabras = [p for p in normal.replace("?", " ").replace("¿", " ").split() if p not in PALABRAS_VACIAS and len(p) >= 3]
-        candidatos = [" ".join(palabras), *palabras] if len(palabras) > 1 else palabras
-        for consulta in candidatos:
-            hitos = await self._s.buscar_hitos(consulta)
-            if hitos:
-                d = await self._s.consultar_rutas_por_hito(hitos[0]["id"])
-                if d["rutas"]:
-                    nombres = ", ".join(f"Ruta {r['nombre']}" for r in d["rutas"])
-                    return Respuesta(f"Cerca de «{hitos[0]['nombre']}» pasa: {nombres}.", self._botones_ruta(d["rutas"]))
-                cercano = d["paradero_mas_cercano"]
-                extra = f" El paradero más cercano es «{cercano['nombre']}»." if cercano else ""
-                return Respuesta(f"No encontré rutas que pasen por «{hitos[0]['nombre']}».{extra}", menu=True)
-            rutas = await self._s.buscar_rutas_por_texto(consulta)
-            if rutas:
-                return Respuesta("Encontré: " + ", ".join(f"Ruta {r['nombre']}" for r in rutas) + ".", self._botones_ruta(rutas))
+    # ---------- lugar reconocido ----------
+
+    def _preguntar(self, chat_id: int, lugar: Reconocimiento) -> Respuesta:
+        """Hay varios lugares posibles y ninguno con el nombre exacto: se pregunta en vez de elegir uno."""
+        chat = self._chat(chat_id)
+        chat.opciones_hito = {str(h["id"]): h for h in lugar.hitos[:MAX_OPCIONES]}
+        extra = f" (mostrando {MAX_OPCIONES} de {len(lugar.hitos)})" if len(lugar.hitos) > MAX_OPCIONES else ""
+        return Respuesta(
+            f"¿A cuál te refieres?{extra} Hay varios lugares que coinciden con «{lugar.frase}».",
+            [[Boton(h["nombre"], f"hito:{h['id']}")] for h in chat.opciones_hito.values()],
+        )
+
+    async def _lugar_elegido(self, chat_id: int, hito_id: str) -> Respuesta:
+        hito = self._chat(chat_id).opciones_hito.get(hito_id)
+        if hito is None:
+            return Respuesta("Esa opción ya venció. Escribe de nuevo el lugar.", menu=True)
+        return await self._rutas_del_hito(hito)
+
+    async def _rutas_del_hito(self, hito: dict[str, Any]) -> Respuesta:
+        d = await self._s.consultar_rutas_por_hito(hito["id"])
+        if d["rutas"]:
+            nombres = ", ".join(f"Ruta {r['nombre']}" for r in d["rutas"])
+            return Respuesta(f"Cerca de «{hito['nombre']}» pasa: {nombres}.", self._botones_ruta(d["rutas"]))
+        cercano = d["paradero_mas_cercano"]
+        extra = f" El paradero más cercano es «{cercano['nombre']}»." if cercano else ""
+        return Respuesta(f"No encontré rutas que pasen por «{hito['nombre']}».{extra}", menu=True)
+
+    async def _responder_lugar(self, lugar: Reconocimiento) -> Respuesta:
+        if lugar.hitos:
+            return await self._rutas_del_hito(lugar.hitos[0])
+        if lugar.rutas:
+            return Respuesta("Encontré: " + ", ".join(f"Ruta {r['nombre']}" for r in lugar.rutas) + ".", self._botones_ruta(lugar.rutas))
         return Respuesta("No te entendí. Elige una opción del menú o escribe, por ejemplo: «¿Qué ruta va a Villamaría?».", menu=True)
+
+    async def _rutas_de(self, lugar: Reconocimiento) -> list[dict[str, Any]] | None:
+        """Rutas del lugar reconocido; `None` si no se reconoció ningún lugar."""
+        if lugar.hitos:
+            return (await self._s.consultar_rutas_por_hito(lugar.hitos[0]["id"]))["rutas"]
+        return lugar.rutas or None
+
+    async def _horarios_de(self, lugar: Reconocimiento) -> Respuesta:
+        rutas = await self._rutas_de(lugar)
+        if rutas is None:
+            return await self.elegir_ruta("horarios", "¿De qué ruta quieres ver los horarios?")
+        if not rutas:
+            return await self._rutas_del_hito(lugar.hitos[0])
+        partes = [(await self._horarios(r["id"])).texto for r in rutas[:3]]
+        return Respuesta("\n\n".join(partes), menu=True)
+
+    async def _avisos_de(self, lugar: Reconocimiento) -> Respuesta:
+        rutas = await self._rutas_de(lugar)
+        if rutas is None:
+            return await self.avisos()
+        if not rutas:
+            return await self._rutas_del_hito(lugar.hitos[0])
+        vistos: dict[Any, dict[str, Any]] = {}
+        for r in rutas:
+            for a in await self._s.consultar_avisos_vigentes(r["id"]):
+                vistos.setdefault(a["id"], a)
+        if not vistos:
+            return Respuesta("No hay avisos vigentes para esa ruta.", menu=True)
+        return Respuesta("Avisos vigentes:\n" + "\n".join(f"• {a['titulo']}: {a['cuerpo']}" for a in list(vistos.values())[:5]), menu=True)
+
+    async def _llega_a(self, chat_id: int, lugar: Reconocimiento) -> Respuesta:
+        if lugar.hitos:  # el lugar nombrado hace de punto de referencia (no se guarda como ubicación del pasajero)
+            return await self._rutas_cerca(chat_id, lugar.hitos[0]["lat"], lugar.hitos[0]["lng"])
+        return await self.cuando_llega(chat_id)
+
+    async def _cerca_de(self, chat_id: int, lugar: Reconocimiento) -> Respuesta:
+        if lugar.hitos:
+            return await self._rutas_cerca(chat_id, lugar.hitos[0]["lat"], lugar.hitos[0]["lng"])
+        return self._pedir_ubicacion()
 
     @staticmethod
     def _botones_ruta(rutas: list[dict[str, Any]]) -> list[list[Boton]]:

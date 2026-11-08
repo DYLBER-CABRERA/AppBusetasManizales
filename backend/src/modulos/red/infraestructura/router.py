@@ -23,6 +23,7 @@ from modulos.red.aplicacion.gestion import (
     EliminarRuta,
     ListarParaderos,
     RegistrarRuta,
+    RegistrarRutaDesdePuntos,
     RetirarRutaDeEmpresa,
 )
 from modulos.red.infraestructura.esquemas import (
@@ -34,6 +35,7 @@ from modulos.red.infraestructura.esquemas import (
     ParaderoCrear,
     ParaderoEditar,
     RutaCrear,
+    RutaDesdePuntos,
     RutaDetalle,
     RutaEditar,
     RutaResumen,
@@ -113,6 +115,18 @@ async def registrar_ruta(
 ) -> dict:
     return await caso_uso(
         identidad, cuerpo.nombre, cuerpo.ruta_principal_id, cuerpo.paradero_ids,
+        [sv.model_dump() for sv in cuerpo.servicios], cuerpo.confirmar_compartida,
+    )
+
+
+@router.post("/rutas/desde-puntos", response_model=RutaDetalle, status_code=201, responses=errores(400, 401, 403, 404, 409))
+async def registrar_ruta_desde_puntos(
+    cuerpo: RutaDesdePuntos,
+    identidad: Identidad = _gestion,
+    caso_uso: RegistrarRutaDesdePuntos = Depends(caso("registrar_ruta_desde_puntos")),
+) -> dict:
+    return await caso_uso(
+        identidad, cuerpo.nombre, cuerpo.ruta_principal_id, [p.model_dump() for p in cuerpo.puntos],
         [sv.model_dump() for sv in cuerpo.servicios], cuerpo.confirmar_compartida,
     )
 

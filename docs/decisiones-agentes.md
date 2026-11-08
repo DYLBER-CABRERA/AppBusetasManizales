@@ -271,6 +271,12 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Errores:** correo ya registrado (`email_exists`, `user_already_exists`, HTTP 409) → `409 CONFLICTO_NEGOCIO`; `weak_password` → `400 VALIDACION` (matiz sobre lo pedido: es un error del dato, no del servicio); cualquier otro fallo de Supabase → `503 SERVICIO_EXTERNO_NO_DISPONIBLE`.
 - **Sin cambios:** validación de rol y empresa, y que solo el administrador pueda llamarlo (el rol `pasajero` sigue permitido como antes).
 
+## 2026-11-02 · mobile-dev · botón «botBusetas» (abre Telegram) y `url_launcher`
+
+- **Qué:** botón flotante en el shell de la app (pestañas Mapa, Buscar, Viajar, Guardados y Avisos) que abre `https://t.me/BusetasAppBot` con `launchUrl(..., mode: LaunchMode.externalApplication)`: Telegram si está instalada, o el navegador. Si no se puede abrir, muestra un aviso breve y no falla.
+- **Dependencia nueva:** `url_launcher 6.3.3` (BSD-3, gratuita). Ya estaba en `pubspec.lock` como dependencia transitiva; ahora se declara directa y fijada.
+- **No es un endpoint:** el bot vive en el backend; la app solo abre el enlace público. No se envía ningún dato del pasajero.
+
 ## 2026-11-02 · backend-dev · barrios de Manizales y Villamaría como hitos (OpenStreetMap)
 
 - **Fuente y método (estilo D-P10):** `backend/scripts/descargar_barrios.py` consulta Overpass API (OSM, gratis, User-Agent identificable, reintentos con espera) y escribe `supabase/semillas/barrios.json`; el demo no llama a internet. Atribución «© OpenStreetMap contributors (ODbL)» en el archivo y en `docs/01` §2.3. Todo `validado:false`.
@@ -288,3 +294,43 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Combinación con OSM:** un barrio oficial reemplaza al barrio urbano de OSM con el mismo nombre normalizado (hoy no hubo coincidencias); las veredas de OSM se conservan; una vereda con nombre de barrio oficial se renombra «Nombre (vereda)» con alias del nombre original: ocurre con «San Antonio» (barrio urbano oficial vs. vereda de OSM).
 - **Carga (`cargar_semillas.py --aplicar`, todo en una transacción, sin borrar nada):** por nombre normalizado (`normalizar_texto`): si no existe se inserta; si existe, viene de la capa oficial, es `barrio` o `sector`, no es un hito original y su coordenada difiere (> 1 m) o cambia el tipo, se ACTUALIZA ubicación, tipo y alias (`version + 1`); en cualquier otro caso se omite. Los 8 hitos originales nunca se tocan. Efecto esperado sobre la BD actual: las 36 filas de OSM ya cargadas quedan igual salvo «San Antonio» (la vereda pasa a ser el barrio urbano oficial y la vereda se inserta aparte como «San Antonio (vereda)»), más ~111 hitos nuevos. Ningún hito está referenciado por favoritos ni alertas (no hay claves foráneas hacia `hito`).
 - **Búsqueda:** sin cambios; «san sebastian», «San Sebastián», «fatima» y «Fátima» se encuentran (pruebas con los datos reales del archivo).
+
+## 2026-11-03 · backend-dev · bot: «Que ruta van a la enea» respondía «Avanzada»
+
+- **Causa raíz (demostrada en `pruebas/unitarias/test_bot_reconocimiento.py` con hitos.json + barrios.json):** la búsqueda de hitos es por SUBCADENA (`like '%texto%'`). El bot descartaba palabras de relleno («que», «ruta», «la», «a») pero **no «van»**; probaba «van enea» (sin resultados), luego «van», que está dentro de «a-**van**-zada», y tomaba el primer resultado sin mirar nada más; «enea» (la palabra correcta) nunca se llegaba a consultar. Segunda falla encontrada al reproducir: con «enea» o «la enea» respondía «Caserio La Enea» en vez de «La Enea», porque el orden de `/busqueda/hitos` solo consideraba exacto el NOMBRE (no el alias «enea» de La Enea) y desempataba alfabéticamente («Caserio…» < «La Enea»). Con los 148 barrios (aparece «Caserío La Enea») el bug saltó a la vista.
+- **Corrección:** nuevo `adaptadores_externos/reconocimiento_lugares.py` (frases de más larga a más corta, filtro por PALABRA COMPLETA, exacto antes que parcial, ambigüedad → pregunta con botones `hito:<id>`, nada confiable → «No te entendí»). El bot lo usa en todas sus pantallas (horarios, avisos, cuándo llega, cerca de). Además `buscar_hitos` (SQL) cuenta el alias exacto como exacto al ordenar. El SQL no se ejecutó; sí la réplica en memoria.
+- **Antes/después (datos reales):** «que ruta van a la enea»: Avanzada → La Enea; «la enea», «enea», «a la enea», «qué rutas pasan por la enea»: Caserio La Enea → La Enea; «caserio la enea»: Caserio La Enea → Caserío La Enea; «van», «avan»: Avanzada → «No te entendí»; «santa»: Santa Ana (al azar) → pregunta con Santa Ana, Santa Helena y Santa Teresa; «avanzada»: Avanzada → Avanzada (igual).
+- **Nombre «Caserío La Enea»:** se agregó la tilde a la tabla de correcciones del generador (palabra común y segura) y `cargar_semillas.py --aplicar` ahora también corrige el `nombre` de un barrio oficial ya cargado («Caserio» → «Caserío»).
+- **Límites:** «san» (10 lugares) muestra 5 opciones; el pasajero debe precisar. Una sola palabra parcial de menos de 3 letras no se usa. No hay tolerancia a errores de ortografía (sin fuzzy, a propósito).
+
+## 2026-11-07 · backend-dev · rutas creadas tocando puntos en el mapa
+
+- **Endpoint nuevo `POST /rutas/desde-puntos` en vez de extender `POST /rutas`:** `POST /rutas` exige `paraderoIds` (mínimo 2) y lo consume web-admin; admitir `puntos` ahí obligaría a volver ambos campos opcionales y validar «exactamente uno», ensuciando el esquema. Un endpoint aparte es aditivo, no rompe a nadie y se documenta solo.
+- **Paraderos: reutilizar o crear.** Reutiliza el paradero activo más cercano a ≤ `radio_reuso_paradero_m` (20 m; parámetro nuevo con valor por defecto en código y migración `0008` NO aplicada que lo vuelve editable) porque un paradero físico puede estar en varias rutas; evita duplicados de la misma esquina. Con 0 siempre crea. Dentro de una ruta nunca se repite un paradero. Los nuevos llevan la marca ficticia en `direccion`.
+- **Nombres:** «Paradero <NombreRuta> N» como en las semillas, contando solo los nuevos sin nombre; los extremos de las semillas llevan nombre de hito porque la Secretaría los nombró: aquí también si el punto trae `nombre`. No se infiere el nombre desde los 148 barrios (puntos representativos, riesgo de nombres equivocados).
+- **Circuito:** el trazado vuelve al primer punto (mismo `_wkt_circuito` que `POST /rutas`, mismas exigencias del esquema y de `progresos_paraderos_ruta`, que da avance 0 al primero y creciente después); por eso se rechaza que el último punto sea el primero.
+- **Puntos duplicados consecutivos (< 10 m):** se rechazan con 400 en vez de fusionarse, para no cambiar en silencio lo que el administrador tocó en el mapa.
+- **Validaciones por índice** en `detalles` (`puntos[i]`); caja = parámetro `caja_ciudad`; nombre único de ruta (409) comparado con `normalizar_texto`; empresas y compartidas igual que `POST /rutas`.
+- **Transacción única** en `crear_ruta_con_paraderos` (las búsquedas de reutilización van antes y no son transaccionales: dos peticiones simultáneas podrían crear dos paraderos casi iguales; aceptable en el prototipo).
+- **Sin auditoría:** el proyecto no tiene tabla ni registro de auditoría en `POST /rutas`, y no se inventó.
+- **Probado solo en memoria** (repositorios dobles): el SQL nuevo (`paradero_cercano`, `ruta_nombre_existe`, `crear_ruta_con_paraderos`) no se ejecutó contra Postgres.
+
+## 2026-11-07 · backend-dev · trazado por calles reales (OSRM) en rutas desde puntos
+
+- **Hexagonal sin dependencias nuevas:** puerto `EnrutadorCalles` (`red/dominio/puertos.py`), adaptador `EnrutadorOsrm` con el `httpx.AsyncClient` que ya existe (`red/infraestructura/enrutador_osrm.py`), servicio `ConstructorDeTrazado` (`red/aplicacion/trazado_calles.py`) y unión de segmentos pura en `red/dominio/trazado.py`. Se inyecta desde `composicion.py` (`Repositorios.enrutador`). pytest usa dobles y `httpx.MockTransport`: nunca llama a OSRM.
+- **Variable nueva `OSRM_URL`** (en `.env.example`, por defecto el demo público; vacío lo desactiva). Se agregó para poder cambiar de servidor o apagarlo sin tocar código (misma idea que la URL de teselas).
+- **Cierre circular:** también se pide a OSRM el tramo último→primero; el trazado se cierra añadiendo el primer vértice si OSRM terminó unos metros antes.
+- **Respaldo:** recta solo en el tramo fallido; aviso en la respuesta (no persistido, `origen: "aplicativo"`). Se usó `avisos` porque la tarea lo pidió; esos avisos sintéticos no se pueden consultar luego con `GET /avisos`. **PENDIENTE(decisión):** si se prefiere un campo propio (`advertencias`) para no mezclar con avisos reales, es un cambio pequeño.
+- **Rate-limit (decidido y documentado):** secuencial, pausa de 0,2 s, presupuesto de 25 s, corte tras 3 fallos seguidos y **máximo de 30 puntos (antes 60)**. Justificación: cada punto es una llamada a un servidor demo compartido; 30 llamadas ≈ 10 s caben en el presupuesto y 60 casi nunca.
+- **httpx registra cada URL en INFO** (llevaría las coordenadas): el nivel de `httpx` y `httpcore` pasa a WARNING en `configurar_registro` y en el módulo del adaptador.
+- **Geometría externa = dato no confiable:** solo se leen números, se valida rango y se limita a 20 000 vértices.
+- **Límite conocido:** cuando la vuelta usa la misma calle que la ida, el trazado repite geometría; el avance secuencial de los paraderos (`progresos_paraderos_ruta`) lo resuelve como en Villamaría, pero la posición de una BUSETA sobre ese tramo repetido sigue siendo ambigua (PENDIENTE ya conocido).
+- **Prueba real (autorizada):** `backend/scripts/probar_osrm.py` (5 llamadas: 4 tramos + nombres de calles). Fátima → Chipre: 801 vértices (la recta tenía 5), 15 865 m contra 8 300 m en recta (×1,91), ningún tramo en respaldo, circuito cerrado y paradas a 2 a 12 m del trazado (vértice más cercano). Calles según OSRM: Calle 67, Carrera 32, Avenida Paralela, Carrera 24, Avenida Las Araucarias, Avenida Gilberto Alzate Avendaño, Calle 14, Carrera 20, Avenida 12 de Octubre, Calle 10, Carrera 9C, Calle 9A… (no aparece «Avenida Centenario» en ese trayecto).
+
+## 2026-11-07 · Dylber · excepción a D-P10: OSRM también en la creación de rutas desde puntos
+
+- **Qué dice D-P10:** los trazados salen de OSRM/OpenStreetMap una sola vez, en el script de semillas, y el demo no llama a OSRM.
+- **Excepción:** `POST /rutas/desde-puntos` llama al servidor demo público de OSRM (`OSRM_URL`) en el momento de crear la ruta, una llamada por cada par de puntos consecutivos (incluido el cierre). Las rutas de las semillas siguen sin depender de OSRM en ejecución.
+- **Por qué:** la Secretaría dibuja rutas nuevas tocando el mapa y el trazado debe seguir las calles; no hay semilla previa de la que sacarlo.
+- **Acotada:** solo ese endpoint; paraderos exactamente los puntos tocados; si OSRM falla, ese tramo va en línea recta con aviso y la creación no falla; vaciar `OSRM_URL` lo desactiva. Controles de uso razonable en `docs/03` §24 (máximo 30 puntos, pausa de 0,2 s, presupuesto de 25 s).
+- **Efecto en el demo:** mostrar las rutas existentes no necesita internet. Crear una ruta nueva en clase sí lo necesita para que el trazado siga las calles; sin conexión queda en rectas.

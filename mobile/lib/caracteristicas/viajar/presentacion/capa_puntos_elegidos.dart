@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 
+import '../../buscar/presentacion/buscar_provider.dart';
 import '../dominio/viaje.dart';
 import 'viajar_provider.dart';
 
@@ -13,7 +15,25 @@ class CapaPuntosElegidos extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final estado = ref.watch(viajarProvider);
+    final busqueda = ref.watch(busquedaProvider);
+    final hitoBuscado = busqueda is BusquedaDeHito ? busqueda.hito : null;
     return MarkerLayer(markers: [
+      // Lugar elegido en Buscar: bandera verde con su nombre.
+      if (hitoBuscado != null)
+        Marker(
+          point: LatLng(hitoBuscado.lat, hitoBuscado.lng),
+          width: 150,
+          height: 72,
+          alignment: Alignment.topCenter,
+          child: Semantics(
+            label: 'Lugar buscado: ${hitoBuscado.nombre}',
+            child: _PinElegido(
+              etiqueta: hitoBuscado.nombre,
+              color: Theme.of(context).colorScheme.primary,
+              esHito: true,
+            ),
+          ),
+        ),
       for (final (etiqueta, lugar) in [('Origen', estado.origen), ('Destino', estado.destino)])
         if (lugar != null && lugar.tipo != TipoLugar.ubicacion && lugar.punto != null)
           Marker(
@@ -27,7 +47,7 @@ class CapaPuntosElegidos extends ConsumerWidget {
                   : '$etiqueta elegido en el mapa',
               child: _PinElegido(
                 etiqueta: lugar.tipo == TipoLugar.hito ? '$etiqueta · ${lugar.nombre}' : etiqueta,
-                esOrigen: etiqueta == 'Origen',
+                color: etiqueta == 'Origen' ? _colorOrigen : _colorDestino,
                 esHito: lugar.tipo == TipoLugar.hito,
               ),
             ),
@@ -41,15 +61,15 @@ const _colorOrigen = Color(0xFF6A1B9A);
 const _colorDestino = Color(0xFFC62828);
 
 class _PinElegido extends StatelessWidget {
-  const _PinElegido({required this.etiqueta, required this.esOrigen, required this.esHito});
+  const _PinElegido({required this.etiqueta, required this.color, required this.esHito});
 
   final String etiqueta;
-  final bool esOrigen;
+  final Color color;
   final bool esHito;
 
   @override
   Widget build(BuildContext context) {
-    final tinta = esOrigen ? _colorOrigen : _colorDestino;
+    final tinta = color;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

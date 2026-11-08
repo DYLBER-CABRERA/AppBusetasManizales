@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'banner_ejemplo.dart';
+import 'widgets/boton_bot_busetas.dart';
 
 class _Destino {
   const _Destino(this.etiqueta, this.icono, this.iconoActivo);
@@ -29,7 +30,17 @@ class ShellPrincipal extends StatelessWidget {
     final indice = navegacion.currentIndex;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_destinos[indice].etiqueta),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Semantics(
+              label: 'BusetasApp',
+              child: Image.asset('images/logo_busetas.png', width: 32, height: 32, cacheWidth: 96),
+            ),
+            const SizedBox(width: 10),
+            Flexible(child: Text(_destinos[indice].etiqueta, overflow: TextOverflow.ellipsis)),
+          ],
+        ),
         actions: [
           if (indice == 0)
             IconButton(
@@ -46,6 +57,7 @@ class ShellPrincipal extends StatelessWidget {
           Expanded(child: navegacion),
         ],
       ),
+      floatingActionButton: const BotonBotBusetas(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: indice,
         onDestinationSelected: (i) =>

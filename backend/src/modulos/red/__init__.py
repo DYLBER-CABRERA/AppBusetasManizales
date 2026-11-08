@@ -17,8 +17,11 @@ from modulos.red.aplicacion.gestion import (
     EliminarRuta,
     ListarParaderos,
     RegistrarRuta,
+    RegistrarRutaDesdePuntos,
     RetirarRutaDeEmpresa,
 )
+from modulos.red.aplicacion.trazado_calles import ConstructorDeTrazado
+from modulos.red.infraestructura.enrutador_osrm import EnrutadorOsrm
 from modulos.red.infraestructura.esquemas import (
     AvisoVigente,
     Hito,
@@ -31,8 +34,9 @@ from modulos.red.infraestructura.repositorio_sql import RepositorioRutasSql
 from modulos.red.infraestructura.router import router
 
 __all__ = [
+    "ConstructorDeTrazado", "EnrutadorOsrm",
     "AsignarRutaAEmpresa", "CrearHito", "CrearParadero", "EditarParadero", "EditarRuta", "EliminarParadero", "EliminarRuta",
-    "ListarParaderos", "RegistrarRuta", "RepositorioGestionRedSql", "RetirarRutaDeEmpresa",
+    "ListarParaderos", "RegistrarRuta", "RegistrarRutaDesdePuntos", "RepositorioGestionRedSql", "RetirarRutaDeEmpresa",
     "AvisoVigente", "ConsultarParaderosCercanos", "ConsultarRutasCercanas", "Hito", "ListarEmpresas", "ListarRutas",
     "ObtenerDetalleRuta", "ParaderoCercano", "RepositorioRutasSql", "RutaResumen", "ServicioRuta", "router",
 ]

@@ -5,6 +5,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:busetas_app/app/widgets/punto_usuario.dart';
+import 'package:busetas_app/caracteristicas/buscar/dominio/hito.dart';
+import 'package:busetas_app/caracteristicas/buscar/presentacion/buscar_provider.dart';
 import 'package:busetas_app/caracteristicas/viajar/dominio/viaje.dart';
 import 'package:busetas_app/caracteristicas/viajar/presentacion/capa_puntos_elegidos.dart';
 import 'package:busetas_app/caracteristicas/viajar/presentacion/viajar_provider.dart';
@@ -15,6 +17,7 @@ import 'ayudas/datos_ejemplo.dart';
 import 'ayudas/montaje.dart';
 
 Map<String, RespuestaFalsa> _ficha() => {
+      '/hitos/h1/rutas': const RespuestaFalsa({'cobertura': true, 'rutas': []}),
       '/rutas/$idCable': RespuestaFalsa(detalleCable()),
       '/rutas/$idCable/horarios': RespuestaFalsa(horariosCable()),
       '/rutas/$idCable/frecuencias': RespuestaFalsa(frecuenciasCable()),
@@ -81,5 +84,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Paradero 1 · Terminal'), findsOneWidget);
+  });
+
+  testWidgets('el lugar elegido en Buscar se marca con una bandera en el mapa', (tester) async {
+    await _abrirFicha(tester);
+    expect(find.byIcon(Icons.flag), findsNothing);
+
+    final contenedor = ProviderScope.containerOf(tester.element(find.byType(CapaPuntosElegidos)));
+    contenedor.read(busquedaProvider.notifier).elegirHito(Hito.desdeJson(hitoCatedral()));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.flag), findsOneWidget);
+    expect(find.text('Catedral'), findsOneWidget);
   });
 }

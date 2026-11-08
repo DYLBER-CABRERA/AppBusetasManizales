@@ -45,7 +45,7 @@ CORRECCIONES = {
     "GALAN": "Galán", "GONZALEZ": "González", "FANNY GONZALEZ": "Fanny González", "MILAN": "Milán",
     "SAN JOAQUIN": "San Joaquín", "SAN JOSE": "San José", "SINAI": "Sinaí", "VELEZ": "Vélez", "EL CAMPIN": "El Campín",
     "EL PARAISO": "El Paraíso", "EL TREBOL": "El Trébol", "LA ASUNCION": "La Asunción", "LAS AMERICAS": "Las Américas",
-    "LOS ALCAZARES": "Los Alcázares", "BELLA MONTAÑA": "Bella Montaña",
+    "LOS ALCAZARES": "Los Alcázares", "BELLA MONTAÑA": "Bella Montaña", "CASERIO LA ENEA": "Caserío La Enea",
     "BUENA ESPERNZA": "Buena Esperanza",  # errata evidente de la fuente (ESPERNZA); el alias conserva la forma original
     "PUERTA DEL SOL(Corinto)": "Puerta del Sol (Corinto)",
 }

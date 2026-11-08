@@ -208,6 +208,49 @@ class BusquedaEnMemoria:
         return {RUTA_ENEA: 150.0} if hito_id == HITO_CABLE else {}
 
 
+def _normal(texto: str) -> str:
+    import unicodedata
+
+    sin = "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
+    return " ".join(sin.lower().split())
+
+
+class BusquedaConHitos:
+    """Réplica en memoria del SQL de `RepositorioBusquedaSql` con hitos reales (hitos.json + barrios.json): busca por
+    SUBCADENA sobre el nombre o los alias normalizados (como `like '%texto%'`), orden exacto → empieza con → alfabético, máx. 20.
+    Las rutas son La Enea (código 39) y Villamaría."""
+
+    RUTAS = {RUTA_ENEA: "la enea", RUTA_VILLAMARIA: "villamaria"}
+
+    def __init__(self, hitos: list[dict[str, Any]]) -> None:
+        from uuid import NAMESPACE_DNS, uuid5
+
+        self.hitos = {uuid5(NAMESPACE_DNS, h["nombre"]): {**h, "id": uuid5(NAMESPACE_DNS, h["nombre"])} for h in hitos}
+        self.consultas_hitos: list[str] = []
+
+    async def buscar_rutas(self, patron: str, texto: str) -> list[UUID]:
+        return [i for i, n in self.RUTAS.items() if texto in n] + ([RUTA_ENEA] if texto == "39" else [])
+
+    async def buscar_hitos(self, patron: str, texto: str) -> list[dict[str, Any]]:
+        self.consultas_hitos.append(texto)
+        encontrados = [
+            h for h in self.hitos.values()
+            if texto in _normal(h["nombre"]) or any(texto in _normal(a) for a in h.get("alias", []))
+        ]
+        exacto = lambda h: _normal(h["nombre"]) == texto or texto in [_normal(a) for a in h.get("alias", [])]  # noqa: E731
+        encontrados.sort(key=lambda h: (not exacto(h), not _normal(h["nombre"]).startswith(texto), _normal(h["nombre"])))
+        return encontrados[:20]
+
+    async def obtener_hito(self, hito_id: UUID) -> dict[str, Any] | None:
+        return self.hitos.get(hito_id)
+
+    async def rutas_por_hito(self, hito_id: UUID, radio_m: int) -> dict[UUID, float]:
+        nombre = _normal(self.hitos[hito_id]["nombre"])
+        if "la enea" in nombre:
+            return {RUTA_ENEA: 120.0}
+        return {RUTA_VILLAMARIA: 90.0} if nombre == "villamaria" else {}
+
+
 class AvisosEnMemoria:
     def __init__(self) -> None:
         self.consultas: list[tuple[UUID | None, datetime]] = []
@@ -279,7 +322,7 @@ class ParametrosEnMemoria:
         self.valores: dict[str, Any] = {
             "radio_busqueda_m": 800, "radio_hito_m": 300, "velocidad_default_kmh": 20,
             "umbral_posicion_obsoleta_s": 60, "umbral_desvio_m": 100,
-            "longitud_max_aviso": 500, "distancia_aviso_llegada_m": 300, "radio_caminata_m": 500,
+            "radio_reuso_paradero_m": 20, "longitud_max_aviso": 500, "distancia_aviso_llegada_m": 300, "radio_caminata_m": 500,
             "max_opciones_viaje": 3, "enfriamiento_alerta_min": 10, "dias_max_rodamiento_adelante": 15, "rango_max_estadisticas_dias": 365,
             "caja_ciudad": {"minLat": 4.95, "maxLat": 5.20, "minLng": -75.65, "maxLng": -75.40},
         } | (valores or {})
@@ -716,6 +759,8 @@ class GestionRedEnMemoria:
                          "estado": "activo", "version": 1},
         }
         self.rutas_creadas: list[dict[str, Any]] = []
+        self.creadas: dict[UUID, dict[str, Any]] = {}
+        self.rutas_existentes: list[dict[str, Any]] = []
         self.bajas: list[tuple[str, UUID]] = []
         self.turnos_futuros: list[dict[str, Any]] = []
         self.servicios = {SERVICIO_SIDERAL_ENEA: {"id": SERVICIO_SIDERAL_ENEA, "ruta_id": RUTA_ENEA, "ruta_nombre": "La Enea",
@@ -767,6 +812,41 @@ class GestionRedEnMemoria:
 
     async def editar_ruta(self, ruta_id, version, nombre, descripcion, paradero_ids):
         self.rutas_creadas.append({"editada": ruta_id, "nombre": nombre, "paraderos": paradero_ids})
+
+    async def ruta_nombre_existe(self, nombre):
+        return _normal(nombre) in {_normal(r["nombre"]) for r in self.rutas_existentes} | {"la enea", "villamaria"}
+
+    async def paradero_cercano(self, lat, lng, radio_m, excluir_ids):
+        from modulos.red.dominio.puntos_ruta import distancia_m
+
+        candidatos = [
+            (distancia_m(lat, lng, p["lat"], p["lng"]), p) for p in self.paraderos.values()
+            if p["id"] not in excluir_ids and p["estado"] == "activo"
+        ]
+        candidatos = [(d, p) for d, p in candidatos if d <= radio_m]
+        if not candidatos:
+            return None
+        d, p = min(candidatos, key=lambda par: par[0])
+        return {**p, "distancia_m": d}
+
+    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios, trazado=None):
+        from modulos.red.infraestructura.repositorio_gestion_sql import _wkt_circuito, _wkt_linea
+
+        ids = []
+        for p in paraderos:
+            if p["id"] is None:
+                nuevo = {"id": uuid4(), "nombre": p["nombre"], "direccion": p["direccion"], "lat": p["lat"], "lng": p["lng"],
+                         "estado": "activo", "version": 1}
+                self.paraderos[nuevo["id"]] = nuevo
+                ids.append(nuevo["id"])
+            else:
+                ids.append(p["id"])
+        coordenadas = [(self.paraderos[i]["lat"], self.paraderos[i]["lng"]) for i in ids]
+        ruta_id = uuid4()
+        self.creadas[ruta_id] = {"nombre": nombre, "paradero_ids": ids, "servicios": servicios,
+                                 "wkt": _wkt_linea(trazado) if trazado else _wkt_circuito(coordenadas), "version": 1}
+        self.rutas_existentes.append({"nombre": nombre})
+        return ruta_id
 
     async def turnos_futuros_de_ruta(self, ruta_id, desde):
         return self.turnos_futuros
@@ -885,6 +965,17 @@ class PlanificacionEnMemoria:
         return {p: {RUTA_ENEA} for p in paradero_ids if p in (PARADERO_A, PARADERO_B)}
 
 
+class EnrutadorRectoDoble:
+    """EnrutadorCalles de pruebas: devuelve la recta entre los dos puntos (sin llamar a OSRM). Registra las llamadas."""
+
+    def __init__(self) -> None:
+        self.llamadas: list[tuple[tuple[float, float], tuple[float, float]]] = []
+
+    async def trazar(self, origen, destino):
+        self.llamadas.append((origen, destino))
+        return [origen, destino]
+
+
 def repositorios_en_memoria() -> Repositorios:
     seguimiento = SeguimientoEnMemoria()
     usuarios = UsuariosEnMemoria()
@@ -893,6 +984,6 @@ def repositorios_en_memoria() -> Repositorios:
         avisos=AvisosGestionEnMemoria(), eventos_uso=EventosEnMemoria(), parametros=ParametrosEnMemoria(),
         seguimiento=seguimiento, fuentes_gps=FuentesGpsEnMemoria(), usuarios=usuarios,
         autenticacion=AutenticacionFalsa(), simulacion=SimulacionEnMemoria(seguimiento), operacion=OperacionEnMemoria(),
-        admin=AdminEnMemoria(usuarios), gestion_red=GestionRedEnMemoria(),
+        admin=AdminEnMemoria(usuarios), gestion_red=GestionRedEnMemoria(), enrutador=EnrutadorRectoDoble(),
         favoritos=FavoritosEnMemoria(), alertas=AlertasEnMemoria(), planificacion=PlanificacionEnMemoria(),
     )
