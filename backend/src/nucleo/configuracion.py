@@ -23,6 +23,8 @@ class Configuracion(BaseSettings):
     modo_demo: bool = True
     sim_velocidad_kmh: float = Field(default=35, gt=0)
     sim_intervalo_s: float = Field(default=3, gt=0)
+    # Servidor OSRM para trazar rutas por calles reales (solo POST /rutas/desde-puntos). Vacío = deshabilitado (líneas rectas).
+    osrm_url: str = "https://router.project-osrm.org"
 
     festivos: str = ""
     telegram_bot_token: SecretStr = SecretStr("")

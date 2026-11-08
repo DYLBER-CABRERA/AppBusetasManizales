@@ -19,6 +19,11 @@ _SERVICIO = """s.id, s.ruta_id, r.nombre as ruta_nombre, s.empresa_id, e.nombre 
 _DUPLICADO_CODIGO = "El código público ya lo usa otro servicio de esa empresa."
 
 
+def _wkt_linea(vertices: list[tuple[float, float]]) -> str:
+    """LineString tal cual (lat, lng) → WKT [lng lat]. Los vértices ya vienen cerrados (circuito)."""
+    return "SRID=4326;LINESTRING(" + ", ".join(f"{lng:.7f} {lat:.7f}" for lat, lng in vertices) + ")"
+
+
 def _wkt_circuito(coordenadas: list[tuple[float, float]]) -> str:
     """Línea que une los paraderos en orden y vuelve al primero (circuito, D-P02). `coordenadas` son (lat, lng)."""
     puntos = [*coordenadas, coordenadas[0]]
@@ -128,29 +133,67 @@ class RepositorioGestionRedSql:
             "select 1 from ruta where id = %s and estado = 'activo' and ruta_principal_id is null", (ruta_id,)
         ))
 
+    @staticmethod
+    async def _insertar_ruta(
+        conexion: AsyncConnection[Any], nombre: str, ruta_principal_id, paradero_ids, servicios, trazado=None
+    ) -> UUID:
+        ruta = await _uno(
+            conexion,
+            "insert into ruta (nombre, tipo_recorrido, ruta_principal_id) values (%s, 'circular', %s) returning id",
+            (nombre, ruta_principal_id),
+        )
+        ruta_id = ruta["id"]
+        wkt = _wkt_linea(trazado) if trazado else _wkt_circuito(await _coordenadas(conexion, paradero_ids))
+        await conexion.execute(
+            "insert into ruta_trazado (ruta_id, sentido, trazado) values (%s, 'circular', st_geogfromtext(%s))", (ruta_id, wkt)
+        )
+        await conexion.execute("select reemplazar_paraderos_de_ruta(%s::uuid, 'circular', %s::uuid[])", (ruta_id, paradero_ids))
+        for s in servicios:
+            await conexion.execute(
+                "insert into servicio_ruta (ruta_id, empresa_id, codigo_publico, codigo_interno) values (%s, %s, %s, %s)",
+                (ruta_id, s["empresa_id"], s.get("codigo_publico"), s.get("codigo_interno")),
+            )
+        return ruta_id
+
     async def crear_ruta(self, nombre, ruta_principal_id, paradero_ids, servicios) -> UUID:
         try:
             async with self._pool.connection() as conexion:
-                ruta = await _uno(
-                    conexion,
-                    "insert into ruta (nombre, tipo_recorrido, ruta_principal_id) values (%s, 'circular', %s) returning id",
-                    (nombre, ruta_principal_id),
-                )
-                ruta_id = ruta["id"]
-                coordenadas = await _coordenadas(conexion, paradero_ids)
-                await conexion.execute(
-                    "insert into ruta_trazado (ruta_id, sentido, trazado) values (%s, 'circular', st_geogfromtext(%s))",
-                    (ruta_id, _wkt_circuito(coordenadas)),
-                )
-                await conexion.execute(
-                    "select reemplazar_paraderos_de_ruta(%s::uuid, 'circular', %s::uuid[])", (ruta_id, paradero_ids)
-                )
-                for s in servicios:
-                    await conexion.execute(
-                        "insert into servicio_ruta (ruta_id, empresa_id, codigo_publico, codigo_interno) values (%s, %s, %s, %s)",
-                        (ruta_id, s["empresa_id"], s.get("codigo_publico"), s.get("codigo_interno")),
+                return await self._insertar_ruta(conexion, nombre, ruta_principal_id, paradero_ids, servicios)
+        except UniqueViolation as exc:
+            raise ErrorConflictoNegocio(_DUPLICADO_CODIGO) from exc
+
+    async def ruta_nombre_existe(self, nombre: str) -> bool:
+        return bool(await self._filas(
+            "select 1 from ruta where estado = 'activo' and normalizar_texto(nombre) = normalizar_texto(%s)", (nombre,)
+        ))
+
+    async def paradero_cercano(self, lat: float, lng: float, radio_m: float, excluir_ids: list[UUID]) -> dict[str, Any] | None:
+        filas = await self._filas(
+            f"""with punto as (select st_setsrid(st_makepoint(%s::float8, %s::float8), 4326)::geography as g)
+                select {_PARADERO}, st_distance(ubicacion, punto.g) as distancia_m
+                from paradero cross join punto
+                where estado = 'activo' and st_dwithin(ubicacion, punto.g, %s::float8) and id <> all(%s::uuid[])
+                order by st_distance(ubicacion, punto.g) limit 1""",
+            (lng, lat, radio_m, excluir_ids),
+        )
+        return filas[0] if filas else None
+
+    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios, trazado=None) -> UUID:
+        try:
+            async with self._pool.connection() as conexion:  # una transacción: todo o nada
+                ids: list[UUID] = []
+                for p in paraderos:
+                    if p["id"] is not None:
+                        ids.append(p["id"])
+                        continue
+                    fila = await _uno(
+                        conexion,
+                        """insert into paradero (nombre, direccion, ubicacion)
+                           values (%s, %s, st_setsrid(st_makepoint(%s::float8, %s::float8), 4326)::geography) returning id""",
+                        (p["nombre"], p["direccion"], p["lng"], p["lat"]),
                     )
-                return ruta_id
+                    ids.append(fila["id"])
+                return await self._insertar_ruta(conexion, nombre, ruta_principal_id, ids, servicios, trazado)
         except UniqueViolation as exc:
             raise ErrorConflictoNegocio(_DUPLICADO_CODIGO) from exc
 

@@ -38,3 +38,5 @@ def configurar_registro(nivel: int = logging.INFO) -> None:
         manejador.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
         raiz.addHandler(manejador)
     raiz.setLevel(nivel)
+    for ruidoso in ("httpx", "httpcore"):  # registran cada URL en INFO; no deben llegar a los logs
+        logging.getLogger(ruidoso).setLevel(logging.WARNING)

@@ -30,7 +30,7 @@ ENDPOINTS_CONTRATO = [
     ("get", "/rodamientos"), ("post", "/rodamientos"), ("get", "/rodamientos/{x}"),
     ("put", "/rodamientos/{x}"), ("post", "/rodamientos/{x}/publicar"), ("post", "/rodamientos/{x}/anular"),
     ("post", "/avisos"), ("delete", "/avisos/{x}"), ("get", "/estadisticas/uso"),
-    ("post", "/rutas"), ("put", "/rutas/{x}"), ("delete", "/rutas/{x}"),
+    ("post", "/rutas"), ("post", "/rutas/desde-puntos"), ("put", "/rutas/{x}"), ("delete", "/rutas/{x}"),
     ("post", "/rutas/{x}/servicios"), ("delete", "/servicios/{x}"),
     ("get", "/paraderos"), ("post", "/paraderos"), ("put", "/paraderos/{x}"), ("delete", "/paraderos/{x}"),
     ("post", "/hitos"),
