@@ -326,3 +326,11 @@ Registra aquí cada decisión que cambie el contrato o el alcance (fecha, agente
 - **Geometría externa = dato no confiable:** solo se leen números, se valida rango y se limita a 20 000 vértices.
 - **Límite conocido:** cuando la vuelta usa la misma calle que la ida, el trazado repite geometría; el avance secuencial de los paraderos (`progresos_paraderos_ruta`) lo resuelve como en Villamaría, pero la posición de una BUSETA sobre ese tramo repetido sigue siendo ambigua (PENDIENTE ya conocido).
 - **Prueba real (autorizada):** `backend/scripts/probar_osrm.py` (5 llamadas: 4 tramos + nombres de calles). Fátima → Chipre: 801 vértices (la recta tenía 5), 15 865 m contra 8 300 m en recta (×1,91), ningún tramo en respaldo, circuito cerrado y paradas a 2 a 12 m del trazado (vértice más cercano). Calles según OSRM: Calle 67, Carrera 32, Avenida Paralela, Carrera 24, Avenida Las Araucarias, Avenida Gilberto Alzate Avendaño, Calle 14, Carrera 20, Avenida 12 de Octubre, Calle 10, Carrera 9C, Calle 9A… (no aparece «Avenida Centenario» en ese trayecto).
+
+## 2026-11-07 · Dylber · excepción a D-P10: OSRM también en la creación de rutas desde puntos
+
+- **Qué dice D-P10:** los trazados salen de OSRM/OpenStreetMap una sola vez, en el script de semillas, y el demo no llama a OSRM.
+- **Excepción:** `POST /rutas/desde-puntos` llama al servidor demo público de OSRM (`OSRM_URL`) en el momento de crear la ruta, una llamada por cada par de puntos consecutivos (incluido el cierre). Las rutas de las semillas siguen sin depender de OSRM en ejecución.
+- **Por qué:** la Secretaría dibuja rutas nuevas tocando el mapa y el trazado debe seguir las calles; no hay semilla previa de la que sacarlo.
+- **Acotada:** solo ese endpoint; paraderos exactamente los puntos tocados; si OSRM falla, ese tramo va en línea recta con aviso y la creación no falla; vaciar `OSRM_URL` lo desactiva. Controles de uso razonable en `docs/03` §24 (máximo 30 puntos, pausa de 0,2 s, presupuesto de 25 s).
+- **Efecto en el demo:** mostrar las rutas existentes no necesita internet. Crear una ruta nueva en clase sí lo necesita para que el trazado siga las calles; sin conexión queda en rectas.
