@@ -13,6 +13,7 @@ import {
   type RutaResumen,
 } from "@/lib/secretaria";
 import { FormularioRuta } from "./FormularioRuta";
+import { VistaRuta } from "./VistaRuta";
 import { TarjetaRuta } from "./TarjetaRuta";
 
 type Servicio = RutaResumen["servicios"][number];
@@ -30,6 +31,7 @@ export function PantallaRutas() {
 
   const [nueva, setNueva] = useState(false);
   const [editarId, setEditarId] = useState<string | null>(null);
+  const [verId, setVerId] = useState<string | null>(null);
   const [recarga, setRecarga] = useState(0);
   const detalle = useDetalleRuta(editarId);
 
@@ -88,7 +90,7 @@ export function PantallaRutas() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Rutas</h1>
         {!nueva && editarId === null ? (
-          <button type="button" onClick={() => setNueva(true)}
+          <button type="button" onClick={() => { setVerId(null); setNueva(true); }}
             className="min-h-11 rounded bg-verde px-5 font-semibold text-white hover:bg-verde-oscuro">
             Registrar ruta
           </button>
@@ -119,6 +121,8 @@ export function PantallaRutas() {
         )
       ) : null}
 
+      {verId !== null ? <VistaRuta key={verId} rutaId={verId} onCerrar={() => setVerId(null)} /> : null}
+
       {hayDatos && rutas.data.length === 0 ? (
         <Vacio titulo="Todavía no hay rutas" causa="Aún no se ha registrado ninguna ruta activa."
           accion={<span>Usa «Registrar ruta» para crear la primera.</span>} />
@@ -128,7 +132,8 @@ export function PantallaRutas() {
         <div className="grid gap-4 xl:grid-cols-2">
           {rutas.data.map((r) => (
             <TarjetaRuta key={r.id} ruta={r} empresas={empresas.data}
-              onEditar={() => { setNueva(false); setEditarId(r.id); }}
+              onVer={() => { setNueva(false); setEditarId(null); setVerId(r.id); }}
+              onEditar={() => { setNueva(false); setVerId(null); setEditarId(r.id); }}
               onEliminar={() => setObjetivo({ clase: "ruta", ruta: r })}
               onQuitarServicio={(s) => setObjetivo({ clase: "servicio", ruta: r, servicio: s })} />
           ))}

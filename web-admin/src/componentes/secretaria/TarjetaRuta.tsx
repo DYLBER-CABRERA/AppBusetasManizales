@@ -11,6 +11,7 @@ type Servicio = RutaResumen["servicios"][number];
 type Props = {
   ruta: RutaResumen;
   empresas: Empresa[];
+  onVer: () => void;
   onEditar: () => void;
   onEliminar: () => void;
   onQuitarServicio: (s: Servicio) => void;
@@ -18,7 +19,7 @@ type Props = {
 
 const boton = "min-h-11 rounded border border-verde px-4 font-semibold text-verde hover:bg-fondo";
 
-export function TarjetaRuta({ ruta, empresas, onEditar, onEliminar, onQuitarServicio }: Props) {
+export function TarjetaRuta({ ruta, empresas, onVer, onEditar, onEliminar, onQuitarServicio }: Props) {
   const cliente = useQueryClient();
   const toast = useToast();
   const [asignando, setAsignando] = useState(false);
@@ -60,6 +61,7 @@ export function TarjetaRuta({ ruta, empresas, onEditar, onEliminar, onQuitarServ
           <p className="text-sm">Recorrido circular</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button type="button" className={boton} onClick={onVer} aria-label={`Ver ${ruta.nombre}`}>Ver</button>
           <button type="button" className={boton} onClick={onEditar} aria-label={`Editar ${ruta.nombre}`}>Editar</button>
           <button type="button" className={boton} onClick={() => setAsignando((a) => !a)} aria-expanded={asignando}>
             Asignar empresa
