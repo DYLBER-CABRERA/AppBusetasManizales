@@ -8,9 +8,13 @@ import { Modal } from "@/componentes/Modal";
 import { useToast } from "@/componentes/Toast";
 import { ErrorApi } from "@/lib/errores";
 import {
-  CLAVE_RUTAS, crearRuta, editarRuta,
+  CLAVE_RUTAS, crearRuta, crearRutaDesdePuntos, editarRuta,
   type Empresa, type Paradero, type RutaDetalle, type RutaResumen, type ServicioCrearEntrada,
 } from "@/lib/secretaria";
+import {
+  erroresPorPunto, MIN_PUNTOS, puntosParaEnvio, validarPuntos, type ErrorPunto, type PuntoCapturado,
+} from "@/lib/puntos-ruta";
+import { CapturaPuntosRuta } from "./CapturaPuntosRuta";
 import { SelectorParaderos } from "./SelectorParaderos";
 
 const esquema = z.object({
@@ -20,6 +24,7 @@ const esquema = z.object({
 });
 type Datos = z.infer<typeof esquema>;
 
+type Modo = "paraderos" | "puntos";
 type Codigos = { codigoPublico: string; codigoInterno: string };
 
 const campo = "mt-1 min-h-11 w-full rounded border border-tinta/40 bg-white px-3";
@@ -52,6 +57,9 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
   const [errorEmpresas, setErrorEmpresas] = useState<string | null>(null);
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
   const [compartida, setCompartida] = useState(false);
+  const [modo, setModo] = useState<Modo>("puntos");
+  const [puntos, setPuntos] = useState<PuntoCapturado[]>([]);
+  const [erroresPuntos, setErroresPuntos] = useState<ErrorPunto[]>([]);
 
   const servicios = (): ServicioCrearEntrada[] =>
     Object.entries(elegidas).map(([empresaId, c]) => ({
@@ -69,6 +77,15 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
           descripcion: d.descripcion?.trim() || null,
           paraderoIds: cambioParaderos ? paraderoIds : null,
           version: ruta.version,
+        });
+      }
+      if (modo === "puntos") {
+        return crearRutaDesdePuntos({
+          nombre: d.nombre.trim(),
+          rutaPrincipalId: d.rutaPrincipalId || null,
+          puntos: puntosParaEnvio(puntos),
+          servicios: servicios(),
+          confirmarCompartida: confirmar,
         });
       }
       return crearRuta({
@@ -93,17 +110,26 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
         return setCompartida(true);
       }
       setCompartida(false);
-      setErrorServidor(e.message);
+      // 400 por punto: se resalta cuál falló en el mapa y en la lista (el backend no creó nada).
+      const porPunto = e instanceof ErrorApi && modo === "puntos" ? erroresPorPunto(e.detalles) : [];
+      setErroresPuntos(porPunto);
+      setErrorServidor(porPunto.length > 0 ? null : e.message);
     },
   });
 
   function enviar(d: Datos) {
     setErrorServidor(null);
-    const sinParaderos = paraderoIds.length < 2;
+    setErroresPuntos([]);
+    const enPuntos = !edita && modo === "puntos";
+    const sinParaderos = enPuntos ? puntos.length < MIN_PUNTOS : paraderoIds.length < 2;
     const sinEmpresas = !edita && Object.keys(elegidas).length === 0;
-    setErrorParaderos(sinParaderos ? "Elige al menos 2 paraderos para armar el recorrido." : null);
+    setErrorParaderos(sinParaderos
+      ? enPuntos ? "Toca el mapa para agregar al menos 2 puntos." : "Elige al menos 2 paraderos para armar el recorrido."
+      : null);
     setErrorEmpresas(sinEmpresas ? "Elige al menos una empresa que opere la ruta." : null);
-    if (sinParaderos || sinEmpresas) return;
+    const locales = enPuntos && !sinParaderos ? validarPuntos(puntos) : [];
+    setErroresPuntos(locales);
+    if (sinParaderos || sinEmpresas || locales.length > 0) return;
     guardar.mutate({ d, confirmar: false });
   }
 
@@ -186,8 +212,27 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
 
       <fieldset>
         <legend className="font-semibold">Paraderos del recorrido</legend>
+        {!edita ? (
+          <div role="radiogroup" aria-label="Cómo armar el recorrido" className="mb-3 flex flex-wrap gap-4">
+            <label className="flex min-h-11 items-center gap-2">
+              <input type="radio" name="modo-recorrido" className="size-5" checked={modo === "puntos"}
+                onChange={() => { setModo("puntos"); setErrorParaderos(null); }} />
+              Tocar puntos en el mapa
+            </label>
+            <label className="flex min-h-11 items-center gap-2">
+              <input type="radio" name="modo-recorrido" className="size-5" checked={modo === "paraderos"}
+                onChange={() => { setModo("paraderos"); setErrorParaderos(null); setErroresPuntos([]); }} />
+              Elegir paraderos existentes
+            </label>
+          </div>
+        ) : null}
         <p className="mb-2 text-sm">El trazado une los paraderos en el orden que elijas y vuelve al primero.</p>
-        <SelectorParaderos paraderos={paraderos} valor={paraderoIds} onCambio={(ids) => { setParaderoIds(ids); setErrorParaderos(null); }} />
+        {!edita && modo === "puntos" ? (
+          <CapturaPuntosRuta puntos={puntos} errores={erroresPuntos} existentes={paraderos}
+            onCambio={(p) => { setPuntos(p); setErroresPuntos([]); setErrorParaderos(null); }} />
+        ) : (
+          <SelectorParaderos paraderos={paraderos} valor={paraderoIds} onCambio={(ids) => { setParaderoIds(ids); setErrorParaderos(null); }} />
+        )}
         {errorParaderos ? <p className={error}>{errorParaderos}</p> : null}
       </fieldset>
 

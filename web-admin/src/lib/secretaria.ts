@@ -7,6 +7,7 @@ type Esq = components["schemas"];
 export type RutaResumen = Esq["RutaResumen"];
 export type RutaDetalle = Esq["RutaDetalle"];
 export type RutaCrear = Esq["RutaCrear"];
+export type RutaDesdePuntos = Esq["RutaDesdePuntos"];
 export type ServicioCrearEntrada = Esq["ServicioCrearEntrada"];
 export type Paradero = Esq["Paradero"];
 export type Aviso = Esq["Aviso"];
@@ -42,6 +43,10 @@ export async function versionDeServicio(rutaId: string, servicioId: string): Pro
 }
 
 export const crearRuta = (cuerpo: RutaCrear) => consultar(() => api.POST("/api/v1/rutas", { body: cuerpo }));
+
+/** Crea la ruta a partir de los puntos tocados en el mapa (contrato §23); todo o nada. */
+export const crearRutaDesdePuntos = (cuerpo: RutaDesdePuntos) =>
+  consultar(() => api.POST("/api/v1/rutas/desde-puntos", { body: cuerpo }));
 
 export const editarRuta = (
   rutaId: string,

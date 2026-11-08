@@ -680,6 +680,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rutas/desde-puntos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registrar Ruta Desde Puntos */
+        post: operations["registrar_ruta_desde_puntos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rutas/{ruta_id}": {
         parameters: {
             query?: never;
@@ -1790,6 +1807,21 @@ export interface components {
              */
             motivo: "coordenadas_invalidas" | "fuera_de_zona" | "fecha_futura" | "fecha_invalida" | "buseta_desconocida";
         };
+        /** PuntoRuta */
+        PuntoRuta: {
+            /**
+             * Lat
+             * @description Se valida contra la caja de la ciudad (400 con el índice del punto)
+             */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /**
+             * Nombre
+             * @description Opcional; si falta se genera «Paradero <NombreRuta> N». Se ignora si el punto reutiliza un paradero existente (a ≤ 20 m)
+             */
+            nombre?: string | null;
+        };
         /** RangoEta */
         RangoEta: {
             /** Maxsegundos */
@@ -1961,6 +1993,25 @@ export interface components {
              * @constant
              */
             tipoRecorrido: "circular";
+        };
+        /** RutaDesdePuntos */
+        RutaDesdePuntos: {
+            /**
+             * Confirmarcompartida
+             * @default false
+             */
+            confirmarCompartida: boolean;
+            /** Nombre */
+            nombre: string;
+            /**
+             * Puntos
+             * @description En el orden tocado; cada punto es un paradero
+             */
+            puntos: components["schemas"]["PuntoRuta"][];
+            /** Rutaprincipalid */
+            rutaPrincipalId?: string | null;
+            /** Servicios */
+            servicios: components["schemas"]["ServicioCrearEntrada"][];
         };
         /** RutaDetalle */
         RutaDetalle: {
@@ -5812,6 +5863,93 @@ export interface operations {
             };
             /** @description VALIDACION */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description ERROR_INTERNO */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+        };
+    };
+    registrar_ruta_desde_puntos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RutaDesdePuntos"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RutaDetalle"];
+                };
+            };
+            /** @description VALIDACION */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTENTICADO */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_ENCONTRADO */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description CONFLICTO_VERSION o CONFLICTO_NEGOCIO */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

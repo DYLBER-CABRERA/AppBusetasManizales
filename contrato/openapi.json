@@ -2406,6 +2406,38 @@
         "title": "PosicionRechazada",
         "type": "object"
       },
+      "PuntoRuta": {
+        "properties": {
+          "lat": {
+            "description": "Se valida contra la caja de la ciudad (400 con el índice del punto)",
+            "title": "Lat",
+            "type": "number"
+          },
+          "lng": {
+            "title": "Lng",
+            "type": "number"
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opcional; si falta se genera «Paradero <NombreRuta> N». Se ignora si el punto reutiliza un paradero existente (a ≤ 20 m)",
+            "title": "Nombre"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "title": "PuntoRuta",
+        "type": "object"
+      },
       "RangoEta": {
         "properties": {
           "maxSegundos": {
@@ -2845,6 +2877,58 @@
           "servicios"
         ],
         "title": "RutaCrear",
+        "type": "object"
+      },
+      "RutaDesdePuntos": {
+        "properties": {
+          "confirmarCompartida": {
+            "default": false,
+            "title": "Confirmarcompartida",
+            "type": "boolean"
+          },
+          "nombre": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Nombre",
+            "type": "string"
+          },
+          "puntos": {
+            "description": "En el orden tocado; cada punto es un paradero",
+            "items": {
+              "$ref": "#/components/schemas/PuntoRuta"
+            },
+            "maxItems": 60,
+            "minItems": 2,
+            "title": "Puntos",
+            "type": "array"
+          },
+          "rutaPrincipalId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rutaprincipalid"
+          },
+          "servicios": {
+            "items": {
+              "$ref": "#/components/schemas/ServicioCrearEntrada"
+            },
+            "minItems": 1,
+            "title": "Servicios",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nombre",
+          "puntos",
+          "servicios"
+        ],
+        "title": "RutaDesdePuntos",
         "type": "object"
       },
       "RutaDetalle": {
@@ -8715,6 +8799,112 @@
           }
         },
         "summary": "Consultar Rutas Cercanas",
+        "tags": [
+          "Red"
+        ]
+      }
+    },
+    "/api/v1/rutas/desde-puntos": {
+      "post": {
+        "operationId": "registrar_ruta_desde_puntos",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RutaDesdePuntos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RutaDetalle"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "VALIDACION"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTENTICADO"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_ENCONTRADO"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "CONFLICTO_VERSION o CONFLICTO_NEGOCIO"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "ERROR_INTERNO"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Registrar Ruta Desde Puntos",
         "tags": [
           "Red"
         ]
