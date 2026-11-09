@@ -354,6 +354,7 @@ class SeguimientoEnMemoria:
         }
         self.guardadas: dict[UUID, dict[str, Any]] = {}
         self.progreso_buseta = 9500.0
+        self.rutas_de_servicios: dict[UUID, UUID] = {}
         self.longitud = 10000.0
         self.progreso_paradero_m = 500.0
 
@@ -393,7 +394,7 @@ class SeguimientoEnMemoria:
         return None
 
     async def ruta_de_servicio(self, servicio_id: UUID) -> UUID | None:
-        return RUTA_ENEA
+        return self.rutas_de_servicios.get(servicio_id, RUTA_ENEA)
 
     async def ruta_activa_existe(self, ruta_id: UUID) -> bool:
         return ruta_id in (RUTA_ENEA, RUTA_VILLAMARIA)
@@ -520,15 +521,23 @@ class SimulacionEnMemoria:
     def __init__(self, seguimiento: SeguimientoEnMemoria) -> None:
         self._seguimiento = seguimiento
         self.rodamientos_asegurados: list[Any] = []
+        self.busetas_nuevas: list[dict[str, Any]] = []  # busetas creadas con el servidor ya arrancado
+        self.inactivas: set[str] = set()
+        self.trazados_nuevos: dict[UUID, list[list[float]]] = {}  # rutas creadas con el servidor ya arrancado
+        self.lecturas_de_trazado = 0
 
     async def busetas_activas(self) -> list[dict[str, Any]]:
-        return [
+        base = [
             {"buseta_id": BUSETA_1544, "numero_lateral": "1544", "empresa_id": EMPRESA_SIDERAL, "empresa_nombre": "Sideral"},
             {"buseta_id": BUSETA_2683, "numero_lateral": "2683", "empresa_id": EMPRESA_SERVITURISMO,
              "empresa_nombre": "Serviturismo"},
         ]
+        return [b for b in base if b["numero_lateral"] not in self.inactivas] + self.busetas_nuevas
 
     async def trazado_de_ruta(self, ruta_id: UUID) -> list[list[float]] | None:
+        self.lecturas_de_trazado += 1
+        if ruta_id in self.trazados_nuevos:
+            return self.trazados_nuevos[ruta_id]
         return CUADRADO if ruta_id == RUTA_ENEA else None
 
     async def asegurar_rodamientos_demo(self, hoy: Any) -> list[str]:
@@ -812,6 +821,9 @@ class GestionRedEnMemoria:
 
     async def editar_ruta(self, ruta_id, version, nombre, descripcion, paradero_ids):
         self.rutas_creadas.append({"editada": ruta_id, "nombre": nombre, "paraderos": paradero_ids})
+
+    async def listar_empresas_activas(self):
+        return [{"id": EMPRESA_SIDERAL, "nombre": "Sideral"}, {"id": EMPRESA_SERVITURISMO, "nombre": "Serviturismo"}]
 
     async def ruta_nombre_existe(self, nombre):
         return _normal(nombre) in {_normal(r["nombre"]) for r in self.rutas_existentes} | {"la enea", "villamaria"}

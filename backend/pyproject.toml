@@ -43,4 +43,6 @@ ignore = ["B008"]  # Depends/Query/Security como valor por defecto es el patrón
 [tool.ruff.lint.per-file-ignores]
 "scripts/*" = ["E501"]  # scripts con SQL en línea
 "src/adaptadores_externos/bot_telegram.py" = ["E501"]  # textos del bot en una línea
+"src/modulos/red/dominio/importacion_rutas.py" = ["E501"]  # mensajes de error al usuario en una línea
+"src/modulos/red/aplicacion/importacion.py" = ["E501"]
 "pruebas/*" = ["E501"]  # literales de datos y peticiones HTTP en una línea
