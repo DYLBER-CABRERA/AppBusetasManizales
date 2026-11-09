@@ -104,6 +104,61 @@ class RutaDesdePuntos(EsquemaBase):
     confirmar_compartida: bool = False
 
 
+class ErrorImportacion(EsquemaBase):
+    fila: int | None = Field(description="Línea del archivo (1 = encabezado); null = error de la ruta completa")
+    columna: str | None = None
+    motivo: str = Field(description="Código estable, p. ej. numero_invalido, orden_duplicado, fuera_de_zona, ruta_duplicada")
+    mensaje: str
+
+
+class RutaImportada(EsquemaBase):
+    nombre: str
+    estado: Literal["valida", "con_errores", "duplicada"]
+    puntos: int
+    empresa: str | None = None
+    codigo_publico: str | None = None
+    paraderos_nuevos: int | None = Field(default=None, description="Solo en rutas válidas")
+    paraderos_reutilizados: int | None = None
+    errores: list[ErrorImportacion]
+    avisos: list[str]
+
+
+class ResumenVistaPrevia(EsquemaBase):
+    validas: int
+    con_errores: int
+    duplicadas: int
+
+
+class VistaPreviaImportacion(EsquemaBase):
+    total_filas: int
+    rutas: list[RutaImportada]
+    errores_generales: list[ErrorImportacion] = Field(description="Filas sin nombre de ruta")
+    columnas_ignoradas: list[str]
+    resumen: ResumenVistaPrevia
+    se_crearian: int
+
+
+class RutaCreadaImportada(EsquemaBase):
+    nombre: str
+    ruta_id: UUID
+    puntos: int
+    avisos: list[str] = Field(description="Tramos que quedaron en línea recta, si los hubo")
+
+
+class ResumenImportacion(EsquemaBase):
+    creadas: int
+    omitidas: int
+
+
+class ResultadoImportacion(EsquemaBase):
+    creadas: list[RutaCreadaImportada]
+    omitidas: list[RutaImportada]
+    errores_generales: list[ErrorImportacion]
+    columnas_ignoradas: list[str]
+    total_filas: int
+    resumen: ResumenImportacion
+
+
 class RutaEditar(EsquemaBase):
     nombre: str | None = Field(default=None, min_length=2, max_length=120)
     descripcion: str | None = None

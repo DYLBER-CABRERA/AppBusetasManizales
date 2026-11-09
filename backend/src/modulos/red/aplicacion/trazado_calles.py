@@ -35,7 +35,9 @@ class ConstructorDeTrazado:
         self._presupuesto = presupuesto_s
         self._fallos_max = fallos_seguidos_max
 
-    async def construir(self, paradas: list[Coordenada]) -> ResultadoTrazado:
+    async def construir(self, paradas: list[Coordenada], presupuesto_s: float | None = None) -> ResultadoTrazado:
+        """`presupuesto_s` reemplaza el tiempo máximo por defecto (la importación de varias rutas lo reparte)."""
+        presupuesto = self._presupuesto if presupuesto_s is None else presupuesto_s
         n = len(paradas)
         inicio = self._monotonico()
         fallos_seguidos = 0
@@ -46,7 +48,7 @@ class ConstructorDeTrazado:
             j = (i + 1) % n
             geometria = None
             if not sin_servicio and self._enrutador is not None:
-                if self._monotonico() - inicio > self._presupuesto:
+                if self._monotonico() - inicio > presupuesto:
                     sin_servicio = True
                     registro.warning("Trazado por calles: se agotó el tiempo, los tramos restantes van en línea recta")
                 else:

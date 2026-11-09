@@ -813,6 +813,9 @@ class GestionRedEnMemoria:
     async def editar_ruta(self, ruta_id, version, nombre, descripcion, paradero_ids):
         self.rutas_creadas.append({"editada": ruta_id, "nombre": nombre, "paraderos": paradero_ids})
 
+    async def listar_empresas_activas(self):
+        return [{"id": EMPRESA_SIDERAL, "nombre": "Sideral"}, {"id": EMPRESA_SERVITURISMO, "nombre": "Serviturismo"}]
+
     async def ruta_nombre_existe(self, nombre):
         return _normal(nombre) in {_normal(r["nombre"]) for r in self.rutas_existentes} | {"la enea", "villamaria"}
 

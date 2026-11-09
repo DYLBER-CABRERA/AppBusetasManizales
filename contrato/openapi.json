@@ -1047,6 +1047,49 @@
         "title": "EmpresaEditar",
         "type": "object"
       },
+      "ErrorImportacion": {
+        "properties": {
+          "columna": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columna"
+          },
+          "fila": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Línea del archivo (1 = encabezado); null = error de la ruta completa",
+            "title": "Fila"
+          },
+          "mensaje": {
+            "title": "Mensaje",
+            "type": "string"
+          },
+          "motivo": {
+            "description": "Código estable, p. ej. numero_invalido, orden_duplicado, fuera_de_zona, ruta_duplicada",
+            "title": "Motivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fila",
+          "motivo",
+          "mensaje"
+        ],
+        "title": "ErrorImportacion",
+        "type": "object"
+      },
       "EscenarioDemo": {
         "properties": {
           "activo": {
@@ -2661,6 +2704,55 @@
         "title": "ResultadoEta",
         "type": "object"
       },
+      "ResultadoImportacion": {
+        "properties": {
+          "columnasIgnoradas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columnasignoradas",
+            "type": "array"
+          },
+          "creadas": {
+            "items": {
+              "$ref": "#/components/schemas/RutaCreadaImportada"
+            },
+            "title": "Creadas",
+            "type": "array"
+          },
+          "erroresGenerales": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorImportacion"
+            },
+            "title": "Erroresgenerales",
+            "type": "array"
+          },
+          "omitidas": {
+            "items": {
+              "$ref": "#/components/schemas/RutaImportada"
+            },
+            "title": "Omitidas",
+            "type": "array"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenImportacion"
+          },
+          "totalFilas": {
+            "title": "Totalfilas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "creadas",
+          "omitidas",
+          "erroresGenerales",
+          "columnasIgnoradas",
+          "totalFilas",
+          "resumen"
+        ],
+        "title": "ResultadoImportacion",
+        "type": "object"
+      },
       "ResultadoIngesta": {
         "properties": {
           "aceptadas": {
@@ -2688,6 +2780,47 @@
           "rechazadas"
         ],
         "title": "ResultadoIngesta",
+        "type": "object"
+      },
+      "ResumenImportacion": {
+        "properties": {
+          "creadas": {
+            "title": "Creadas",
+            "type": "integer"
+          },
+          "omitidas": {
+            "title": "Omitidas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "creadas",
+          "omitidas"
+        ],
+        "title": "ResumenImportacion",
+        "type": "object"
+      },
+      "ResumenVistaPrevia": {
+        "properties": {
+          "conErrores": {
+            "title": "Conerrores",
+            "type": "integer"
+          },
+          "duplicadas": {
+            "title": "Duplicadas",
+            "type": "integer"
+          },
+          "validas": {
+            "title": "Validas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "validas",
+          "conErrores",
+          "duplicadas"
+        ],
+        "title": "ResumenVistaPrevia",
         "type": "object"
       },
       "Rodamiento": {
@@ -2819,6 +2952,39 @@
           "permisos"
         ],
         "title": "RolConPermisos",
+        "type": "object"
+      },
+      "RutaCreadaImportada": {
+        "properties": {
+          "avisos": {
+            "description": "Tramos que quedaron en línea recta, si los hubo",
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "nombre": {
+            "title": "Nombre",
+            "type": "string"
+          },
+          "puntos": {
+            "title": "Puntos",
+            "type": "integer"
+          },
+          "rutaId": {
+            "format": "uuid",
+            "title": "Rutaid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nombre",
+          "rutaId",
+          "puntos",
+          "avisos"
+        ],
+        "title": "RutaCreadaImportada",
         "type": "object"
       },
       "RutaCrear": {
@@ -3090,6 +3256,95 @@
           "version"
         ],
         "title": "RutaEditar",
+        "type": "object"
+      },
+      "RutaImportada": {
+        "properties": {
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "codigoPublico": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigopublico"
+          },
+          "empresa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresa"
+          },
+          "errores": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorImportacion"
+            },
+            "title": "Errores",
+            "type": "array"
+          },
+          "estado": {
+            "enum": [
+              "valida",
+              "con_errores",
+              "duplicada"
+            ],
+            "title": "Estado",
+            "type": "string"
+          },
+          "nombre": {
+            "title": "Nombre",
+            "type": "string"
+          },
+          "paraderosNuevos": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Solo en rutas válidas",
+            "title": "Paraderosnuevos"
+          },
+          "paraderosReutilizados": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paraderosreutilizados"
+          },
+          "puntos": {
+            "title": "Puntos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "nombre",
+          "estado",
+          "puntos",
+          "errores",
+          "avisos"
+        ],
+        "title": "RutaImportada",
         "type": "object"
       },
       "RutaResumen": {
@@ -3920,6 +4175,53 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VistaPreviaImportacion": {
+        "properties": {
+          "columnasIgnoradas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columnasignoradas",
+            "type": "array"
+          },
+          "erroresGenerales": {
+            "description": "Filas sin nombre de ruta",
+            "items": {
+              "$ref": "#/components/schemas/ErrorImportacion"
+            },
+            "title": "Erroresgenerales",
+            "type": "array"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenVistaPrevia"
+          },
+          "rutas": {
+            "items": {
+              "$ref": "#/components/schemas/RutaImportada"
+            },
+            "title": "Rutas",
+            "type": "array"
+          },
+          "seCrearian": {
+            "title": "Secrearian",
+            "type": "integer"
+          },
+          "totalFilas": {
+            "title": "Totalfilas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "totalFilas",
+          "rutas",
+          "erroresGenerales",
+          "columnasIgnoradas",
+          "resumen",
+          "seCrearian"
+        ],
+        "title": "VistaPreviaImportacion",
         "type": "object"
       }
     },
@@ -8905,6 +9207,225 @@
           }
         ],
         "summary": "Registrar Ruta Desde Puntos",
+        "tags": [
+          "Red"
+        ]
+      }
+    },
+    "/api/v1/rutas/importacion/confirmar": {
+      "post": {
+        "description": "Reenvía el mismo CSV: se valida de nuevo y se crean solo las rutas válidas (una por una).",
+        "operationId": "confirmar_importacion_rutas",
+        "requestBody": {
+          "content": {
+            "text/csv": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoImportacion"
+                }
+              }
+            },
+            "description": "No se creó ninguna ruta"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoImportacion"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "VALIDACION"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTENTICADO"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "ERROR_INTERNO"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Confirmar Importacion Rutas",
+        "tags": [
+          "Red"
+        ]
+      }
+    },
+    "/api/v1/rutas/importacion/plantilla": {
+      "get": {
+        "description": "Plantilla CSV (UTF-8 con BOM para Excel) con la ruta de ejemplo Fátima → Chipre.",
+        "operationId": "descargar_plantilla_importacion",
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {}
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTENTICADO"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "ERROR_INTERNO"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Descargar Plantilla Importacion",
+        "tags": [
+          "Red"
+        ]
+      }
+    },
+    "/api/v1/rutas/importacion/vista-previa": {
+      "post": {
+        "description": "Valida el CSV y dice qué rutas se crearían. NO escribe nada y NO llama a OSRM.",
+        "operationId": "vista_previa_importacion_rutas",
+        "requestBody": {
+          "content": {
+            "text/csv": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaPreviaImportacion"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "VALIDACION"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTENTICADO"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "NO_AUTORIZADO"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            },
+            "description": "ERROR_INTERNO"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Vista Previa Importacion Rutas",
         "tags": [
           "Red"
         ]

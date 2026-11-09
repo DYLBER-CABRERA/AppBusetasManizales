@@ -162,6 +162,9 @@ class RepositorioGestionRedSql:
         except UniqueViolation as exc:
             raise ErrorConflictoNegocio(_DUPLICADO_CODIGO) from exc
 
+    async def listar_empresas_activas(self) -> list[dict[str, Any]]:
+        return await self._filas("select id, nombre from empresa where estado = 'activo' order by nombre")
+
     async def ruta_nombre_existe(self, nombre: str) -> bool:
         return bool(await self._filas(
             "select 1 from ruta where estado = 'activo' and normalizar_texto(nombre) = normalizar_texto(%s)", (nombre,)

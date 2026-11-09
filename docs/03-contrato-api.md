@@ -434,3 +434,72 @@ Cambia **solo cómo se dibuja la línea**; el resto del contrato (201 con la rut
 - **Cortesía con el servidor demo compartido:** llamadas **secuenciales** con una pausa mínima de **0,2 s** entre ellas, `User-Agent` identificable (`BusetasApp-prototipo-clase/0.1 (proyecto academico; datos de ejemplo)`), presupuesto total de **25 s** (pasado ese tiempo los tramos que faltan van en recta) y **corte tras 3 fallos seguidos** (se asume servicio caído o saturado y el resto va en recta, para no esperar 5 s por tramo).
 - **Máximo de puntos: 30 (antes 60).** Cada punto es una llamada; con 30 son 30 llamadas ≈ 10 s en un caso normal (0,2 s de pausa más la latencia de cada respuesta) y caben en el presupuesto de 25 s. Con 60 se pasaría casi siempre del presupuesto y los últimos tramos saldrían en recta. Las rutas de las semillas tienen de 9 a 12 paradas.
 - `longitudM` es la de la geometría real; en la prueba Fátima → Chipre pasó de 8 300 m (recta) a unos 15 865 m (la vuelta por calle ya no es la recta de regreso).
+
+## 25. Importar rutas desde un CSV (vista previa y confirmación)
+
+Excepción a D-P06 pedida por Dylber. Rol Secretaría de Movilidad o administrador (jefe y pasajero `403`, sin token `401`). Una fila del archivo = un punto de una ruta, con coordenadas. Cada ruta se crea con la misma lógica de `POST /rutas/desde-puntos` (§23 y §24): paraderos nuevos o reutilizados a ≤ `radio_reuso_paradero_m`, trazado por calles con OSRM y validaciones por punto.
+
+**Plantilla** (`GET /api/v1/rutas/importacion/plantilla` descarga `plantilla_importacion_rutas.csv`, UTF-8 con BOM para Excel; el mismo texto está en `backend/supabase/semillas/ejemplos/importacion_rutas_ejemplo.csv`):
+
+```csv
+ruta,orden,latitud,longitud,nombre_punto,empresa,codigo_publico
+Ejemplo Fátima a Chipre (datos de ejemplo),1,5.052476,-75.497089,Fátima,Sideral,77
+Ejemplo Fátima a Chipre (datos de ejemplo),2,5.0617019,-75.5079102,,Sideral,77
+Ejemplo Fátima a Chipre (datos de ejemplo),3,5.0701278,-75.5179314,,Sideral,77
+Ejemplo Fátima a Chipre (datos de ejemplo),4,5.07655,-75.525721,Chipre,Sideral,77
+```
+
+| Columna | Obligatoria | Regla |
+|---|---|---|
+| `ruta` | sí | Nombre de la ruta (2 a 120 caracteres). Las filas con el mismo nombre (sin distinguir tildes ni mayúsculas) son la misma ruta. |
+| `orden` | sí | Entero desde 1, único dentro de la ruta. Se ordena por este valor; los saltos (1, 3, 5) se permiten. |
+| `latitud`, `longitud` | sí | Número con punto o coma decimal; dentro de la caja de Manizales y Villamaría (`caja_ciudad`). |
+| `nombre_punto` | no | Si falta se genera «Paradero <NombreRuta> N» (§23). Se ignora si el punto reutiliza un paradero existente. |
+| `empresa` | sí | **Nombre** de una empresa activa (sin distinguir tildes ni mayúsculas). Una sola empresa por ruta: todas las filas de la ruta deben traer la misma. |
+| `codigo_publico` | no | Solo dígitos (máx. 6). Igual en todas las filas de la ruta. |
+
+Los encabezados se reconocen sin tildes ni mayúsculas, en cualquier orden, y con alias (`lat`, `lng`, `lon`, `nombre`, `codigo`). Las columnas desconocidas se ignoran y se devuelven en `columnasIgnoradas`.
+
+**Formato del archivo:** solo **CSV** (ver decisiones). UTF-8 (con o sin BOM; si no es UTF-8 se intenta Windows-1252, lo que guarda Excel con «CSV (delimitado por comas)»). Separador coma, punto y coma o tabulador (se detecta por el encabezado). Filas vacías ignoradas. Se envía como **cuerpo crudo** de la petición con `Content-Type: text/csv` (no es multipart; así no hace falta una librería nueva): en el navegador, `fetch(url, { method: "POST", headers: { "Content-Type": "text/csv", Authorization }, body: archivo })`.
+
+**Límites:** 200 KB, 400 filas de datos, **10 rutas por archivo**, **30 puntos por ruta**. Justificación: cada punto es una llamada a OSRM (demo compartido, secuencial, 0,2 s de pausa); al confirmar hay un presupuesto de **60 s en total** repartido entre las rutas (hasta 25 s cada una); lo que no alcance a pedirse queda en línea recta y se informa en `avisos` de esa ruta. Diez rutas de ~12 paradas son ~120 llamadas: caben en 60 s en un día normal y, si no, el trazado de las últimas sale en recta con aviso.
+
+**Seguridad:** el archivo es dato no confiable: solo se lee como texto (no hay fórmulas ni macros), se cortan los archivos que pasan el máximo mientras se reciben, y **nunca se registra su contenido en los logs**. Los textos (`ruta`, `nombre_punto`, `empresa`) que empiecen con `=`, `+`, `-`, `@` o con un salto/tabulador se rechazan (`formula_no_permitida`) para evitar inyección de fórmulas si algún día se reexportan.
+
+### `POST /api/v1/rutas/importacion/vista-previa`
+Cuerpo: el CSV. **No escribe nada y no llama a OSRM** (solo valida y lee la BD). `200`:
+
+```json
+{ "totalFilas": 7, "seCrearian": 1,
+  "resumen": { "validas": 1, "conErrores": 1, "duplicadas": 1 },
+  "columnasIgnoradas": [], "erroresGenerales": [],
+  "rutas": [
+    { "nombre": "Ejemplo Fátima a Chipre (datos de ejemplo)", "estado": "valida", "puntos": 4, "empresa": "Sideral", "codigoPublico": "77",
+      "paraderosNuevos": 4, "paraderosReutilizados": 0, "errores": [],
+      "avisos": ["El trazado por calles se calcula al confirmar; si un tramo no tiene ruta real quedará en línea recta."] },
+    { "nombre": "Fuera de zona", "estado": "con_errores", "puntos": 2, "empresa": "Sideral", "codigoPublico": null,
+      "paraderosNuevos": null, "paraderosReutilizados": null, "avisos": [],
+      "errores": [ { "fila": 5, "columna": "latitud", "motivo": "fuera_de_zona", "mensaje": "El punto está fuera de la zona de Manizales y Villamaría." } ] },
+    { "nombre": "La Enea", "estado": "duplicada", "puntos": 2, "empresa": "Sideral", "codigoPublico": null, "paraderosNuevos": null,
+      "paraderosReutilizados": null, "avisos": [],
+      "errores": [ { "fila": null, "columna": "ruta", "motivo": "ruta_duplicada", "mensaje": "Ya existe una ruta con ese nombre; no se modifica." } ] } ] }
+```
+- `estado`: `valida` (se creará al confirmar), `con_errores` (no se creará) o `duplicada` (ya existe una ruta activa con ese nombre; **no se pisa**).
+- `errores[]`: `fila` = línea del archivo (1 es el encabezado) o `null` si el error es de la ruta completa; `columna`; `motivo` (código estable) y `mensaje` en español. Motivos de fila: `numero_invalido`, `orden_invalido`, `orden_duplicado`, `codigo_invalido`, `formula_no_permitida`, `muy_largo`, `caracteres_invalidos`, `empresa_distinta`, `codigo_publico_distinta`, `obligatorio`. De ruta o de punto: `nombre_corto`, `pocos_puntos` (menos de 2), `demasiados_puntos` (más de 30), `falta_empresa`, `empresa_desconocida`, `ruta_duplicada`, `fuera_de_zona`, `coordenadas_invalidas`, `duplicado_consecutivo` (dos puntos seguidos a menos de 10 m), `ultimo_igual_al_primero`.
+- `erroresGenerales[]`: filas que no se pueden asignar a una ruta (sin nombre de ruta).
+- Los errores del archivo completo responden **`400 VALIDACION`** con `detalles: [{ "fila", "columna", "motivo" }]`: `archivo_vacio`, `sin_datos`, `archivo_muy_grande`, `formato_no_soportado` (es un .xlsx u otro binario), `codificacion`, `csv_invalido`, `columna_obligatoria` (una entrada por columna que falta, con `fila: 1`), `demasiadas_filas`, `demasiadas_rutas`.
+
+### `POST /api/v1/rutas/importacion/confirmar`
+Cuerpo: **el mismo CSV otra vez** (no hay token de vista previa: el servidor vuelve a leer y validar todo, así que no depende de lo que mostró la vista previa y no guarda estado). Crea, **de a una y en secuencia**, solo las rutas `valida`; las demás no se crean y se listan en `omitidas` con sus errores. Una ruta que falla al crearse (conflicto, error interno) pasa a `omitidas` y **las demás siguen**. Lo ya creado no se deshace.
+
+`201` si se creó al menos una ruta; `200` si no se creó ninguna (por ejemplo, el mismo archivo por segunda vez: todas `duplicada`):
+```json
+{ "creadas": [ { "nombre": "Ejemplo Fátima a Chipre (datos de ejemplo)", "rutaId": "…", "puntos": 4,
+                 "avisos": ["Tramo 3→4 sin ruta real, se usó línea recta."] } ],
+  "omitidas": [ { "nombre": "Fuera de zona", "estado": "con_errores", "puntos": 2, "errores": [ … ], "avisos": [] } ],
+  "erroresGenerales": [], "columnasIgnoradas": [], "totalFilas": 7,
+  "resumen": { "creadas": 1, "omitidas": 1 } }
+```
+- `creadas[].avisos`: tramos que quedaron en línea recta (texto de §24); vacío si todo salió por calles.
+- Los datos completos de cada ruta creada se leen con `GET /rutas/{rutaId}`.
+- Idempotente respecto a los nombres: reenviar el archivo no crea duplicados ni modifica rutas existentes.
