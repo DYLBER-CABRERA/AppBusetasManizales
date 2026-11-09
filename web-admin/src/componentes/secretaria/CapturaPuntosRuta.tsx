@@ -70,7 +70,7 @@ export function CapturaPuntosRuta({ puntos, onCambio, errores, existentes }: Pro
             ))}
           </ol>
         )}
-        <p className="text-xs">Si no escribes nombre, se genera uno automático. Un punto a 20 m o menos de un paradero existente lo reutiliza.</p>
+        <p className="text-xs">Si no escribes nombre, se genera uno automático. Un punto muy cerca de un paradero existente (20 m por omisión) lo reutiliza.</p>
       </div>
     </div>
   );
