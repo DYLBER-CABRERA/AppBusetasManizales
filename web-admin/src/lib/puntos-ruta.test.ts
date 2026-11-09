@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  distanciaM, erroresPorPunto, longitudCircuitoM, MAX_PUNTOS, muyPegado, puntosParaEnvio, validarPuntos, type PuntoCapturado,
+  distanciaM, erroresPorPunto, leerCoordenadas, longitudCircuitoM, MAX_PUNTOS, muyPegado, puntosParaEnvio, textoCoordenadas,
+  validarPuntos, type PuntoCapturado,
 } from "./puntos-ruta";
 
 // Caso real del contrato §23: Fátima a Chipre.
@@ -63,5 +64,38 @@ describe("puntos de ruta", () => {
     expect(e[0]!.texto).toBe("El punto 2 está fuera de la zona de la ciudad.");
     expect(e[1]!.texto).toBe("El punto 4 no es válido.");
     expect(erroresPorPunto(null)).toEqual([]);
+  });
+});
+
+describe("coordenadas pegadas", () => {
+  it("lee el formato de Google Maps, comas decimales, punto y coma y tabulador, e ignora líneas vacías", () => {
+    const { puntos, errores } = leerCoordenadas("5.068906, -75.517412\n\n5,0617 -75,5079\n5.0701;-75.5179\n5.07655\t-75.525721");
+    expect(errores).toEqual([]);
+    expect(puntos).toEqual([
+      { lat: 5.068906, lng: -75.517412, linea: 1 },
+      { lat: 5.0617, lng: -75.5079, linea: 3 },
+      { lat: 5.0701, lng: -75.5179, linea: 4 },
+      { lat: 5.07655, lng: -75.525721, linea: 5 },
+    ]);
+  });
+
+  it("toma como nombre lo que sigue a los dos números", () => {
+    expect(leerCoordenadas("5.068906, -75.517412, Catedral").puntos).toEqual([
+      { lat: 5.068906, lng: -75.517412, nombre: "Catedral", linea: 1 },
+    ]);
+  });
+
+  it("respeta el orden longitud, latitud (GeoJSON)", () => {
+    expect(leerCoordenadas("-75.517412, 5.068906", "lng_lat").puntos).toEqual([{ lat: 5.068906, lng: -75.517412, linea: 1 }]);
+  });
+
+  it("señala por número de línea las que no tienen dos números o se salen de rango", () => {
+    const { puntos, errores } = leerCoordenadas("5.06, -75.51\nhola\n-75.51, 5.06\n95, -75", "lat_lng");
+    expect(puntos).toHaveLength(2);
+    expect(errores.map((e) => e.linea)).toEqual([2, 4]);
+  });
+
+  it("formatea con 6 decimales y punto decimal", () => {
+    expect(textoCoordenadas(5.0689, -75.5174)).toBe("5.068900, -75.517400");
   });
 });

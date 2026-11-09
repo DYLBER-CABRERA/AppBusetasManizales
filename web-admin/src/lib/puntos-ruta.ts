@@ -79,6 +79,48 @@ export function validarPuntos(puntos: PuntoCapturado[]): ErrorPunto[] {
   return errores;
 }
 
+/** «5.068906, -75.517412»: latitud y longitud con 6 decimales (≈ 10 cm), con punto decimal. */
+export const textoCoordenadas = (lat: number, lng: number): string => `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+/** Orden en que vienen los dos números de cada línea pegada. Google Maps copia «latitud, longitud»; GeoJSON, al revés. */
+export type OrdenCoordenadas = "lat_lng" | "lng_lat";
+
+export type ErrorLinea = { linea: number; texto: string };
+export type LecturaCoordenadas = { puntos: (PuntoCapturado & { linea: number })[]; errores: ErrorLinea[] };
+
+// Número con punto o coma decimal: «5.0689», «-75,5174», «5».
+const NUMERO = /-?\d+(?:[.,]\d+)?/g;
+
+/**
+ * Lee coordenadas pegadas, una por línea: «5.068906, -75.517412», «5,0689 -75,5174», «5.0689;-75.5174».
+ * Lo que sigue a los dos números es el nombre opcional del punto («5.0689, -75.5174, Catedral»).
+ * Las líneas vacías se ignoran; las que no tienen dos números válidos se devuelven como error con su número de línea.
+ */
+export function leerCoordenadas(texto: string, orden: OrdenCoordenadas = "lat_lng"): LecturaCoordenadas {
+  const puntos: LecturaCoordenadas["puntos"] = [];
+  const errores: ErrorLinea[] = [];
+  texto.split(/\r?\n/).forEach((cruda, i) => {
+    const linea = i + 1;
+    const contenido = cruda.trim();
+    if (contenido === "") return;
+    const encontrados = [...contenido.matchAll(NUMERO)].slice(0, 2);
+    if (encontrados.length < 2) {
+      errores.push({ linea, texto: `Línea ${linea}: escribe la latitud y la longitud separadas por coma o espacio.` });
+      return;
+    }
+    const [a, b] = encontrados.map((m) => Number(m[0].replace(",", "."))) as [number, number];
+    const [lat, lng] = orden === "lat_lng" ? [a, b] : [b, a];
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      errores.push({ linea, texto: `Línea ${linea}: la latitud va de -90 a 90 y la longitud de -180 a 180. ¿Están en el orden elegido?` });
+      return;
+    }
+    const segundo = encontrados[1]!;
+    const nombre = contenido.slice((segundo.index ?? 0) + segundo[0].length).replace(/^[\s,;|]+/, "").trim();
+    puntos.push(nombre ? { lat, lng, nombre: nombre.slice(0, MAX_NOMBRE_PUNTO), linea } : { lat, lng, linea });
+  });
+  return { puntos, errores };
+}
+
 /** Arma los puntos del cuerpo: en el orden tocado, con `nombre` solo si la Secretaría escribió uno. */
 export function puntosParaEnvio(puntos: PuntoCapturado[]): PuntoRuta[] {
   return puntos.map((p) => {

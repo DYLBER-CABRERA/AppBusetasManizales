@@ -1,13 +1,30 @@
 "use client";
+import { useState } from "react";
 import { BannerError } from "@/componentes/BannerError";
 import { Esqueleto } from "@/componentes/Esqueleto";
+import { useToast } from "@/componentes/Toast";
+import { textoCoordenadas } from "@/lib/puntos-ruta";
 import { useDetalleRuta } from "@/lib/secretaria";
 import { MapaVistaRuta } from "./MapaVistaRuta";
 
-/** Vista de solo lectura de una ruta: trazado real en el mapa, paraderos en orden y datos generales. */
+/** Vista de solo lectura de una ruta: trazado real en el mapa, paraderos en orden (con coordenadas) y datos generales. */
 export function VistaRuta({ rutaId, onCerrar }: { rutaId: string; onCerrar: () => void }) {
   const detalle = useDetalleRuta(rutaId);
   const ruta = detalle.data;
+  const toast = useToast();
+  const [seleccionado, setSeleccionado] = useState<{ id: string; clave: number } | null>(null);
+  const paradas = ruta ? [...ruta.paraderos].sort((a, b) => a.orden - b.orden) : [];
+
+  /** Una línea por paradero, «lat, lng, nombre»: se puede pegar tal cual en «Agregar por coordenadas». */
+  async function copiarCoordenadas() {
+    const texto = paradas.map((p) => `${textoCoordenadas(p.lat, p.lng)}, ${p.nombre}`).join("\n");
+    try {
+      await navigator.clipboard.writeText(texto);
+      toast("Coordenadas copiadas");
+    } catch {
+      toast("No se pudo copiar. Selecciona las coordenadas de la lista y cópialas a mano.");
+    }
+  }
 
   return (
     <section aria-label="Detalle de la ruta" className="space-y-4 rounded-lg border border-borde bg-white p-6">
@@ -22,8 +39,11 @@ export function VistaRuta({ rutaId, onCerrar }: { rutaId: string; onCerrar: () =
       {ruta ? (
         <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
           <div>
-            <MapaVistaRuta ruta={ruta} alto={460} />
-            <p className="mt-1 text-xs">Línea azul: trazado de la ruta (circular, vuelve al primer paradero). Círculos verdes numerados: paraderos en orden.</p>
+            <MapaVistaRuta ruta={ruta} alto={460} seleccionado={seleccionado} />
+            <p className="mt-1 text-xs">
+              Línea azul: trazado de la ruta (circular, vuelve al primer paradero). Círculos verdes numerados: paraderos en orden.
+              Toca un paradero para ver su latitud y longitud.
+            </p>
           </div>
           <div className="space-y-4">
             <dl className="space-y-1 text-sm">
@@ -50,12 +70,28 @@ export function VistaRuta({ rutaId, onCerrar }: { rutaId: string; onCerrar: () =
               )}
             </div>
             <div>
-              <h3 className="font-semibold">Paraderos ({ruta.paraderos.length})</h3>
-              <ol className="mt-1 max-h-64 space-y-1 overflow-y-auto">
-                {[...ruta.paraderos].sort((a, b) => a.orden - b.orden).map((p) => (
-                  <li key={p.paraderoId} className="flex gap-2 rounded bg-fondo px-3 py-1 text-sm">
-                    <span className="w-6 text-right font-bold">{p.orden}.</span>
-                    <span>{p.nombre}</span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold">Paraderos ({ruta.paraderos.length})</h3>
+                {ruta.paraderos.length > 0 ? (
+                  <button type="button" onClick={copiarCoordenadas}
+                    className="min-h-11 rounded border border-tinta/40 px-3 text-sm font-semibold hover:bg-fondo">
+                    Copiar coordenadas
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-xs">Toca un paradero para verlo en el mapa. Las coordenadas son latitud, longitud.</p>
+              <ol className="mt-1 max-h-72 space-y-1 overflow-y-auto">
+                {paradas.map((p) => (
+                  <li key={p.paraderoId}>
+                    <button type="button" onClick={() => setSeleccionado({ id: p.paraderoId, clave: Date.now() })}
+                      aria-pressed={seleccionado?.id === p.paraderoId}
+                      className={`flex min-h-11 w-full gap-2 rounded px-3 py-1 text-left text-sm hover:bg-borde ${seleccionado?.id === p.paraderoId ? "bg-borde" : "bg-fondo"}`}>
+                      <span className="w-6 shrink-0 text-right font-bold">{p.orden}.</span>
+                      <span className="flex-1">
+                        <span className="block">{p.nombre}</span>
+                        <span className="block font-mono text-xs">{textoCoordenadas(p.lat, p.lng)}</span>
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ol>

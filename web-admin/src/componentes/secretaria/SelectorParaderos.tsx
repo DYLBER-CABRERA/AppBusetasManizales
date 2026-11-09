@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { textoCoordenadas } from "@/lib/puntos-ruta";
 import type { Paradero } from "@/lib/secretaria";
 import { MapaParaderos } from "./MapaParaderos";
 
@@ -11,6 +12,10 @@ export function SelectorParaderos({
 }: { paraderos: Paradero[]; valor: string[]; onCambio: (ids: string[]) => void }) {
   const [filtro, setFiltro] = useState("");
   const nombre = (id: string) => paraderos.find((p) => p.id === id)?.nombre ?? "Paradero dado de baja";
+  const coordenadas = (id: string) => {
+    const p = paraderos.find((x) => x.id === id);
+    return p ? textoCoordenadas(p.lat, p.lng) : null;
+  };
   const disponibles = paraderos.filter(
     (p) => !valor.includes(p.id) && p.nombre.toLowerCase().includes(filtro.trim().toLowerCase()),
   );
@@ -40,7 +45,10 @@ export function SelectorParaderos({
               {valor.map((id, i) => (
                 <li key={id} className="flex items-center gap-2 rounded bg-fondo px-2 py-1">
                   <span className="w-6 text-right font-bold">{i + 1}.</span>
-                  <span className="flex-1">{nombre(id)}</span>
+                  <span className="flex-1">
+                    <span className="block">{nombre(id)}</span>
+                    {coordenadas(id) ? <span className="block font-mono text-xs">{coordenadas(id)}</span> : null}
+                  </span>
                   <button type="button" className={boton} disabled={i === 0} onClick={() => mover(i, -1)}
                     aria-label={`Subir ${nombre(id)}`}>↑</button>
                   <button type="button" className={boton} disabled={i === valor.length - 1} onClick={() => mover(i, 1)}
@@ -62,7 +70,7 @@ export function SelectorParaderos({
               <li key={p.id}>
                 <button type="button" onClick={() => onCambio([...valor, p.id])}
                   className="min-h-11 w-full rounded border border-borde bg-white px-3 text-left hover:bg-fondo">
-                  + {p.nombre}
+                  + {p.nombre} <span className="font-mono text-xs">({textoCoordenadas(p.lat, p.lng)})</span>
                 </button>
               </li>
             ))}
