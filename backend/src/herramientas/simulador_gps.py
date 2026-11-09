@@ -30,6 +30,9 @@ MAX_VELOCIDAD_REPORTADA_KMH = 150.0  # límite del CHECK de posicion_buseta
 EXTRA_DESVIO_M = 60.0  # el desvío se aparta umbral_desvio_m + este margen
 # docs/01 §4: Serviturismo no emite salvo que el administrador active su GPS.
 EMPRESAS_SIN_GPS_POR_DEFECTO = frozenset({"serviturismo"})
+# Cada cuántos segundos el simulador vuelve a leer las busetas activas y los trazados (rutas y busetas creadas con el servidor ya
+# arrancado). Los turnos NO se cachean: `turno_vigente` se consulta en cada ciclo.
+REFRESCO_S = 10.0
 
 
 def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -135,6 +138,7 @@ class SimuladorGps:
         self._colocadas: dict[UUID, int] = {}
         self._tarea: asyncio.Task[None] | None = None
         self._ultimo_ciclo: datetime | None = None
+        self._ciclos = 0
 
     # ---------- ciclo de vida ----------
 
@@ -155,15 +159,22 @@ class SimuladorGps:
             self._tarea = None
 
     async def cargar(self) -> None:
+        """Lee las busetas activas. Las que ya se conocían conservan su estado (avance, señal, desvío); las nuevas se agregan y
+        las que dejaron de estar activas (baja o fuera de servicio) se quitan: dejan de moverse."""
+        actuales: dict[tuple[UUID, str], BusetaSim] = {}
         for fila in await self._repo.busetas_activas():
             llave = (fila["empresa_id"], fila["numero_lateral"])
-            self._busetas.setdefault(
-                llave,
-                BusetaSim(
-                    fila["numero_lateral"], fila["empresa_id"], fila["empresa_nombre"],
-                    emitiendo=fila["empresa_nombre"].lower() not in EMPRESAS_SIN_GPS_POR_DEFECTO,
-                ),
+            actuales[llave] = self._busetas.get(llave) or BusetaSim(
+                fila["numero_lateral"], fila["empresa_id"], fila["empresa_nombre"],
+                emitiendo=fila["empresa_nombre"].lower() not in EMPRESAS_SIN_GPS_POR_DEFECTO,
             )
+        self._busetas = actuales
+
+    async def _refrescar(self) -> None:
+        """Rutas, trazados y busetas nuevos o editados sin reiniciar el servidor."""
+        self._circuitos.clear()
+        self._ruta_de_servicio.clear()
+        await self.cargar()
 
     async def _bucle(self) -> None:
         while True:
@@ -191,6 +202,13 @@ class SimuladorGps:
         return self._ruta_de_servicio[servicio_id]
 
     async def ciclo(self) -> None:
+        cada = max(1, round(REFRESCO_S / self._intervalo))
+        if self._ciclos and self._ciclos % cada == 0:
+            try:
+                await self._refrescar()
+            except Exception as exc:  # noqa: BLE001 - si la BD falla un momento se sigue con lo que ya se conoce
+                registro.warning("No se pudieron releer busetas y trazados (%s)", type(exc).__name__)
+        self._ciclos += 1
         ahora = self._reloj.ahora()
         transcurrido = self._intervalo
         if self._ultimo_ciclo is not None:  # tiempo del PuertoReloj (respeta fijar_hora); acotado tras saltos del reloj
