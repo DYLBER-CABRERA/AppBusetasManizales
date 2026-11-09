@@ -81,6 +81,7 @@ from modulos.pasajero import (
 from modulos.planificacion import PlanificarViaje, RepositorioPlanificacionSql
 from modulos.red import (
     AsignarRutaAEmpresa,
+    ConfirmarImportacionRutas,
     ConstructorDeTrazado,
     ConsultarParaderosCercanos,
     ConsultarRutasCercanas,
@@ -100,6 +101,7 @@ from modulos.red import (
     RepositorioGestionRedSql,
     RepositorioRutasSql,
     RetirarRutaDeEmpresa,
+    VistaPreviaImportacionRutas,
 )
 from modulos.seguimiento import (
     AutenticarFuenteGps,
@@ -197,6 +199,8 @@ class Servicios:
     consultar_estadisticas_uso: ConsultarEstadisticasUso
     registrar_ruta: RegistrarRuta
     registrar_ruta_desde_puntos: RegistrarRutaDesdePuntos
+    vista_previa_importacion_rutas: VistaPreviaImportacionRutas
+    confirmar_importacion_rutas: ConfirmarImportacionRutas
     editar_ruta: EditarRuta
     eliminar_ruta: EliminarRuta
     asignar_ruta_a_empresa: AsignarRutaAEmpresa
@@ -239,6 +243,9 @@ def construir_servicios(
     deductor = DeductorDeRuta(repos.seguimiento)
     registrar_posiciones = RegistrarPosiciones(
         repos.seguimiento, deductor, repos.seguimiento, repos.parametros, reloj, emisor
+    )
+    registrar_desde_puntos = RegistrarRutaDesdePuntos(
+        repos.gestion_red, repos.rutas, repos.avisos, reloj, repos.parametros, ConstructorDeTrazado(repos.enrutador)
     )
     simulador = None
     if configuracion.modo_demo and repos.simulacion is not None and isinstance(reloj, RelojSimulado):
@@ -299,9 +306,9 @@ def construir_servicios(
         configurar_parametro=ConfigurarParametro(repos.admin),
         consultar_estadisticas_uso=ConsultarEstadisticasUso(repos.eventos_uso, repos.parametros),
         registrar_ruta=RegistrarRuta(repos.gestion_red, repos.rutas, repos.avisos, reloj),
-        registrar_ruta_desde_puntos=RegistrarRutaDesdePuntos(
-            repos.gestion_red, repos.rutas, repos.avisos, reloj, repos.parametros, ConstructorDeTrazado(repos.enrutador)
-        ),
+        registrar_ruta_desde_puntos=registrar_desde_puntos,
+        vista_previa_importacion_rutas=VistaPreviaImportacionRutas(repos.gestion_red, repos.parametros),
+        confirmar_importacion_rutas=ConfirmarImportacionRutas(repos.gestion_red, repos.parametros, registrar_desde_puntos),
         editar_ruta=EditarRuta(repos.gestion_red, repos.rutas, repos.avisos, reloj),
         eliminar_ruta=EliminarRuta(repos.gestion_red, repos.rutas, reloj),
         asignar_ruta_a_empresa=AsignarRutaAEmpresa(repos.gestion_red),

@@ -1,0 +1,8 @@
+ruta;orden;latitud;longitud;nombre_punto;empresa;codigo_publico
+Ejemplo válida Fátima a Chipre (datos de ejemplo);1;5,052476;-75,497089;Fátima;Sideral;78
+Ejemplo válida Fátima a Chipre (datos de ejemplo);2;5,0617019;-75,5079102;;Sideral;78
+Ejemplo válida Fátima a Chipre (datos de ejemplo);3;5,07655;-75,525721;Chipre;Sideral;78
+Ejemplo con punto fuera de zona (datos de ejemplo);1;5,0600;-75,5000;;Sideral;
+Ejemplo con punto fuera de zona (datos de ejemplo);2;4,0000;-75,5000;;Sideral;
+Ejemplo con empresa desconocida (datos de ejemplo);1;5,0700;-75,5100;;Empresa Inventada;
+Ejemplo con empresa desconocida (datos de ejemplo);2;5,0800;-75,5200;;Empresa Inventada;

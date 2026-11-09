@@ -149,7 +149,7 @@ class RegistrarRutaDesdePuntos(_CasoRuta):
 
     async def __call__(
         self, identidad: Identidad | None, nombre: str, ruta_principal_id: UUID | None, puntos: list[dict[str, Any]],
-        servicios: list[dict[str, Any]], confirmar_compartida: bool,
+        servicios: list[dict[str, Any]], confirmar_compartida: bool, presupuesto_trazado_s: float | None = None,
     ) -> dict[str, Any]:
         _gestion(identidad)
         nombre = " ".join(nombre.split())
@@ -184,12 +184,15 @@ class RegistrarRutaDesdePuntos(_CasoRuta):
                 "id": None, "nombre": propio or nombre_automatico(nombre, numero), "direccion": DIRECCION_FICTICIA,
                 "lat": p["lat"], "lng": p["lng"],
             })
-        trazado = await self._trazado.construir([(p["lat"], p["lng"]) for p in paraderos])
+        trazado = await self._trazado.construir([(p["lat"], p["lng"]) for p in paraderos], presupuesto_trazado_s)
         ruta_id = await self._g.crear_ruta_con_paraderos(nombre, ruta_principal_id, paraderos, servicios, trazado.coordenadas)
         detalle = await self._detalle(ruta_id)
         if trazado.tramos_sin_ruta:  # aviso de la respuesta (no se guarda): qué tramos quedaron en línea recta
             detalle["avisos"] = [*detalle["avisos"], _aviso_tramos_en_recta(trazado.tramos_sin_ruta)]
         return detalle
+
+
+TITULO_AVISO_TRAZADO = "Trazado parcialmente en línea recta"
 
 
 def _aviso_tramos_en_recta(tramos: list[tuple[int, int]]) -> dict[str, Any]:
@@ -201,7 +204,7 @@ def _aviso_tramos_en_recta(tramos: list[tuple[int, int]]) -> dict[str, Any]:
         else f"Tramos sin ruta real, se usó línea recta: {lista}."
     )
     return {
-        "id": uuid4(), "origen": "aplicativo", "empresa_nombre": None, "titulo": "Trazado parcialmente en línea recta",
+        "id": uuid4(), "origen": "aplicativo", "empresa_nombre": None, "titulo": TITULO_AVISO_TRAZADO,
         "cuerpo": cuerpo,
     }
 

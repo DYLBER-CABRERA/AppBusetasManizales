@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 
 from modulos.red.aplicacion.consultas import (
     ConsultarParaderosCercanos,
@@ -26,6 +26,8 @@ from modulos.red.aplicacion.gestion import (
     RegistrarRutaDesdePuntos,
     RetirarRutaDeEmpresa,
 )
+from modulos.red.aplicacion.importacion import ConfirmarImportacionRutas, VistaPreviaImportacionRutas
+from modulos.red.dominio.importacion_rutas import MAX_BYTES, PLANTILLA, error_archivo_muy_grande
 from modulos.red.infraestructura.esquemas import (
     Empresa,
     Hito,
@@ -34,6 +36,7 @@ from modulos.red.infraestructura.esquemas import (
     ParaderoCercano,
     ParaderoCrear,
     ParaderoEditar,
+    ResultadoImportacion,
     RutaCrear,
     RutaDesdePuntos,
     RutaDetalle,
@@ -42,6 +45,7 @@ from modulos.red.infraestructura.esquemas import (
     RutasCercanas,
     ServicioAsignar,
     ServicioRuta,
+    VistaPreviaImportacion,
 )
 from nucleo.autorizacion import Identidad, Rol
 from nucleo.dependencias import RegistroUso, caso, requiere_rol
@@ -71,6 +75,65 @@ async def listar_rutas(
 ) -> list[dict]:
     resultado = await caso_uso()
     uso("mapa")
+    return resultado
+
+
+async def _leer_cuerpo(request: Request) -> bytes:
+    """El CSV llega como cuerpo crudo (`Content-Type: text/csv`). Se corta apenas pasa el máximo, sin cargarlo entero."""
+    declarado = request.headers.get("content-length", "")
+    if declarado.isdigit() and int(declarado) > MAX_BYTES:
+        raise error_archivo_muy_grande()
+    partes: list[bytes] = []
+    total = 0
+    async for trozo in request.stream():
+        total += len(trozo)
+        if total > MAX_BYTES:
+            raise error_archivo_muy_grande()
+        partes.append(trozo)
+    return b"".join(partes)
+
+
+_CUERPO_CSV = {"requestBody": {"required": True, "content": {"text/csv": {"schema": {"type": "string", "format": "binary"}}}}}
+
+
+@router.get(
+    "/rutas/importacion/plantilla", response_class=Response, responses={200: {"content": {"text/csv": {}}}, **errores(401, 403)},
+)
+async def descargar_plantilla_importacion(_: Identidad = _gestion) -> Response:
+    """Plantilla CSV (UTF-8 con BOM para Excel) con la ruta de ejemplo Fátima → Chipre."""
+    return Response(
+        content="\ufeff" + PLANTILLA, media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="plantilla_importacion_rutas.csv"'},
+    )
+
+
+@router.post(
+    "/rutas/importacion/vista-previa", response_model=VistaPreviaImportacion, openapi_extra=_CUERPO_CSV,
+    responses=errores(400, 401, 403),
+)
+async def vista_previa_importacion_rutas(
+    request: Request,
+    identidad: Identidad = _gestion,
+    caso_uso: VistaPreviaImportacionRutas = Depends(caso("vista_previa_importacion_rutas")),
+) -> dict:
+    """Valida el CSV y dice qué rutas se crearían. NO escribe nada y NO llama a OSRM."""
+    return await caso_uso(identidad, await _leer_cuerpo(request))
+
+
+@router.post(
+    "/rutas/importacion/confirmar", response_model=ResultadoImportacion, status_code=201, openapi_extra=_CUERPO_CSV,
+    responses={200: {"model": ResultadoImportacion, "description": "No se creó ninguna ruta"}, **errores(400, 401, 403)},
+)
+async def confirmar_importacion_rutas(
+    request: Request,
+    respuesta: Response,
+    identidad: Identidad = _gestion,
+    caso_uso: ConfirmarImportacionRutas = Depends(caso("confirmar_importacion_rutas")),
+) -> dict:
+    """Reenvía el mismo CSV: se valida de nuevo y se crean solo las rutas válidas (una por una)."""
+    resultado = await caso_uso(identidad, await _leer_cuerpo(request))
+    if not resultado["creadas"]:
+        respuesta.status_code = 200
     return resultado
 
 
