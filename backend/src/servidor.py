@@ -37,11 +37,12 @@ from nucleo.registro import configurar_registro
 PREFIJO_API = "/api/v1"
 
 
-def fabrica_bucle() -> asyncio.AbstractEventLoop:
+def fabrica_bucle(*, use_subprocess: bool = False) -> asyncio.AbstractEventLoop:
     """Bucle de eventos compatible con psycopg asíncrono (en Windows uvicorn usa Proactor, que psycopg no admite).
 
     Uso: `uvicorn servidor:app --app-dir src --loop servidor:fabrica_bucle`.
     """
+    del use_subprocess
     return asyncio.SelectorEventLoop()
 
 

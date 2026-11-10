@@ -102,7 +102,7 @@ Si tu base ya tenía una versión anterior del esquema, no vuelvas a correr 4.1:
 python -m uvicorn servidor:app --app-dir src --loop servidor:fabrica_bucle --port 8000
 ```
 
-- **`--loop servidor:fabrica_bucle` es obligatorio en Windows** (sin él, psycopg asíncrono falla).
+- Ejecuta el comando desde `backend/` con el entorno `.venv` activado. En Windows, **`--loop servidor:fabrica_bucle` es obligatorio** (sin él, psycopg asíncrono falla).
 - Para que un celular de la misma red lo alcance, agrega `--host 0.0.0.0` y permite el puerto 8000 en el firewall.
 - Con `MODO_DEMO=true` el arranque crea el rodamiento de hoy y el borrador de mañana si faltan, y guarda posiciones simuladas cada 3 s. Para probar solo lectura, pon `MODO_DEMO=false`.
 
