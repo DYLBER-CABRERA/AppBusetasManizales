@@ -18,7 +18,7 @@ import { CapturaPuntosRuta } from "./CapturaPuntosRuta";
 import { SelectorParaderos } from "./SelectorParaderos";
 
 const esquema = z.object({
-  nombre: z.string().trim().min(1, "Escribe el nombre de la ruta.").max(120, "El nombre admite hasta 120 caracteres."),
+  nombre: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(120, "El nombre admite hasta 120 caracteres."),
   descripcion: z.string().optional(),
   rutaPrincipalId: z.string().optional(),
 });
@@ -103,12 +103,15 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
       if (ruta) await cliente.invalidateQueries({ queryKey: ["sec", "ruta", ruta.id] });
       toast(edita ? "Guardado" : "Registrada");
       // Al crear, los avisos del 201 informan tramos del trazado que quedaron en línea recta (contrato §24).
-      if (!ruta) resultado.avisos?.forEach((a) => toast(a.cuerpo));
+      if (!ruta) resultado.avisos?.forEach((a) => toast(`${a.titulo}: ${a.cuerpo}`));
       onListo();
     },
     onError: (e, { confirmar }) => {
       if (e instanceof ErrorApi && e.esConflictoVersion) return onConflictoVersion();
-      if (e instanceof ErrorApi && e.esConflictoNegocio && !edita && !confirmar && Object.keys(elegidas).length > 1) {
+      // El 409 CONFLICTO_NEGOCIO tiene tres causas (contrato §23): solo la de «ruta compartida» pide confirmar;
+      // nombre repetido o código ya usado se muestran como error. El código es el mismo, así que se distingue por el mensaje.
+      if (e instanceof ErrorApi && e.esConflictoNegocio && !edita && !confirmar && Object.keys(elegidas).length > 1
+        && /compartida/i.test(e.message)) {
         return setCompartida(true);
       }
       setCompartida(false);
@@ -125,13 +128,16 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
     const enPuntos = !edita && modo === "puntos";
     const sinParaderos = enPuntos ? puntos.length < MIN_PUNTOS : paraderoIds.length < 2;
     const sinEmpresas = !edita && Object.keys(elegidas).length === 0;
+    const codigoMalo = !edita && Object.values(elegidas).some((c) => c.codigoPublico.trim() !== "" && !/^[0-9]{1,6}$/.test(c.codigoPublico.trim()));
     setErrorParaderos(sinParaderos
       ? enPuntos ? "Toca el mapa para agregar al menos 2 puntos." : "Elige al menos 2 paraderos para armar el recorrido."
       : null);
-    setErrorEmpresas(sinEmpresas ? "Elige al menos una empresa que opere la ruta." : null);
+    setErrorEmpresas(sinEmpresas
+      ? "Elige al menos una empresa que opere la ruta."
+      : codigoMalo ? "El código público solo admite números, hasta 6 dígitos." : null);
     const locales = enPuntos && !sinParaderos ? validarPuntos(puntos) : [];
     setErroresPuntos(locales);
-    if (sinParaderos || sinEmpresas || locales.length > 0) return;
+    if (sinParaderos || sinEmpresas || codigoMalo || locales.length > 0) return;
     guardar.mutate({ d, confirmar: false });
   }
 
@@ -192,7 +198,7 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
                     <>
                       <label className="text-sm">
                         Código público
-                        <input type="text" maxLength={20} className="ml-2 min-h-11 w-28 rounded border border-tinta/40 bg-white px-2"
+                        <input type="text" inputMode="numeric" maxLength={6} className="ml-2 min-h-11 w-28 rounded border border-tinta/40 bg-white px-2"
                           value={elegidas[e.id]?.codigoPublico ?? ""}
                           onChange={(ev) => setElegidas((s) => ({ ...s, [e.id]: { codigoPublico: ev.target.value, codigoInterno: s[e.id]?.codigoInterno ?? "" } }))} />
                       </label>
@@ -243,7 +249,7 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
       <div className="flex gap-3">
         <button type="submit" disabled={guardar.isPending}
           className="min-h-11 rounded bg-verde px-5 font-semibold text-white hover:bg-verde-oscuro disabled:opacity-60">
-          {guardar.isPending ? "Guardando…" : edita ? "Guardar cambios" : "Registrar ruta"}
+          {guardar.isPending ? (!edita && modo === "puntos" ? "Trazando por calles…" : "Guardando…") : edita ? "Guardar cambios" : "Registrar ruta"}
         </button>
         <button type="button" onClick={onCancelar} className="min-h-11 rounded border border-tinta px-5 font-semibold">Cancelar</button>
       </div>
