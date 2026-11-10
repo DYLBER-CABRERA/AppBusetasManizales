@@ -1,5 +1,7 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BannerError } from "@/componentes/BannerError";
 import { Esqueleto } from "@/componentes/Esqueleto";
@@ -31,7 +33,9 @@ export function PantallaRutas() {
 
   const [nueva, setNueva] = useState(false);
   const [editarId, setEditarId] = useState<string | null>(null);
-  const [verId, setVerId] = useState<string | null>(null);
+  // `?ver=<id>` abre la vista de solo lectura (enlace desde «Importar rutas desde archivo»).
+  const verInicial = useSearchParams().get("ver");
+  const [verId, setVerId] = useState<string | null>(verInicial && /^[0-9a-f-]{36}$/i.test(verInicial) ? verInicial : null);
   const [recarga, setRecarga] = useState(0);
   const detalle = useDetalleRuta(editarId);
 
@@ -90,10 +94,16 @@ export function PantallaRutas() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Rutas</h1>
         {!nueva && editarId === null ? (
-          <button type="button" onClick={() => { setVerId(null); setNueva(true); }}
-            className="min-h-11 rounded bg-verde px-5 font-semibold text-white hover:bg-verde-oscuro">
-            Registrar ruta
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/secretaria/rutas/importar"
+              className="inline-flex min-h-11 items-center rounded border border-verde px-5 font-semibold text-verde hover:bg-fondo">
+              Importar desde archivo
+            </Link>
+            <button type="button" onClick={() => { setVerId(null); setNueva(true); }}
+              className="min-h-11 rounded bg-verde px-5 font-semibold text-white hover:bg-verde-oscuro">
+              Registrar ruta
+            </button>
+          </div>
         ) : null}
       </div>
 

@@ -697,6 +697,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rutas/importacion/confirmar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmar Importacion Rutas
+         * @description Reenvía el mismo CSV: se valida de nuevo y se crean solo las rutas válidas (una por una).
+         */
+        post: operations["confirmar_importacion_rutas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rutas/importacion/plantilla": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descargar Plantilla Importacion
+         * @description Plantilla CSV (UTF-8 con BOM para Excel) con la ruta de ejemplo Fátima → Chipre.
+         */
+        get: operations["descargar_plantilla_importacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rutas/importacion/vista-previa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vista Previa Importacion Rutas
+         * @description Valida el CSV y dice qué rutas se crearían. NO escribe nada y NO llama a OSRM.
+         */
+        post: operations["vista_previa_importacion_rutas"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rutas/{ruta_id}": {
         parameters: {
             query?: never;
@@ -1295,6 +1355,23 @@ export interface components {
             nombre?: string | null;
             /** Version */
             version: number;
+        };
+        /** ErrorImportacion */
+        ErrorImportacion: {
+            /** Columna */
+            columna?: string | null;
+            /**
+             * Fila
+             * @description Línea del archivo (1 = encabezado); null = error de la ruta completa
+             */
+            fila: number | null;
+            /** Mensaje */
+            mensaje: string;
+            /**
+             * Motivo
+             * @description Código estable, p. ej. numero_invalido, orden_duplicado, fuera_de_zona, ruta_duplicada
+             */
+            motivo: string;
         };
         /** EscenarioDemo */
         EscenarioDemo: {
@@ -1901,6 +1978,20 @@ export interface components {
             /** Ultimasenalhaces */
             ultimaSenalHaceS?: number | null;
         };
+        /** ResultadoImportacion */
+        ResultadoImportacion: {
+            /** Columnasignoradas */
+            columnasIgnoradas: string[];
+            /** Creadas */
+            creadas: components["schemas"]["RutaCreadaImportada"][];
+            /** Erroresgenerales */
+            erroresGenerales: components["schemas"]["ErrorImportacion"][];
+            /** Omitidas */
+            omitidas: components["schemas"]["RutaImportada"][];
+            resumen: components["schemas"]["ResumenImportacion"];
+            /** Totalfilas */
+            totalFilas: number;
+        };
         /** ResultadoIngesta */
         ResultadoIngesta: {
             /** Aceptadas */
@@ -1912,6 +2003,22 @@ export interface components {
             descartadas: number;
             /** Rechazadas */
             rechazadas: components["schemas"]["PosicionRechazada"][];
+        };
+        /** ResumenImportacion */
+        ResumenImportacion: {
+            /** Creadas */
+            creadas: number;
+            /** Omitidas */
+            omitidas: number;
+        };
+        /** ResumenVistaPrevia */
+        ResumenVistaPrevia: {
+            /** Conerrores */
+            conErrores: number;
+            /** Duplicadas */
+            duplicadas: number;
+            /** Validas */
+            validas: number;
         };
         /** Rodamiento */
         Rodamiento: {
@@ -1968,6 +2075,23 @@ export interface components {
              * @enum {string}
              */
             rol: "pasajero" | "jefe_operaciones" | "secretaria_movilidad" | "administrador";
+        };
+        /** RutaCreadaImportada */
+        RutaCreadaImportada: {
+            /**
+             * Avisos
+             * @description Tramos que quedaron en línea recta, si los hubo
+             */
+            avisos: string[];
+            /** Nombre */
+            nombre: string;
+            /** Puntos */
+            puntos: number;
+            /**
+             * Rutaid
+             * Format: uuid
+             */
+            rutaId: string;
         };
         /** RutaCrear */
         RutaCrear: {
@@ -2064,6 +2188,33 @@ export interface components {
             paraderoIds?: string[] | null;
             /** Version */
             version: number;
+        };
+        /** RutaImportada */
+        RutaImportada: {
+            /** Avisos */
+            avisos: string[];
+            /** Codigopublico */
+            codigoPublico?: string | null;
+            /** Empresa */
+            empresa?: string | null;
+            /** Errores */
+            errores: components["schemas"]["ErrorImportacion"][];
+            /**
+             * Estado
+             * @enum {string}
+             */
+            estado: "valida" | "con_errores" | "duplicada";
+            /** Nombre */
+            nombre: string;
+            /**
+             * Paraderosnuevos
+             * @description Solo en rutas válidas
+             */
+            paraderosNuevos?: number | null;
+            /** Paraderosreutilizados */
+            paraderosReutilizados?: number | null;
+            /** Puntos */
+            puntos: number;
         };
         /** RutaResumen */
         RutaResumen: {
@@ -2365,6 +2516,23 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VistaPreviaImportacion */
+        VistaPreviaImportacion: {
+            /** Columnasignoradas */
+            columnasIgnoradas: string[];
+            /**
+             * Erroresgenerales
+             * @description Filas sin nombre de ruta
+             */
+            erroresGenerales: components["schemas"]["ErrorImportacion"][];
+            resumen: components["schemas"]["ResumenVistaPrevia"];
+            /** Rutas */
+            rutas: components["schemas"]["RutaImportada"][];
+            /** Secrearian */
+            seCrearian: number;
+            /** Totalfilas */
+            totalFilas: number;
         };
     };
     responses: never;
@@ -5964,6 +6132,182 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description ERROR_INTERNO */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+        };
+    };
+    confirmar_importacion_rutas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description No se creó ninguna ruta */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacion"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoImportacion"];
+                };
+            };
+            /** @description VALIDACION */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTENTICADO */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description ERROR_INTERNO */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+        };
+    };
+    descargar_plantilla_importacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": unknown;
+                };
+            };
+            /** @description NO_AUTENTICADO */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description ERROR_INTERNO */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+        };
+    };
+    vista_previa_importacion_rutas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VistaPreviaImportacion"];
+                };
+            };
+            /** @description VALIDACION */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTENTICADO */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
+                };
+            };
+            /** @description NO_AUTORIZADO */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaError"];
                 };
             };
             /** @description ERROR_INTERNO */
