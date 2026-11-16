@@ -21,11 +21,12 @@ const esquema = z.object({
   nombre: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres.").max(120, "El nombre admite hasta 120 caracteres."),
   descripcion: z.string().optional(),
   rutaPrincipalId: z.string().optional(),
+  tipoRecorrido: z.enum(["circular", "lineal"]),
 });
 type Datos = z.infer<typeof esquema>;
 
 type Modo = "paraderos" | "puntos";
-type Codigos = { codigoPublico: string; codigoInterno: string };
+type Codigos = { codigoPublico: string };
 
 const campo = "mt-1 min-h-11 w-full rounded border border-tinta/40 bg-white px-3";
 const error = "mt-1 text-sm text-ladrillo";
@@ -46,10 +47,11 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
   const toast = useToast();
   const edita = ruta !== undefined;
 
-  const { register, handleSubmit, formState: { errors } } = useForm<Datos>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<Datos>({
     resolver: zodResolver(esquema),
-    defaultValues: { nombre: ruta?.nombre ?? "", descripcion: ruta?.descripcion ?? "", rutaPrincipalId: "" },
+    defaultValues: { nombre: ruta?.nombre ?? "", descripcion: ruta?.descripcion ?? "", rutaPrincipalId: "", tipoRecorrido: ruta?.tipoRecorrido ?? "circular" },
   });
+  const lineal = watch("tipoRecorrido") === "lineal";
   const inicial = ruta ? [...ruta.paraderos].sort((a, b) => a.orden - b.orden).map((p) => p.paraderoId) : [];
   const [paraderoIds, setParaderoIds] = useState<string[]>(inicial);
   const [elegidas, setElegidas] = useState<Record<string, Codigos>>({});
@@ -65,7 +67,6 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
     Object.entries(elegidas).map(([empresaId, c]) => ({
       empresaId,
       codigoPublico: c.codigoPublico.trim() || null,
-      codigoInterno: c.codigoInterno.trim() || null,
     }));
 
   const guardar = useMutation({
@@ -82,6 +83,7 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
       if (modo === "puntos") {
         return crearRutaDesdePuntos({
           nombre: d.nombre.trim(),
+          tipoRecorrido: d.tipoRecorrido,
           rutaPrincipalId: d.rutaPrincipalId || null,
           puntos: puntosParaEnvio(puntos),
           servicios: servicios(),
@@ -90,7 +92,7 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
       }
       return crearRuta({
         nombre: d.nombre.trim(),
-        tipoRecorrido: "circular",
+        tipoRecorrido: d.tipoRecorrido,
         rutaPrincipalId: d.rutaPrincipalId || null,
         paraderoIds,
         servicios: servicios(),
@@ -145,7 +147,7 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
     setElegidas((e) => {
       const { [id]: _quitada, ...resto } = e;
       void _quitada;
-      return marcada ? { ...e, [id]: { codigoPublico: "", codigoInterno: "" } } : resto;
+      return marcada ? { ...e, [id]: { codigoPublico: "" } } : resto;
     });
 
   return (
@@ -160,10 +162,15 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
         </div>
         <div>
           <label htmlFor="tipo-recorrido" className="block font-semibold">Tipo de recorrido</label>
-          <select id="tipo-recorrido" disabled className={campo} defaultValue="circular">
+          <select id="tipo-recorrido" disabled={edita} className={campo} {...register("tipoRecorrido")}>
             <option value="circular">Circular</option>
+            <option value="lineal">Lineal</option>
           </select>
-          <p className="mt-1 text-sm">En el prototipo todas las rutas son circulares.</p>
+          <p className="mt-1 text-sm">
+            {edita
+              ? "El tipo de recorrido no se puede cambiar al editar."
+              : "El simulador y el cálculo de llegada tratan todas las rutas como circulares."}
+          </p>
         </div>
         {edita ? (
           <div className="md:col-span-2">
@@ -200,13 +207,7 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
                         Código público
                         <input type="text" inputMode="numeric" maxLength={6} className="ml-2 min-h-11 w-28 rounded border border-tinta/40 bg-white px-2"
                           value={elegidas[e.id]?.codigoPublico ?? ""}
-                          onChange={(ev) => setElegidas((s) => ({ ...s, [e.id]: { codigoPublico: ev.target.value, codigoInterno: s[e.id]?.codigoInterno ?? "" } }))} />
-                      </label>
-                      <label className="text-sm">
-                        Código interno
-                        <input type="text" maxLength={20} className="ml-2 min-h-11 w-28 rounded border border-tinta/40 bg-white px-2"
-                          value={elegidas[e.id]?.codigoInterno ?? ""}
-                          onChange={(ev) => setElegidas((s) => ({ ...s, [e.id]: { codigoInterno: ev.target.value, codigoPublico: s[e.id]?.codigoPublico ?? "" } }))} />
+                          onChange={(ev) => setElegidas((s) => ({ ...s, [e.id]: { codigoPublico: ev.target.value } }))} />
                       </label>
                     </>
                   ) : null}
@@ -234,12 +235,16 @@ export function FormularioRuta({ ruta, paraderos, empresas, rutas, onListo, onCa
             </label>
           </div>
         ) : null}
-        <p className="mb-2 text-sm">El trazado une los paraderos en el orden que elijas y vuelve al primero.</p>
+        <p className="mb-2 text-sm">
+          {lineal
+            ? "El trazado va del primer paradero al último, en el orden que elijas, sin volver al inicio."
+            : "El trazado une los paraderos en el orden que elijas y vuelve al primero."}
+        </p>
         {!edita && modo === "puntos" ? (
-          <CapturaPuntosRuta puntos={puntos} errores={erroresPuntos} existentes={paraderos}
+          <CapturaPuntosRuta cerrado={!lineal} puntos={puntos} errores={erroresPuntos} existentes={paraderos}
             onCambio={(p) => { setPuntos(p); setErroresPuntos([]); setErrorParaderos(null); }} />
         ) : (
-          <SelectorParaderos paraderos={paraderos} valor={paraderoIds} onCambio={(ids) => { setParaderoIds(ids); setErrorParaderos(null); }} />
+          <SelectorParaderos cerrado={!lineal} paraderos={paraderos} valor={paraderoIds} onCambio={(ids) => { setParaderoIds(ids); setErrorParaderos(null); }} />
         )}
         {errorParaderos ? <p className={error}>{errorParaderos}</p> : null}
       </fieldset>

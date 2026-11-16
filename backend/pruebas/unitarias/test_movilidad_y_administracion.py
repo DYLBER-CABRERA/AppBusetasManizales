@@ -105,7 +105,9 @@ def test_registrar_ruta_validaciones(cliente: TestClient) -> None:
     assert cliente.post("/api/v1/rutas", json=_ruta(paraderoIds=[A, str(uuid4())]), headers=SEC).status_code == 404
     assert cliente.post("/api/v1/rutas", json=_ruta(servicios=[{"empresaId": str(uuid4())}]), headers=SEC).status_code == 404
     assert cliente.post("/api/v1/rutas", json=_ruta(servicios=[]), headers=SEC).status_code == 400
-    assert cliente.post("/api/v1/rutas", json=_ruta(tipoRecorrido="lineal"), headers=SEC).status_code == 400
+    assert cliente.post("/api/v1/rutas", json=_ruta(tipoRecorrido="diagonal"), headers=SEC).status_code == 400
+    ok = cliente.post("/api/v1/rutas", json=_ruta(tipoRecorrido="lineal"), headers=SEC)
+    assert ok.status_code == 201
 
 
 def test_ruta_compartida_exige_confirmacion(cliente: TestClient) -> None:

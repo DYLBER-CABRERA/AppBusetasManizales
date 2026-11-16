@@ -319,3 +319,11 @@ def test_el_limite_de_puntos_es_30() -> None:
 def test_configuracion_osrm_por_defecto_y_deshabilitable() -> None:
     assert Configuracion(_env_file=None).osrm_url == "https://router.project-osrm.org"
     assert Configuracion(_env_file=None, osrm_url="").osrm_url == ""
+
+
+def test_ruta_lineal_no_cierra_el_trazado() -> None:
+    from modulos.red.dominio.trazado import unir_segmentos
+
+    a, b, c = (5.0, -75.0), (5.1, -75.1), (5.2, -75.2)
+    assert unir_segmentos([[a, b], [b, c]], cerrar=False) == [a, b, c]
+    assert unir_segmentos([[a, b], [b, c], [c, a]])[-1] == a

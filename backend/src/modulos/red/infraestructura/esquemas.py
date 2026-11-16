@@ -22,7 +22,7 @@ class ServicioResumen(EsquemaBase):
 class RutaResumen(EsquemaBase):
     id: UUID
     nombre: str
-    tipo_recorrido: Literal["circular"] = "circular"
+    tipo_recorrido: Literal["circular", "lineal"] = "circular"
     es_variante: bool = False
     distancia_m: float | None = None
     servicios: list[ServicioResumen]
@@ -80,7 +80,7 @@ class ServicioCrearEntrada(EsquemaBase):
 
 class RutaCrear(EsquemaBase):
     nombre: str = Field(min_length=2, max_length=120)
-    tipo_recorrido: Literal["circular"] = "circular"
+    tipo_recorrido: Literal["circular", "lineal"] = "circular"
     ruta_principal_id: UUID | None = None
     paradero_ids: list[UUID] = Field(min_length=2, description="Paraderos en orden de recorrido")
     servicios: list[ServicioCrearEntrada] = Field(min_length=1)
@@ -98,6 +98,7 @@ class PuntoRuta(EsquemaBase):
 
 class RutaDesdePuntos(EsquemaBase):
     nombre: str = Field(min_length=2, max_length=120)
+    tipo_recorrido: Literal["circular", "lineal"] = "circular"
     ruta_principal_id: UUID | None = None
     puntos: list[PuntoRuta] = Field(min_length=2, max_length=30, description="En el orden tocado; cada punto es un paradero")
     servicios: list[ServicioCrearEntrada] = Field(min_length=1)

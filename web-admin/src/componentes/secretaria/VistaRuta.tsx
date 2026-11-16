@@ -41,14 +41,14 @@ export function VistaRuta({ rutaId, onCerrar }: { rutaId: string; onCerrar: () =
           <div>
             <MapaVistaRuta ruta={ruta} alto={460} seleccionado={seleccionado} />
             <p className="mt-1 text-xs">
-              Línea azul: trazado de la ruta (circular, vuelve al primer paradero). Círculos verdes numerados: paraderos en orden.
+              Línea azul: trazado de la ruta ({ruta.tipoRecorrido === "lineal" ? "lineal, del primer al último paradero" : "circular, vuelve al primer paradero"}). Círculos verdes numerados: paraderos en orden.
               Toca un paradero para ver su latitud y longitud.
             </p>
           </div>
           <div className="space-y-4">
             <dl className="space-y-1 text-sm">
               <div className="flex gap-2"><dt className="font-semibold">Nombre:</dt><dd>{ruta.nombre}{ruta.esVariante ? " (variante)" : ""}</dd></div>
-              <div className="flex gap-2"><dt className="font-semibold">Recorrido:</dt><dd>Circular</dd></div>
+              <div className="flex gap-2"><dt className="font-semibold">Recorrido:</dt><dd>{ruta.tipoRecorrido === "lineal" ? "Lineal" : "Circular"}</dd></div>
               <div className="flex gap-2">
                 <dt className="font-semibold">Longitud:</dt>
                 <dd>{ruta.longitudM != null ? `${(ruta.longitudM / 1000).toFixed(1)} km` : "Sin dato"}</dd>

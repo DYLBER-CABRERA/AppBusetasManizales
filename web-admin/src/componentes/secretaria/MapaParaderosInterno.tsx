@@ -15,6 +15,8 @@ type Props = {
   punto?: PuntoMapa | null;
   onPunto?: (p: PuntoMapa) => void;
   alto?: number;
+  /** Circular: la línea vuelve al primer paradero. Lineal: queda abierta. */
+  cerrado?: boolean;
 };
 
 function ClicMapa({ onPunto }: { onPunto: (p: PuntoMapa) => void }) {
@@ -23,13 +25,13 @@ function ClicMapa({ onPunto }: { onPunto: (p: PuntoMapa) => void }) {
 }
 
 /** Verde = paradero; los de la ruta llevan su número de orden. Tinta = punto que se está fijando. */
-export default function MapaParaderosInterno({ paraderos, ordenados = [], onElegir, punto, onPunto, alto = 420 }: Props) {
+export default function MapaParaderosInterno({ paraderos, ordenados = [], onElegir, punto, onPunto, alto = 420, cerrado = true }: Props) {
   const posicion = new Map(ordenados.map((id, i) => [id, i + 1]));
   const lineas = ordenados
     .map((id) => paraderos.find((p) => p.id === id))
     .filter((p): p is Paradero => Boolean(p))
     .map((p): [number, number] => [p.lat, p.lng]);
-  if (lineas.length >= 3 && lineas[0]) lineas.push(lineas[0]); // circuito (D-P02)
+  if (cerrado && lineas.length >= 3 && lineas[0]) lineas.push(lineas[0]); // circuito (D-P02)
 
   return (
     <MapaBaseInterno alto={alto}>

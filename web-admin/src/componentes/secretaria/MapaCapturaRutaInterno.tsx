@@ -18,6 +18,8 @@ type Props = {
   enfoque?: { clave: string; puntos: [number, number][] } | null;
   onPunto: (p: PuntoCapturado) => void;
   alto?: number;
+  /** Circular: línea punteada del último al primero. Lineal: no se cierra. */
+  cerrado?: boolean;
 };
 
 function Interaccion({ onPunto, onMover }: { onPunto: Props["onPunto"]; onMover: (p: [number, number] | null) => void }) {
@@ -47,7 +49,7 @@ function Encuadrar({ enfoque }: { enfoque: NonNullable<Props["enfoque"]> }) {
  * Tocar un punto o un paradero existente muestra su latitud y longitud (no agrega un punto nuevo).
  */
 export default function MapaCapturaRutaInterno({
-  puntos, conError = [], existentes = [], vistaPrevia = [], enfoque, onPunto, alto = 440,
+  puntos, conError = [], existentes = [], vistaPrevia = [], enfoque, onPunto, alto = 440, cerrado = true,
 }: Props) {
   const [cursor, setCursor] = useState<[number, number] | null>(null);
   const trazo = puntos.map((p): [number, number] => [p.lat, p.lng]);
@@ -76,7 +78,7 @@ export default function MapaCapturaRutaInterno({
       {ultimo && cursor ? (
         <Polyline positions={[ultimo, cursor]} interactive={false} pathOptions={{ color: "#1d6fdc", weight: 3, dashArray: "4 8", opacity: 0.7 }} />
       ) : null}
-      {trazo.length >= 3 && ultimo && primero ? (
+      {cerrado && trazo.length >= 3 && ultimo && primero ? (
         <Polyline positions={[ultimo, primero]} interactive={false} pathOptions={{ color: "#1d6fdc", weight: 2, dashArray: "6 6", opacity: 0.6 }} />
       ) : null}
       {previa.length > 0 ? (
