@@ -35,8 +35,11 @@ class ConstructorDeTrazado:
         self._presupuesto = presupuesto_s
         self._fallos_max = fallos_seguidos_max
 
-    async def construir(self, paradas: list[Coordenada], presupuesto_s: float | None = None) -> ResultadoTrazado:
-        """`presupuesto_s` reemplaza el tiempo máximo por defecto (la importación de varias rutas lo reparte)."""
+    async def construir(
+        self, paradas: list[Coordenada], presupuesto_s: float | None = None, cerrar: bool = True
+    ) -> ResultadoTrazado:
+        """`presupuesto_s` reemplaza el tiempo máximo por defecto (la importación de varias rutas lo reparte).
+        `cerrar=False` (ruta lineal): no se traza el tramo último→primero y la línea queda abierta."""
         presupuesto = self._presupuesto if presupuesto_s is None else presupuesto_s
         n = len(paradas)
         inicio = self._monotonico()
@@ -44,7 +47,7 @@ class ConstructorDeTrazado:
         sin_servicio = self._enrutador is None
         segmentos: list[list[Coordenada]] = []
         sin_ruta: list[tuple[int, int]] = []
-        for i in range(n):
+        for i in range(n if cerrar else n - 1):
             j = (i + 1) % n
             geometria = None
             if not sin_servicio and self._enrutador is not None:
@@ -63,4 +66,4 @@ class ConstructorDeTrazado:
                 registro.info("Tramo %d→%d sin ruta real, se usó línea recta", i + 1, j + 1)
             else:
                 segmentos.append(geometria)
-        return ResultadoTrazado(unir_segmentos(segmentos), sin_ruta)
+        return ResultadoTrazado(unir_segmentos(segmentos, cerrar), sin_ruta)

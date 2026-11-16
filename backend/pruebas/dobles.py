@@ -815,8 +815,8 @@ class GestionRedEnMemoria:
     async def ruta_principal_valida(self, ruta_id):
         return ruta_id == RUTA_ENEA
 
-    async def crear_ruta(self, nombre, ruta_principal_id, paradero_ids, servicios):
-        self.rutas_creadas.append({"nombre": nombre, "paraderos": paradero_ids, "servicios": servicios})
+    async def crear_ruta(self, nombre, ruta_principal_id, paradero_ids, servicios, tipo_recorrido="circular"):
+        self.rutas_creadas.append({"nombre": nombre, "paraderos": paradero_ids, "servicios": servicios, "tipo_recorrido": tipo_recorrido})
         return RUTA_ENEA
 
     async def editar_ruta(self, ruta_id, version, nombre, descripcion, paradero_ids):
@@ -841,7 +841,7 @@ class GestionRedEnMemoria:
         d, p = min(candidatos, key=lambda par: par[0])
         return {**p, "distancia_m": d}
 
-    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios, trazado=None):
+    async def crear_ruta_con_paraderos(self, nombre, ruta_principal_id, paraderos, servicios, trazado=None, tipo_recorrido="circular"):
         from modulos.red.infraestructura.repositorio_gestion_sql import _wkt_circuito, _wkt_linea
 
         ids = []
@@ -856,7 +856,8 @@ class GestionRedEnMemoria:
         coordenadas = [(self.paraderos[i]["lat"], self.paraderos[i]["lng"]) for i in ids]
         ruta_id = uuid4()
         self.creadas[ruta_id] = {"nombre": nombre, "paradero_ids": ids, "servicios": servicios,
-                                 "wkt": _wkt_linea(trazado) if trazado else _wkt_circuito(coordenadas), "version": 1}
+                                 "wkt": _wkt_linea(trazado) if trazado else _wkt_circuito(coordenadas, tipo_recorrido != "lineal"),
+                                 "tipo_recorrido": tipo_recorrido, "version": 1}
         self.rutas_existentes.append({"nombre": nombre})
         return ruta_id
 
