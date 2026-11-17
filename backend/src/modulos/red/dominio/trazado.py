@@ -10,17 +10,20 @@ def _iguales(a: Coordenada, b: Coordenada) -> bool:
     return abs(a[0] - b[0]) <= TOLERANCIA_GRADOS and abs(a[1] - b[1]) <= TOLERANCIA_GRADOS
 
 
-def unir_segmentos(segmentos: list[list[Coordenada]]) -> list[Coordenada]:
+def unir_segmentos(segmentos: list[list[Coordenada]], cerrar: bool = True) -> list[Coordenada]:
     """Concatena los segmentos en orden SIN duplicar el punto de unión, y cierra el circuito (último vértice = primero).
 
     Si el último segmento termina un poco antes del primer vértice (la calle ajustada por OSRM frente al punto tocado), se
-    añade el primer vértice al final para que la línea quede cerrada; no se deforma ningún tramo."""
+    añade el primer vértice al final para que la línea quede cerrada; no se deforma ningún tramo.
+    Con `cerrar=False` (ruta lineal) solo concatena y la línea queda abierta."""
     linea: list[Coordenada] = []
     for segmento in segmentos:
         for k, punto in enumerate(segmento):
             if k == 0 and linea and _iguales(linea[-1], punto):
                 continue
             linea.append(punto)
+    if not cerrar:
+        return linea
     if linea and not _iguales(linea[-1], linea[0]):
         linea.append(linea[0])
     elif len(linea) > 1:

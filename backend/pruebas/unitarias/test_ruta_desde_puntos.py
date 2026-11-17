@@ -248,3 +248,13 @@ def test_la_creacion_usa_una_sola_transaccion() -> None:
     fuente = (Path(__file__).resolve().parents[2] / "src/modulos/red/infraestructura/repositorio_gestion_sql.py").read_text(encoding="utf-8")
     cuerpo = fuente[fuente.index("async def crear_ruta_con_paraderos"):fuente.index("async def editar_ruta")]
     assert cuerpo.count("self._pool.connection()") == 1  # paraderos, ruta, trazado, secuencia y servicios en la misma conexión
+
+
+def test_ruta_lineal_desde_puntos_se_guarda_lineal_y_abierta(cliente: TestClient, repos: Repositorios) -> None:
+    cuerpo = {**_fatima_a_chipre(), "nombre": "Lineal de prueba", "tipoRecorrido": "lineal"}
+    r = cliente.post("/api/v1/rutas/desde-puntos", json=cuerpo, headers=SEC)
+    assert r.status_code == 201, r.text
+    creada = next(iter(repos.gestion_red.creadas.values()))
+    assert creada["tipo_recorrido"] == "lineal"
+    coords = re.findall(r"(-?\d+\.\d+ -?\d+\.\d+)", creada["wkt"])
+    assert coords[0] != coords[-1]  # abierta: no vuelve al primer paradero

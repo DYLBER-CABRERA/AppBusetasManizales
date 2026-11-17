@@ -8,8 +8,8 @@ const boton = "min-h-11 min-w-11 rounded border border-tinta/40 px-2 font-semibo
 
 /** Paraderos de la ruta en orden: lista + mapa. Tocar un paradero en el mapa lo agrega o lo quita. */
 export function SelectorParaderos({
-  paraderos, valor, onCambio,
-}: { paraderos: Paradero[]; valor: string[]; onCambio: (ids: string[]) => void }) {
+  paraderos, valor, onCambio, cerrado = true,
+}: { paraderos: Paradero[]; valor: string[]; onCambio: (ids: string[]) => void; cerrado?: boolean }) {
   const [filtro, setFiltro] = useState("");
   const nombre = (id: string) => paraderos.find((p) => p.id === id)?.nombre ?? "Paradero dado de baja";
   const coordenadas = (id: string) => {
@@ -32,7 +32,7 @@ export function SelectorParaderos({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div>
-        <MapaParaderos paraderos={paraderos} ordenados={valor} onElegir={alternar} alto={380} />
+        <MapaParaderos paraderos={paraderos} ordenados={valor} onElegir={alternar} alto={380} cerrado={cerrado} />
         <p className="mt-1 text-xs">Toca un paradero del mapa para agregarlo o quitarlo del recorrido.</p>
       </div>
       <div className="space-y-4">

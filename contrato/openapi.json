@@ -3031,8 +3031,11 @@
             "type": "array"
           },
           "tipoRecorrido": {
-            "const": "circular",
             "default": "circular",
+            "enum": [
+              "circular",
+              "lineal"
+            ],
             "title": "Tiporecorrido",
             "type": "string"
           }
@@ -3087,6 +3090,15 @@
             "minItems": 1,
             "title": "Servicios",
             "type": "array"
+          },
+          "tipoRecorrido": {
+            "default": "circular",
+            "enum": [
+              "circular",
+              "lineal"
+            ],
+            "title": "Tiporecorrido",
+            "type": "string"
           }
         },
         "required": [
@@ -3181,8 +3193,11 @@
             "type": "array"
           },
           "tipoRecorrido": {
-            "const": "circular",
             "default": "circular",
+            "enum": [
+              "circular",
+              "lineal"
+            ],
             "title": "Tiporecorrido",
             "type": "string"
           },
@@ -3382,8 +3397,11 @@
             "type": "array"
           },
           "tipoRecorrido": {
-            "const": "circular",
             "default": "circular",
+            "enum": [
+              "circular",
+              "lineal"
+            ],
             "title": "Tiporecorrido",
             "type": "string"
           }

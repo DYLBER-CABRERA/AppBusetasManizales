@@ -178,7 +178,7 @@ async def registrar_ruta(
 ) -> dict:
     return await caso_uso(
         identidad, cuerpo.nombre, cuerpo.ruta_principal_id, cuerpo.paradero_ids,
-        [sv.model_dump() for sv in cuerpo.servicios], cuerpo.confirmar_compartida,
+        [sv.model_dump() for sv in cuerpo.servicios], cuerpo.confirmar_compartida, cuerpo.tipo_recorrido,
     )
 
 
@@ -190,7 +190,7 @@ async def registrar_ruta_desde_puntos(
 ) -> dict:
     return await caso_uso(
         identidad, cuerpo.nombre, cuerpo.ruta_principal_id, [p.model_dump() for p in cuerpo.puntos],
-        [sv.model_dump() for sv in cuerpo.servicios], cuerpo.confirmar_compartida,
+        [sv.model_dump() for sv in cuerpo.servicios], cuerpo.confirmar_compartida, tipo_recorrido=cuerpo.tipo_recorrido,
     )
 
 

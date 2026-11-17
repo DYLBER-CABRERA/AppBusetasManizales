@@ -63,7 +63,8 @@ class RepositorioGestionRed(Protocol):
     async def empresas_activas_existen(self, empresa_ids: list[UUID]) -> bool: ...
     async def ruta_principal_valida(self, ruta_id: UUID) -> bool: ...
     async def crear_ruta(
-        self, nombre: str, ruta_principal_id: UUID | None, paradero_ids: list[UUID], servicios: list[Registro]
+        self, nombre: str, ruta_principal_id: UUID | None, paradero_ids: list[UUID], servicios: list[Registro],
+        tipo_recorrido: str = "circular",
     ) -> UUID: ...
     async def editar_ruta(
         self, ruta_id: UUID, version: int, nombre: str | None, descripcion: str | None, paradero_ids: list[UUID] | None
@@ -82,7 +83,7 @@ class RepositorioGestionRed(Protocol):
         ...
     async def crear_ruta_con_paraderos(
         self, nombre: str, ruta_principal_id: UUID | None, paraderos: list[Registro], servicios: list[Registro],
-        trazado: list[Coordenada] | None = None,
+        trazado: list[Coordenada] | None = None, tipo_recorrido: str = "circular",
     ) -> UUID:
         """UNA transacción: crea los paraderos con `id` None (nombre, lat, lng, direccion), la ruta circular con su trazado
         (`trazado` = vértices (lat, lng) ya cerrados; si falta, una recta entre paraderos que vuelve al primero), la secuencia

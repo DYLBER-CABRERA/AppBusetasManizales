@@ -72,7 +72,7 @@ Sin sesión → 401 `NO_AUTENTICADO` con mensaje "Inicia sesión para guardar".
 
 | Método y ruta | Descripción | HU |
 |---|---|---|
-| `POST /rutas` | `{nombre, tipoRecorrido:"circular", rutaPrincipalId?, paraderoIds:[…ordenados], servicios:[{empresaId, codigoPublico?, codigoInterno?}], confirmarCompartida?}`. Trazado = línea que une los paraderos. Ruta ya asignada a otra empresa y sin `confirmarCompartida` → 409 `CONFLICTO_NEGOCIO` | SM01 |
+| `POST /rutas` | `{nombre, tipoRecorrido:"circular"\|"lineal" (por defecto circular; solo se guarda, el simulador y el ETA siguen tratando todo como circular), rutaPrincipalId?, paraderoIds:[…ordenados], servicios:[{empresaId, codigoPublico?, codigoInterno?}], confirmarCompartida?}`. Trazado = línea que une los paraderos. Ruta ya asignada a otra empresa y sin `confirmarCompartida` → 409 `CONFLICTO_NEGOCIO` | SM01 |
 | `PUT /rutas/{id}` | Edita con `version` | SM02 |
 | `DELETE /rutas/{id}?version&confirmar?` | Con turnos futuros y sin `confirmar=true` → 409 con la lista; con `confirmar=true`: baja lógica, cancela turnos futuros | SM03 |
 | `POST /rutas/{id}/servicios` · `DELETE /servicios/{id}` | Asigna o retira la ruta a una empresa | SM01 |

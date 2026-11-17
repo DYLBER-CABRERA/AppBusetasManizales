@@ -2114,9 +2114,9 @@ export interface components {
             /**
              * Tiporecorrido
              * @default circular
-             * @constant
+             * @enum {string}
              */
-            tipoRecorrido: "circular";
+            tipoRecorrido: "circular" | "lineal";
         };
         /** RutaDesdePuntos */
         RutaDesdePuntos: {
@@ -2136,6 +2136,12 @@ export interface components {
             rutaPrincipalId?: string | null;
             /** Servicios */
             servicios: components["schemas"]["ServicioCrearEntrada"][];
+            /**
+             * Tiporecorrido
+             * @default circular
+             * @enum {string}
+             */
+            tipoRecorrido: "circular" | "lineal";
         };
         /** RutaDetalle */
         RutaDetalle: {
@@ -2171,9 +2177,9 @@ export interface components {
             /**
              * Tiporecorrido
              * @default circular
-             * @constant
+             * @enum {string}
              */
-            tipoRecorrido: "circular";
+            tipoRecorrido: "circular" | "lineal";
             trazado: components["schemas"]["GeoJsonLineString"];
             /** Version */
             version: number;
@@ -2237,9 +2243,9 @@ export interface components {
             /**
              * Tiporecorrido
              * @default circular
-             * @constant
+             * @enum {string}
              */
-            tipoRecorrido: "circular";
+            tipoRecorrido: "circular" | "lineal";
         };
         /** RutasCercanas */
         RutasCercanas: {

@@ -15,6 +15,8 @@ type Props = {
   /** Errores por punto (del backend o de la validación local), para señalar cuál falló. */
   errores: ErrorPunto[];
   existentes: Paradero[];
+  /** false para rutas lineales (el trazo no se cierra al primer punto). */
+  cerrado?: boolean;
 };
 
 type Enfoque = { clave: string; puntos: [number, number][] };
@@ -28,7 +30,7 @@ const enfoqueDe = (ps: PuntoCapturado[]): Enfoque => ({
  * Lo pegado se ve en el mapa como vista previa mientras se escribe y entra al recorrido con «Agregar».
  * El circuito se cierra solo.
  */
-export function CapturaPuntosRuta({ puntos, onCambio, errores, existentes }: Props) {
+export function CapturaPuntosRuta({ puntos, onCambio, errores, existentes, cerrado = true }: Props) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [texto, setTexto] = useState("");
   const [orden, setOrden] = useState<OrdenCoordenadas>("lat_lng");
@@ -96,7 +98,7 @@ export function CapturaPuntosRuta({ puntos, onCambio, errores, existentes }: Pro
     <div className="grid gap-4 lg:grid-cols-2">
       <div>
         <MapaCapturaRuta puntos={puntos} conError={indicesError} existentes={existentes} vistaPrevia={vistaPrevia}
-          enfoque={enfoque} onPunto={agregar} alto={440} />
+          enfoque={enfoque} onPunto={agregar} alto={440} cerrado={cerrado} />
         <p className="mt-1 text-xs">
           Toca el mapa para agregar puntos en el orden del recorrido, o pega sus coordenadas al lado. El último punto se une solo
           con el primero. Toca un punto o un paradero del mapa para ver su latitud y longitud.
